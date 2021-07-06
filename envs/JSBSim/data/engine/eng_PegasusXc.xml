@@ -1,0 +1,240 @@
+<?xml version="1.0"?>
+<!--
+
+  Bristol Pegasus XC engine model for JSBSim.
+
+    Copyright (C) 2008 - 2013  Anders Gidenstam  (anders(at)gidenstam.org)
+    Copyright (C) 2008         Ron Jensen
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+  
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  
+-->
+<!--
+  File:     eng_PegasusXc.xml
+  Authors:  Ron Jensen, Anders Gidenstam
+
+Selected informative quotes from
+
+"Flying Empires  Short 'C' class Empire flying boats",
+Brian Cassidy, Queens Parade Press, 1996-2004. ISBN 0-9529298-2-1
+[Cassidy:2004:FE]
+    
+  "The Pegasus engine data plates were fixed on the port side panel
+  below the fore and aft level. The information on the plates read:
+  Take off 2475 rpm. maximum +4 1/4 lb. sq. in.
+           Maximum rpm   Boost.   Cylinder temp.   Oil temp.deg.C.
+  Take off     2475      +4 1/4   235 for 15 min.      ??
+  Climbing     2250      +2 1/2   235                  80
+  Cruising     2250      +2       190                  70
+  All out      2600      +2       235                  90
+  Oil pressure maximum 80 lb./sq. in. 5 minutes
+               minimum 5 lb./sq. in."
+  (pp.71)
+
+  "The Pegasus XC was a 28.7 litre, civil-rated, medium
+  supercharged, poppet-valved engine and equipped the S.23, S.33
+  'boats and one of the S.30 aircraft - KZ CATHAY. The Bristol
+  Perseus XIIC was 24.9 litre, civil rated, medium supercharged,
+  sleeve-valve engine and was fitted to the eight S.30 'boats. Both
+  types of engine were geared down to turn the airscrew at half
+  crankshaft speed, through Farman type reduction gearing."
+  (pp.91) 
+
+  "The starters were Rotax-Eclipse E 160R direct-cranking starters, capable
+  of turning the crankshaft over at 25 to 30 rev. per min."
+  (pp.92)
+
+  "The engines originally fitted to all the Mark I S.23 'boats, one
+  of the S.30s and both the S.33 'boats were poppet valved Bristol
+  Pegasus XCs. The engines developed 820/900 bhp. (589/611 kW.) at
+  2250 rev. per min., at the rated altitude of 3500 ft. At sea
+  level, the maximum power was 885/920 bhp.  (660/686 kW.) at 2250
+  rev. per min. The maximum economy cruise power was 510 bhp. (380
+  kW.).  The maximum engine speed for for the climb - with the
+  airscrews in COARSE pitch - was 2250 rev.  per min. with +1 1/4
+  lb. sq. in.. For continuous cruising the speed was 2500 rev. per
+  min. up to 5000 ft. and 2100 rev. per min. over 5000
+  ft. Maximum engine speed - all out - was 2600 rev. per min. with
+  +2 1/2 lb. sq. in. for 5 minutes in level flight."
+  (pp.167)
+
+  "Fuel consumptions varied between individual aircraft. In practice, `normal'
+  four engine fuel consumptions ranged from as little as 107.5 gal. per hr. 
+  (484 litres per hr.), to 119.9 gal. per hr. (540 litre per hr.). A good
+  average consumption was considered to be 115 gal. per hr. (518 litre per hr.).
+  The upper limit of acceptable consumption was set at 141 gal. per hr. (631
+  litre per hr.), and anything over this amount was considered to be excessive.
+  These consumption figures appear to be better than the manufacturer's figure
+  of a maximum of 0,67 pints (0.38 litres) per hhp. per hour. ...
+  [Oil] Consumptions varied from 8 pints to 3 1/2 gal. per hour for a
+  typical Pegasus"
+  (pp.168)
+
+Flight Magazine November 5, 1936:
+  Pegasus Xc
+    Gear ratio:                        0.5:1
+    Rated height:                      5500 ft
+    Maximum take off RPM:              2475
+    International rated power:         740 BHP at 3500 ft
+    Max power all out level flight:    830 BHP at 5500 ft
+    Max speed for 5 min. level flight: 2600 RPM
+    Max take-off power:                920 BHP
+    (Dry?) Weight:                     1015 lbs
+
+  "The Claudel-Hobson carburetter, of the A.V.T. 85E type, works in
+  conjunction with a variable datum boost control, which protects the
+  engine against excessive pressure in the induction pipe."
+
+Flight Magazine November 12, 1936:
+  Bore:                   146 mm
+  Stroke:                 190.5 mm 
+  Reduction gear:         0.5
+  Normal crankshaft RPM:  2,250
+  Rated altitude:         4,500 ft
+  Normal output at rated altitude:    785/815 BHP
+  Max output at full throttle height: 830 BHP
+  Take-off power:                     920 BHP
+  Dry weight:                         1,015 lbs
+  Remark: Moderately supercharged. Max. power at 5,256ft
+
+http://theflyingboatforum.forumlaunch.net/viewtopic.php?f=19&t=897
+  "... British and Australian CofAs for these aircraft give the Pegasus Xc
+  as 740 hp at 2,250 rpm at rated height of 4,500 ft and 815 hp at 2,475 rpm."
+
+-->
+<piston_engine name="PegasusXc">
+
+ <displacement unit="IN3"> 1752.80 </displacement>
+ <bore unit="IN">             5.75 </bore>
+ <stroke unit="IN">           7.50 </stroke>
+ <compression-ratio>          6.25 </compression-ratio> <!-- From Wikipedia. Pegasus XVIII. -->
+ <cylinders>                  9.0  </cylinders>
+ <cycles>                     4.0  </cycles>
+
+ <maxhp unit="HP">          920.0 </maxhp> <!-- At take-off boost. -->
+ <!-- bsfc unit="LBS/HP*HR"> 0.40 </bsfc -->
+ <!--
+     [Cassidy:2004:FE]: For Pegasus Xc:
+                        0.500 LBS/HP/HR (max cruise + acceptable consumption)
+                        0.605 LBS/HP/HR (manufacturer's figure)
+     Wikipedia:         0.52  LBS/HP/HR for Pegasus XVIII.
+ -->
+ <volumetric-efficiency> 0.65 </volumetric-efficiency> <!-- Default 0.85 -->
+ <idlerpm>      300.0 </idlerpm>
+ <maxrpm>      2600.0 </maxrpm>
+
+ <numboostspeeds> 1.0 </numboostspeeds>
+ <boostoverride>  0 </boostoverride>
+ <boost-loss-factor> 1.20 </boost-loss-factor>
+
+ <!-- For use with a separate variable datum boost control system. -->
+ <ratedboost1 unit="PSI">      4.25 </ratedboost1>
+ <ratedpower1 unit="HP">     920.00 </ratedpower1>
+ <ratedrpm1>                2475.00 </ratedrpm1>
+ <ratedaltitude1 unit="FT">    0.00 </ratedaltitude1>
+
+ <!-- Boost control is handled by the variable datum boost control system. -->
+ <boostoverride>1</boostoverride>
+
+
+ <!-- For use without a separate variable datum boost control system. -->
+ <!-- ratedboost1 unit="PSI">      2.50 </ratedboost1>
+ <ratedpower1 unit="HP">     815.00 </ratedpower1>
+ <ratedrpm1>                2250.00 </ratedrpm1>
+ <ratedaltitude1 unit="FT"> 3500.00 </ratedaltitude1>
+
+ <takeoffboost unit="PSI">     4.25 </takeoffboost -->
+
+ <sparkfaildrop>              0.10 </sparkfaildrop>
+
+ <minmp unit="INHG">         10.00 </minmp>
+ <maxmp unit="INHG">         38.57 </maxmp>
+ <maxthrottle>                1.00 </maxthrottle>
+ <minthrottle>                0.05 </minthrottle>
+
+ <!--
+      Engine starter system.
+      Inputs:
+        propulsion/engine[#]/starter-serviceable
+        propulsion/engine[#]/starter-voltage-V
+      Outputs:
+        propulsion/engine[#]/starter-current-A
+        propulsion/engine[#]/starter-running-norm
+ -->
+ <starter-torque unit="LB*FT">368</starter-torque>
+ <starter-rpm>800</starter-rpm>            
+ 
+ <function name="propulsion/engine[#]/starter-max-power-W">
+  <product> 
+   <max> <!-- k_torque -->
+    <value>0.0</value>
+    <difference>
+     <value>1.0</value>
+     <quotient>
+      <property>propulsion/engine[#]/engine-rpm</property>
+      <value>400</value>   <!-- Starter max RPM. -->
+     </quotient>
+    </difference>
+   </max>
+   <value>498.941</value> <!-- Starter max torque in Nm. -->
+   <product>              <!-- Engine speed in radians/sec. -->
+    <value>0.10471976</value>
+    <property>propulsion/engine[#]/engine-rpm</property>
+   </product>
+  </product>
+ </function>
+
+ <function name="propulsion/engine[#]/starter-current-A">
+  <!-- Guess: Set the max current to 120A and let it decrease with rpm. -->
+  <!-- The C-46 POH states that a starter on that aircraft draws 120A.  -->
+  <product>
+   <value>120.0</value>
+   <quotient>
+    <property>propulsion/engine[#]/starter-voltage-V</property>
+    <value>12.0</value>
+   </quotient>
+   <max>
+    <value>0.0</value>
+    <difference>
+     <value>1.0</value>
+     <quotient>
+      <property>propulsion/engine[#]/engine-rpm</property>
+      <value>1000</value>
+     </quotient>
+    </difference>
+   </max>
+  </product>
+ </function>
+
+ <function name="propulsion/engine[#]/starter-running-norm">
+  <min>
+   <value>1.0</value>
+   <product>
+    <property>propulsion/engine[#]/starter-serviceable</property>
+    <quotient>
+     <product> <!-- Power available in W. -->
+      <property>propulsion/engine[#]/starter-voltage-V</property>
+      <property>propulsion/engine[#]/starter-current-A</property>
+     </product>
+     <max>     <!-- Max power in W at the current RPM. -->
+      <value>1.0</value>
+      <property>propulsion/engine[#]/starter-max-power-W</property>
+     </max>
+    </quotient>
+   </product>
+  </min>
+ </function>
+
+</piston_engine>

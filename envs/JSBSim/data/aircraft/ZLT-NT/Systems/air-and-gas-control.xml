@@ -1,0 +1,121 @@
+<?xml version="1.0"?>
+<!--
+
+  ZLT NT-07 airship flight model for JSBSim.
+
+    Copyright (C) 2008 - 2010  Anders Gidenstam  (anders(at)gidenstam.org)
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+  
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  
+-->
+<system name="air-and-gas-control-jsbsim">
+
+ <!--
+ === Ballonet control system ===============================================
+ -->
+
+ <documentation>
+  Gas and ballonet valve controls (from pictures and other sources):
+
+  - Air valve 1
+    - Closed (aft) - Auto - ... (fwd)
+  - Air valve 2
+    - Locked closed (aft) - Closed - Auto - ... (fwd)
+  - Air valve 3
+    - Locked closed (aft) - Closed - Auto - ... (fwd)
+  - Helium valve 1
+    - Closed (aft) - Auto - ... (fwd)
+  - Helium valve 2
+    - Closed (aft) - Auto - ... (fwd)
+
+  Accordig to some sources there are two valves on the aft ballonet and
+  one on the fore.
+
+  There appears to be backup/emergency (wire-pull) helium valve handles on the
+  left side of the overhead panel.
+
+  The control panel for the ballonet blowers seems to be on the left side of
+  the overhead panel just behind the ballonet valve levers.
+ </documentation>
+
+ <property>fcs/ballonet-valve-cmd-norm[0]</property>
+ <property>fcs/ballonet-valve-cmd-norm[1]</property>
+ <property>fcs/ballonet-valve-cmd-norm[2]</property>
+
+ <property>fcs/helium-valve-cmd-norm[0]</property>
+ <property>fcs/helium-valve-cmd-norm[1]</property>
+
+ <property>fcs/ballonet-blower-cmd-norm[0]</property>
+ <property>fcs/ballonet-blower-cmd-norm[1]</property>
+
+ <!-- Interface properties -->
+ <property>fcs/ballonet-inflation-cmd-norm[0]</property>
+ <property>fcs/ballonet-inflation-cmd-norm[1]</property>
+
+ <documentation>
+  Range [-1, 1].
+  Positive values maps to blower inflow percentage and
+  negative values maps to valve open percentage.
+ </documentation>
+
+ <channel name="Ballonet control">
+
+  <fcs_function name="fcs/blower-cmd-norm[0]">
+   <function>
+    <max>
+     <value> 0.0 </value>
+     <property> fcs/ballonet-inflation-cmd-norm[0] </property>
+    </max>
+   </function>
+   <output>buoyant_forces/gas-cell/ballonet[0]/blower-cmd-norm</output>
+  </fcs_function>
+  <fcs_function name="fcs/valve-cmd-norm[0]">
+   <function>
+    <product>
+     <value> -1.0 </value>
+     <min>
+      <value> 0.0 </value>
+      <property> fcs/ballonet-inflation-cmd-norm[0] </property>
+     </min>
+    </product>
+   </function>
+   <output> buoyant_forces/gas-cell/ballonet[0]/valve_open </output>
+  </fcs_function>
+
+  <fcs_function name="fcs/blower-cmd-norm[1]">
+   <function>
+    <max>
+     <value> 0.0 </value>
+     <property> fcs/ballonet-inflation-cmd-norm[1] </property>
+    </max>
+   </function>
+   <output>buoyant_forces/gas-cell/ballonet[1]/blower-cmd-norm</output>
+  </fcs_function>
+  <fcs_function name="fcs/valve-cmd-norm[1]">
+   <function>
+    <product>
+     <value> -1.0 </value>
+     <min>
+      <value> 0.0 </value>
+      <property> fcs/ballonet-inflation-cmd-norm[1] </property>
+     </min>
+    </product>
+   </function>
+   <output> buoyant_forces/gas-cell/ballonet[1]/valve_open </output>
+  </fcs_function>
+
+ </channel>
+
+</system>

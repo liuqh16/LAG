@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<!--
+  File:     electric_1mw.xml
+  Author:   David Culp
+
+  Models a one mega-watt electric engine (about 1341 HP)
+-->
+
+<electric_engine name="electric_1mw">
+  <power unit="WATTS">  1000000.0 </power>
+</electric_engine>

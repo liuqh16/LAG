@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!--
+  File:     engIO540AB1A5.xml
+  Author:   Aero-Matic v 0.8
+
+  Inputs:
+    name:           engIO540AB1A5
+    type:           piston
+    power:          230.0 hp
+    augmented?      no
+    injected?       no
+-->
+
+<piston_engine name="IO540AB1A5">
+  <minmp unit="INHG">         10.0 </minmp>
+  <maxmp unit="INHG">         28.5 </maxmp>	
+  <displacement unit="IN3">  540.0 </displacement>
+  <maxhp>        230.0 </maxhp>
+  <cycles>         4.0 </cycles>
+  <idlerpm>      900.0 </idlerpm>
+  <maxrpm>      2575.0 </maxrpm>
+  <maxthrottle>    1.0 </maxthrottle>
+  <minthrottle>    0.1 </minthrottle>
+  <sparkfaildrop>  0.0 </sparkfaildrop>
+</piston_engine>

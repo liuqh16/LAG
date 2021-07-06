@@ -1,0 +1,1104 @@
+<?xml version="1.0"?>
+<!--
+
+  Short S.23 flying boat flight model for JSBSim.
+
+    Copyright (C) 2008 - 2013  Anders Gidenstam  (anders(at)gidenstam.org)
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+  
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  
+-->
+<?xml-stylesheet type="text/xsl" href="http://jsbsim.sourceforge.net/JSBSim.xsl"?>
+<fdm_config name="Short S.23" version="2.0" release="BETA"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:noNamespaceSchemaLocation="http://jsbsim.sourceforge.net/JSBSim.xsd">
+
+ <fileheader>
+  <author>Anders Gidenstam / DATCOM+ / Aeromatic v 0.9</author>
+  <email>anders at gidenstam dot org</email>
+
+  <filecreationdate>2008-11-05</filecreationdate>
+  <version>$Id: Short_S23.xml,v 1.13 2013/09/16 20:39:32 andgi Exp $</version>
+
+  <description>Models a Short S.23 flying boat.</description>
+
+  <license>
+   <licenseName>GPL</licenseName>
+   <licenseURL>http://www.gnu.org/licenses/gpl.html</licenseURL>
+  </license>
+  <note>
+   This model was created using publicly available data, publicly available
+   technical reports, textbooks, and guesses. It contains no proprietary or
+   restricted data. It has been validated only to the extent that it may seem
+   to "fly right", and possibly to comply to published, publicly known, 
+   performance data (maximum speed, endurance, etc.). Thus, this model is
+   meant for educational and entertainment purposes only.
+
+   This simulation model is not endorsed by the manufacturer.
+
+   This model is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+  </note>
+
+  <reference refID="Sims:2000:AE"
+             author="Phillip E. Sims"
+             title="Adventurous Empires  The story of the Short Empire Flying-Boats"
+             date="2000"/>
+  <reference refID="Cassidy:2004:FE"
+             author="Brian Cassidy"
+             title="Flying Empires  Short 'C' class flying boats"
+             date="2004"/>
+  <reference refID="Short:RN-3-1-37"
+             author="Short Bros."
+             title="Short 'C' class aircraft  Maintenance Handbook"
+             date="1937"/>
+  <reference refID="ERefs:2008"
+             author=""
+             title="http://www.seawings.co.uk/EmpireRefspage.htm"
+             date="5 Nov 2008"/>
+  <reference refID="Dawson:1934:Clipper"
+             author="John R. Dawson"
+             title="A complete tank test of the hull of the Sikorsky S-40 flying boat - American Clipper Class;  NACA Thechnical Notes #512"
+             date="1934"/>
+  <reference refID="CAB:1943"
+             author="http://www.enginehistory.org/Accessories/Carburetion/Carburetion.shtml"
+             title="Carburetion as Applied to Bristol Aero Engines"
+             date="1943"/>
+
+ </fileheader>
+
+<!--
+  Aeromatic v 0.9 input:
+  File:     Short S.23.xml
+  Inputs:
+    name:          Short S.23
+    type:          multi-engine prop transport
+    max weight:    40505.85 lb
+    wing span:     114.01475 ft
+    length:        88.2589 ft
+    wing area:     1510.1142 sq-ft
+    gear type:     tricycle
+    retractable?:  no
+    # engines:     4
+    engine type:   piston
+    engine layout: wings
+    yaw damper?    no
+
+  Outputs:
+    wing loading:  26.82 lb/sq-ft
+    CL-alpha:      4.9 per radian
+    CL-0:          0.24
+    CL-max:        1.4
+    CD-0:          0.028
+    K:             0.039
+
+-->
+
+ <documentation>
+  The origin of the structural frame is at the nose of the aircraft.
+  The coordinate system is aligned with the hull datum line.
+  "The line of the keel from Frame 10 aft to Frames 20/21 formed the
+   hull datum line." [Cassidy:2004:FE]
+  Cf. also the 3d model coordinate system in the model XML file.
+ </documentation>
+
+ <metrics>
+  <!-- Numbers from DATCOM. Appears to be the theoretical values where not
+       manually set. -->
+  <wingarea unit="FT2">     1510.0000  </wingarea>
+  <wingspan unit="FT">       114.0000  </wingspan>
+  <chord unit="FT">           16.4583  </chord>
+  <htailarea unit="FT2">     226.6750  </htailarea>
+  <htailarm unit="FT">        12.2147  </htailarm>
+  <vtailarea unit="FT2">     319.0423  </vtailarea>
+  <vtailarm unit="FT">        17.2533  </vtailarm>
+<!-- Numbers from Aeromatic -->
+<!--
+   <wingarea  unit="FT2"> 1510.00 </wingarea>
+   <wingspan  unit="FT" >  114.00 </wingspan>
+   <wing_incidence>          2.00 </wing_incidence>
+   <chord     unit="FT" >   13.24 </chord>
+   <htailarea unit="FT2">  241.62 </htailarea>
+   <htailarm  unit="FT" >   44.13 </htailarm>
+   <vtailarea unit="FT2">  271.82 </vtailarea>
+   <vtailarm  unit="FT" >   44.13 </vtailarm>
+-->
+   <location name="AERORP" unit="M">
+     <x> 8.68 </x>
+     <y> 0.00 </y>
+     <z> 2.35 </z>
+   </location>
+   <location name="EYEPOINT" unit="M">
+     <x> 2.05 </x>
+     <y> 2.50 </y>
+     <z> 0.00 </z>
+   </location>
+   <location name="VRP" unit="M">
+     <x> 0.00 </x>
+     <y> 0.00 </y>
+     <z> 0.00 </z>
+   </location>
+ </metrics>
+
+ <mass_balance>
+  <documentation>
+   The inertia was estimated by Aeromatic.
+   CG location X-coordinate is based on [Short:RN-3-1-37].
+   However, the document is not very clear. My assumption is that the
+   datum marker plate is located on the bulkhead of frame 15/16.
+   "C.G. is 4.56ft aft of datum point measured parallel to hull datum."
+   "Datum plate in spar compartment is 19.65 in. aft of datum point measured
+    parallel to hull datum. Permissible CG limits 55.5" to 66.8" aft of
+    datum point measured parallel to hull datum." ([Short:RN-3-1-37])
+
+   Based on the drawings the frame 15/16 bulkhead is 8.25 meters behind the
+   origin of the FDM structural frame.
+
+   Revised datum location based on 1:48 GA drawing: 7.728 meters behind the
+   origin of the FDM structural frame.
+   The resulting permissible range for the CG x coordinate is
+   359.75in to 371.05in in the structural frame.
+
+   Empty weight (incl. oil) according to [Cassidy:2004:FE] p.121: 23451 lbs.
+
+   Tare weight according to [Short:RN-3-1-37]: 27845 lbs
+   (including passenger compartments and some equipment.
+  </documentation>
+  <ixx unit="SLUG*FT2">    251174 </ixx>
+  <iyy unit="SLUG*FT2">    180055 </iyy>
+  <izz unit="SLUG*FT2">    426351 </izz>
+  <emptywt unit="LBS" >     27528 </emptywt>
+  <location name="CG" unit="M">
+   <x> 9.12 </x>
+   <y> 0.00 </y>
+   <z> 1.10 </z>
+  </location>
+
+  <documentation>
+   Adjustable payload pointmasses located according to [Short:RN-3-1-37].
+  </documentation>
+  <!-- Crew -->
+  <pointmass name="Pilot">
+   <weight unit="KG"> 85 </weight>
+   <location unit="M">
+    <x>  2.44 </x>
+    <y> -0.5 </y>
+    <z>  1.5 </z>
+   </location>
+  </pointmass>
+  <pointmass name="Copilot">
+   <weight unit="KG"> 85 </weight>
+   <location unit="M">
+    <x>  2.44 </x>
+    <y>  0.5 </y>
+    <z>  1.5 </z>
+   </location>
+  </pointmass>
+  <pointmass name="Steward">
+   <weight unit="KG"> 85 </weight>
+   <location unit="M">
+    <x>  7.0 </x>
+    <y>  0.0 </y>
+    <z>  0.0 </z>
+   </location>
+  </pointmass>
+  <pointmass name="Flight Clerk">
+   <!-- Originally the Flight Clerk's office was located on the aft end of the
+        flight deck, but it was soon was moved down into the forward cabin.
+   -->
+   <weight unit="KG"> 85 </weight>
+   <location unit="M">
+    <x>  5.4 </x>
+    <y>  0.0 </y>
+    <z>  0.0 </z>
+   </location>
+  </pointmass>
+  <pointmass name="W/T operator">
+   <weight unit="KG"> 85 </weight>
+   <location unit="M">
+    <x>  3.2 </x>
+    <y> -0.5 </y>
+    <z>  1.5 </z>
+   </location>
+  </pointmass>
+
+  <!-- Mail & Freight. -->
+  <pointmass name="Spar Mail Compartment">
+   <weight unit="KG"> 0.0 </weight>
+   <location unit="M">
+    <x>  9.3 </x>
+    <y>  0.0 </y>
+    <z>  1.5 </z>
+   </location>
+  </pointmass>
+  <pointmass name="Forward upper mail compartment">
+   <weight unit="KG"> 0.0 </weight>
+   <location unit="M">
+    <x>  6.2 </x>
+    <y>  0.0 </y>
+    <z>  1.5 </z>
+   </location>
+  </pointmass>
+  <pointmass name="Rear freight compartment">
+   <weight unit="KG"> 345.6 </weight> <!-- To get CG within the range. -->
+   <location unit="M">
+    <x> 19.1 </x>
+    <y>  0.0 </y>
+    <z>  1.5 </z>
+   </location>
+  </pointmass>
+  <pointmass name="Freight in the Forward Cabin">
+   <!-- Originally there were space for 7 passengers here but the cabin was
+        soon converted to contain freight and the Flight Clerk's office. -->
+   <weight unit="KG"> 0.0 </weight>
+   <location unit="M">
+    <x>  4.2 </x>
+    <y>  0.0 </y>
+    <z> -0.5 </z>
+   </location>
+  </pointmass>
+  <pointmass name="Bullion locker">
+   <weight unit="KG"> 0.0 </weight>
+   <location unit="M">
+    <x>  9.5 </x>
+    <y>  0.0 </y>
+    <z> -1.0 </z>
+   </location>
+  </pointmass>
+
+  <!-- Passengers. -->
+  <pointmass name="Passengers in the Spar Cabin (max 3)">
+   <weight unit="KG"> 0.0 </weight>
+   <location unit="M">
+    <x>  9.5 </x>
+    <y>  0.0 </y>
+    <z>  0.0 </z>
+   </location>
+  </pointmass>
+  <pointmass name="Passengers in the Promenade Cabin (max 8)">
+   <weight unit="KG"> 0.0 </weight>
+   <location unit="M">
+    <x> 12.5 </x>
+    <y>  0.0 </y>
+    <z>  0.0 </z>
+   </location>
+  </pointmass>
+  <pointmass name="Passengers in the Rear Cabin (max 6)">
+   <weight unit="KG"> 0.0 </weight>
+   <location unit="M">
+    <x> 15.9 </x>
+    <y>  0.0 </y>
+    <z>  0.0 </z>
+   </location>
+  </pointmass>
+
+  <!-- Fixed weights included in tare weight according to [Short:RN-3-1-37]. -->
+  <pointmass name="Radio equipment">
+   <weight unit="LBS"> 317.0 </weight>
+   <location unit="M">
+    <x> 3.8 </x>
+    <y> 0.0 </y>
+    <z> 0.0 </z>
+   </location>
+  </pointmass>
+
+  <!--
+     Oil tank contents. One mass per engine.
+     These will be controlled by the engine model.
+  -->
+  <pointmass name="Oil Port Outer">
+   <weight unit="LBS"> 117.3 </weight>
+   <location unit="M">
+    <x>  7.6 </x>
+    <y> -8.0 </y>
+    <z>  2.8 </z>
+   </location>
+  </pointmass>
+  <pointmass name="Oil Port Inner">
+   <weight unit="LBS"> 117.3 </weight>
+   <location unit="M">
+    <x>  7.3 </x>
+    <y> -4.0 </y>
+    <z>  2.6 </z>
+   </location>
+  </pointmass>
+  <pointmass name="Oil Starboard Inner">
+   <weight unit="LBS"> 117.3 </weight>
+   <location unit="M">
+    <x>  7.3 </x>
+    <y>  4.0 </y>
+    <z>  2.6 </z>
+   </location>
+  </pointmass>
+  <pointmass name="Oil Starboard Outer">
+   <weight unit="LBS"> 117.3 </weight>
+   <location unit="M">
+    <x>  7.6 </x>
+    <y>  8.0 </y>
+    <z>  2.8 </z>
+   </location>
+  </pointmass>
+
+ </mass_balance>
+
+ <ground_reactions>
+  <documentation>
+   The hydrostatic interactions of the hull are modelled by external forces.
+
+   Total bouyancy of Type 2 float is 5000lb.
+  </documentation>
+
+  <contact type="BOGEY" name="LEFT_FLOAT">
+   <location unit="M">
+    <x>  8.50 </x>
+    <y> -9.75 </y>
+    <z> -0.50 </z>
+   </location>
+   <static_friction>  0.0 </static_friction>
+   <dynamic_friction> 0.8 </dynamic_friction>
+   <rolling_friction> 0.0 </rolling_friction>
+   <spring_coeff unit="LBS/FT">      1200.0 </spring_coeff>
+   <damping_coeff unit="LBS/FT/SEC"> 1000.0 </damping_coeff>
+   <max_steer unit="DEG">0</max_steer>
+   <brake_group>NONE</brake_group>
+   <retractable>0</retractable>
+  </contact>
+
+  <contact type="BOGEY" name="RIGHT_FLOAT">
+   <location unit="M">
+    <x>  8.50 </x>
+    <y>  9.75 </y>
+    <z> -0.50 </z>
+   </location>
+   <static_friction>  0.0 </static_friction>
+   <dynamic_friction> 0.8 </dynamic_friction>
+   <rolling_friction> 0.0 </rolling_friction>
+   <spring_coeff unit="LBS/FT">      1200.0 </spring_coeff>
+   <damping_coeff unit="LBS/FT/SEC"> 1000.0 </damping_coeff>
+   <max_steer unit="DEG">0</max_steer>
+   <brake_group>NONE</brake_group>
+   <retractable>0</retractable>
+  </contact>
+
+  <contact type="STRUCTURE" name="NOSE">
+   <location unit="M">
+    <x>  0.00 </x>
+    <y>  0.00 </y>
+    <z>  0.00 </z>
+   </location>
+   <static_friction>  0.80 </static_friction>
+   <dynamic_friction> 0.80 </dynamic_friction>
+   <spring_coeff unit="LBS/FT">      2000.00 </spring_coeff>
+   <damping_coeff unit="LBS/FT/SEC"> 1500.00 </damping_coeff>
+  </contact>
+
+  <contact type="STRUCTURE" name="TAIL">
+   <location unit="M">
+    <x> 26.80 </x>
+    <y>  0.00 </y>
+    <z>  3.20 </z>
+   </location>
+   <static_friction>  0.80 </static_friction>
+   <dynamic_friction> 0.80 </dynamic_friction>
+   <spring_coeff unit="LBS/FT">      1500.00 </spring_coeff>
+   <damping_coeff unit="LBS/FT/SEC"> 1250.00 </damping_coeff>
+  </contact>
+
+  <contact type="STRUCTURE" name="LEFT_WING">
+   <location unit="M">
+    <x>  8.5 </x>
+    <y>-17.4 </y>
+    <z>  2.3 </z>
+   </location>
+   <static_friction>  0.80 </static_friction>
+   <dynamic_friction> 0.80 </dynamic_friction>
+   <spring_coeff unit="LBS/FT">      1000.00 </spring_coeff>
+   <damping_coeff unit="LBS/FT/SEC">  700.00 </damping_coeff>
+  </contact>
+
+  <contact type="STRUCTURE" name="RIGHT_WING">
+   <location unit="M">
+    <x>  8.5 </x>
+    <y> 17.4 </y>
+    <z>  2.3 </z>
+   </location>
+   <static_friction>  0.80 </static_friction>
+   <dynamic_friction> 0.80 </dynamic_friction>
+   <spring_coeff unit="LBS/FT">      1000.00 </spring_coeff>
+   <damping_coeff unit="LBS/FT/SEC">  700.00 </damping_coeff>
+  </contact>
+
+ </ground_reactions>
+
+ <propulsion>
+  <documentation>
+   Propeller location from the plans by [Cassidy:2004:FE].
+   Fuel tank location and capacity according to [Cassidy:2004:FE].
+
+   Mainplane incidence to thrust line:     1 deg 52 min. [Short:RN-3-1-37]
+   Mainplane incidence to hull datum line: 3 deg.        [Short:RN-3-1-37]
+  </documentation>
+
+  <engine file="eng_PegasusXc">
+   <location unit="M">
+    <x>  6.80 </x>
+    <y> -7.50 </y>
+    <z>  2.90 </z>
+   </location>
+   <orient unit="DEG">
+    <pitch> 1.13 </pitch>
+    <roll>  0.00 </roll>
+    <yaw>   0.00 </yaw>
+   </orient>
+   <feed>8</feed>
+   <thruster file="prop_deHavilland5000">
+    <sense>-1</sense>
+    <location unit="M">
+     <x>  6.30 </x>
+     <y> -7.50 </y>
+     <z>  2.90 </z>
+    </location>
+    <orient unit="DEG">
+     <pitch> 1.13 </pitch>
+     <roll>  0.00 </roll>
+     <yaw>   0.00 </yaw>
+    </orient>
+   </thruster>
+  </engine>
+
+  <engine file="eng_PegasusXc">
+   <location unit="M">
+    <x>  6.50 </x>
+    <y> -3.98 </y>
+    <z>  2.69 </z>
+   </location>
+   <orient unit="DEG">
+    <pitch> 1.13 </pitch>
+    <roll>  0.00 </roll>
+    <yaw>   0.00 </yaw>
+   </orient>
+   <feed>9</feed>
+   <thruster file="prop_deHavilland5000">
+    <sense>-1</sense>
+    <location unit="M">
+     <x>  6.00 </x>
+     <y> -3.98 </y>
+     <z>  2.69 </z>
+    </location>
+    <orient unit="DEG">
+     <pitch> 1.13 </pitch>
+     <roll>  0.00 </roll>
+     <yaw>   0.00 </yaw>
+    </orient>
+   </thruster>
+  </engine>
+
+  <engine file="eng_PegasusXc">
+   <location unit="M">
+    <x>  6.50 </x>
+    <y>  3.98 </y>
+    <z>  2.69 </z>
+   </location>
+   <orient unit="DEG">
+    <pitch> 1.13 </pitch>
+    <roll>  0.00 </roll>
+    <yaw>   0.00 </yaw>
+   </orient>
+   <feed>10</feed>
+   <thruster file="prop_deHavilland5000">
+    <sense>-1</sense>
+    <location unit="M">
+     <x>  6.00 </x>
+     <y>  3.98 </y>
+     <z>  2.69 </z>
+    </location>
+    <orient unit="DEG">
+     <pitch> 1.13 </pitch>
+     <roll>  0.00 </roll>
+     <yaw>   0.00 </yaw>
+    </orient>
+   </thruster>
+  </engine>
+
+  <engine file="eng_PegasusXc">
+   <location unit="M">
+    <x>  6.80 </x>
+    <y>  7.50 </y>
+    <z>  2.90 </z>
+   </location>
+   <orient unit="DEG">
+    <pitch> 1.13 </pitch>
+    <roll>  0.00 </roll>
+    <yaw>   0.00 </yaw>
+   </orient>
+   <feed>11</feed>
+   <thruster file="prop_deHavilland5000">
+    <sense>-1</sense>
+    <location unit="M">
+     <x>  6.30 </x>
+     <y>  7.50 </y>
+     <z>  2.90 </z>
+    </location>
+    <orient unit="DEG">
+     <pitch> 1.13 </pitch>
+     <roll>  0.00 </roll>
+     <yaw>   0.00 </yaw>
+    </orient>
+   </thruster>
+  </engine>
+
+  <documentation>
+    The S.23 'boats as delivered (with a few exceptions) came with one of
+    3 different fuel system types. [Cassidy:2004:FE]
+    
+    Mk.I (1D) standard:
+      one 326 gallon tank in each wing.
+    Mk.II (1A/1C) Cavalier, Centarus:
+      one 179 and one 326 gallon tank in each wing.
+    Mk.III (1B) Cambria, Caledonia:
+      one 179, one 326 and one 380 gallon tank in each wing.
+      two 280 gallon tanks between the spar frames in the hull.
+
+    [Cassidy:2004:FE] gives the sizes and capacities of the respective tanks as:
+      Inboard  380 gals. 65.5in. diam., 31.5in. ht.
+      Centre   326 gals. 64in. diam., 28in. ht.
+      Outboard 179 gals. 56.5in. long, 41.75in. wide, 19.5in. ht.
+
+    Oil tanks where placed in the nacelles aft of the firewall[Cassidy:2004:FE].
+      Mk.I   four  13 1/2 gals.
+      Mk.II  four  22 gals.
+      Mk.III eight 18 gals.
+  </documentation>
+
+  <!-- Centre tanks. Present in all 3 fuel systems. -->
+  <tank type="FUEL" number="0">
+   <location unit="M">
+    <x>  9.21 </x>
+    <y> -5.35 </y>
+    <z>  2.50 </z>
+   </location>
+   <radius unit="IN"> 32.0 </radius>
+   <capacity unit="LBS"> 2356.9 </capacity>
+   <contents unit="LBS"> 2352.0 </contents>
+   <density unit="LBS/GAL">6.02 </density>
+  </tank>
+
+  <tank type="FUEL" number="1">
+   <location unit="M">
+    <x>  9.21 </x>
+    <y>  5.35 </y>
+    <z>  2.50 </z>
+   </location>
+   <radius unit="IN"> 32.0 </radius>
+   <capacity unit="LBS"> 2356.9 </capacity>
+   <contents unit="LBS"> 2352.0 </contents>
+   <density unit="LBS/GAL">6.02 </density>
+  </tank>
+
+  <!-- Outboard tanks. Present in the Mark II and Mark III fuel systems. -->
+  <tank type="FUEL" number="2">
+   <location unit="M">
+    <x>  9.21 </x>
+    <y> -6.85 </y>
+    <z>  2.55 </z>
+   </location>
+   <radius unit="IN"> 24.6 </radius>
+   <capacity unit="LBS"> 1294.1 </capacity>
+   <contents unit="LBS"> 0.00 </contents>
+   <density unit="LBS/GAL">6.02 </density>
+  </tank>
+
+  <tank type="FUEL" number="3">
+   <location unit="M">
+    <x>  9.21 </x>
+    <y>  6.85 </y>
+    <z>  2.55 </z>
+   </location>
+   <radius unit="IN"> 24.6 </radius>
+   <capacity unit="LBS"> 1294.1 </capacity>
+   <contents unit="LBS"> 0.00 </contents>
+   <density unit="LBS/GAL">6.02 </density>
+  </tank>
+
+  <!-- Inboard tanks. Present in the Mark III fuel system. -->
+  <tank type="FUEL" number="4">
+   <location unit="M">
+    <x>  9.21 </x>
+    <y> -2.45 </y>
+    <z>  2.40 </z>
+   </location>
+   <radius unit="IN"> 32.75 </radius>
+   <capacity unit="LBS"> 2747.3 </capacity>
+   <contents unit="LBS"> 0.00 </contents>
+   <density unit="LBS/GAL">6.02 </density>
+  </tank>
+
+  <tank type="FUEL" number="5">
+   <location unit="M">
+    <x>  9.21 </x>
+    <y>  2.45 </y>
+    <z>  2.40 </z>
+   </location>
+   <radius unit="IN"> 32.75 </radius>
+   <capacity unit="LBS"> 2747.3 </capacity>
+   <contents unit="LBS"> 0.00 </contents>
+   <density unit="LBS/GAL">6.02 </density>
+  </tank>
+
+  <!-- Fuselage tanks. Present in the Mark III fuel system. -->
+  <tank type="FUEL" number="6">
+   <location unit="M">
+    <x>  9.21 </x>
+    <y> -0.72 </y>
+    <z>  2.40 </z>
+   </location>
+   <radius unit="IN"> 34.0 </radius>
+   <capacity unit="LBS"> 2024.3 </capacity>
+   <contents unit="LBS"> 0.00 </contents>
+   <density unit="LBS/GAL">6.02 </density>
+  </tank>
+
+  <tank type="FUEL" number="7">
+   <location unit="M">
+    <x>  9.21 </x>
+    <y>  0.72 </y>
+    <z>  2.40 </z>
+   </location>
+   <radius unit="IN"> 34.0 </radius>
+   <capacity unit="LBS"> 2024.3 </capacity>
+   <contents unit="LBS"> 0.00 </contents>
+   <density unit="LBS/GAL">6.02 </density>
+  </tank>
+
+  <!-- Engine feeder tanks (carburettor float chambers). -->
+  <tank type="FUEL" number="8">
+   <location unit="M">
+    <x>  6.80 </x>
+    <y> -7.50 </y>
+    <z>  2.90 </z>
+   </location>
+   <capacity unit="LBS"> 0.25 </capacity> <!-- Guess -->
+   <contents unit="LBS"> 0.00 </contents>
+   <density unit="LBS/GAL">6.02 </density>
+  </tank>
+  <tank type="FUEL" number="9">
+   <location unit="M">
+    <x>  6.50 </x>
+    <y> -3.98 </y>
+    <z>  2.69 </z>
+   </location>
+   <capacity unit="LBS"> 0.25 </capacity> <!-- Guess -->
+   <contents unit="LBS"> 0.00 </contents>
+   <density unit="LBS/GAL">6.02 </density>
+  </tank>
+  <tank type="FUEL" number="10">
+   <location unit="M">
+    <x>  6.50 </x>
+    <y>  3.98 </y>
+    <z>  2.69 </z>
+   </location>
+   <capacity unit="LBS"> 0.25 </capacity> <!-- Guess -->
+   <contents unit="LBS"> 0.00 </contents>
+   <density unit="LBS/GAL">6.02 </density>
+  </tank>
+  <tank type="FUEL" number="11">
+   <location unit="M">
+    <x>  6.80 </x>
+    <y>  7.50 </y>
+    <z>  2.90 </z>
+   </location>
+   <capacity unit="LBS"> 0.25 </capacity> <!-- Guess -->
+   <contents unit="LBS"> 0.00 </contents>
+   <density unit="LBS/GAL">6.02 </density>
+  </tank>
+
+ </propulsion>
+
+ <flight_control name="FCS: Short S.23">
+  <documentation>
+   The flight control system creates the properties needed by the
+   Aeromatic generated aerodynamic section as well as those needed by the
+   DATCOM+ generated aerodynamic section.
+
+   Control surface movements according to [Short:RN-3-1-37]:
+     Ailerons : +/-19.5 deg
+     Elevator : +/-18 deg
+     Rudder   : +/-22.5 deg
+
+  </documentation>
+
+  <!-- FlightGear multiplayer dual control properties. -->
+  <!-- Also used by the take-off autopilot. -->
+  <property value="0.0">fcs/copilot/aileron-cmd-norm</property>
+  <property value="0.0">fcs/copilot/elevator-cmd-norm</property>
+  <property value="0.0">fcs/copilot/rudder-cmd-norm</property>
+
+  <!-- The output from the Sperry autopilot actuators. -->
+  <property value="0.0">sperry-autopilot/aileron-cmd-norm</property>
+  <property value="0.0">sperry-autopilot/elevator-cmd-norm</property>
+  <property value="0.0">sperry-autopilot/rudder-cmd-norm</property>
+
+  <channel name="Elevator">
+
+   <summer name="fcs/elevator/cmd-sum-norm">
+    <input>fcs/elevator-cmd-norm</input>
+    <input>fcs/copilot/elevator-cmd-norm</input>
+    <input>sperry-autopilot/elevator-cmd-norm</input>
+    <input>fcs/pitch-trim-cmd-norm</input>
+    <clipto>
+     <min> -1 </min>
+     <max>  1 </max>
+    </clipto>
+   </summer>
+
+   <aerosurface_scale name="fcs/elevator/pos-rad">
+    <input>fcs/elevator/cmd-sum-norm</input>
+    <range>
+     <min> -0.3142 </min>
+     <max>  0.3142 </max>
+    </range>
+    <output>fcs/elevator-pos-rad</output>
+   </aerosurface_scale>
+
+   <pure_gain name="fcs/elevator/pos-deg">
+    <input>fcs/elevator/pos-rad</input>
+    <gain> 57.29578 </gain>
+    <output>fcs/elevator-pos-deg</output>
+   </pure_gain>
+
+   <aerosurface_scale name="fcs/elevator/pos-norm">
+    <input>fcs/elevator/pos-rad</input>
+    <domain>
+     <min> -0.3142 </min>
+     <max>  0.3142 </max>
+    </domain>
+    <range>
+     <min> -1 </min>
+     <max>  1 </max>
+    </range>
+    <output>fcs/elevator-pos-norm</output>
+   </aerosurface_scale>
+
+  </channel>
+
+  <channel name="Aileron">
+
+   <summer name="fcs/aileron/cmd-sum-norm">
+    <input>fcs/aileron-cmd-norm</input>
+    <input>fcs/copilot/aileron-cmd-norm</input>
+    <input>sperry-autopilot/aileron-cmd-norm</input>
+    <input>fcs/roll-trim-cmd-norm</input>
+    <clipto>
+     <min> -1 </min>
+     <max>  1 </max>
+    </clipto>
+   </summer>
+
+   <aerosurface_scale name="fcs/aileron/left-pos-rad">
+    <input>fcs/aileron/cmd-sum-norm</input>
+    <range>
+     <min> -0.3403 </min>
+     <max>  0.3403 </max>
+    </range>
+    <output>fcs/left-aileron-pos-rad</output>
+   </aerosurface_scale>
+
+   <pure_gain name="fcs/aileron/left-pos-deg">
+    <input>fcs/aileron/left-pos-rad</input>
+    <gain> 57.29578 </gain>
+    <output>fcs/left-aileron-pos-deg</output>
+   </pure_gain>
+
+   <aerosurface_scale name="fcs/aileron/left-pos-norm">
+    <input>fcs/aileron/left-pos-rad</input>
+    <domain>
+     <min> -0.3403 </min>
+     <max>  0.3403 </max>
+    </domain>
+    <range>
+     <min> -1 </min>
+     <max>  1 </max>
+    </range>
+    <output>fcs/left-aileron-pos-norm</output>
+   </aerosurface_scale>
+
+
+   <aerosurface_scale name="fcs/aileron/right-pos-rad">
+    <input>fcs/aileron/cmd-sum-norm</input>
+    <range>
+     <min> -0.3403 </min>
+     <max>  0.3403 </max>
+    </range>
+    <output>fcs/right-aileron-pos-rad</output>
+   </aerosurface_scale>
+
+   <pure_gain name="fcs/aileron/right-pos-deg">
+    <input>fcs/aileron/right-pos-rad</input>
+    <gain> 57.29578 </gain>
+    <output>fcs/right-aileron-pos-deg</output>
+   </pure_gain>
+
+   <aerosurface_scale name="fcs/aileron/right-pos-norm">
+    <input>fcs/aileron/right-pos-rad</input>
+    <domain>
+     <min> -0.3403 </min>
+     <max>  0.3403 </max>
+    </domain>
+    <range>
+     <min> -1 </min>
+     <max>  1 </max>
+    </range>
+    <output>fcs/right-aileron-pos-norm</output>
+   </aerosurface_scale>
+
+  </channel>
+
+  <channel name="Rudder">
+
+   <summer name="fcs/rudder/cmd-sum-norm">
+    <input>fcs/rudder-cmd-norm</input>
+    <input>fcs/copilot/rudder-cmd-norm</input>
+    <input>sperry-autopilot/rudder-cmd-norm</input>
+    <input>fcs/yaw-trim-cmd-norm</input>
+    <clipto>
+     <min> -1.0 </min>
+     <max>  1.0 </max>
+    </clipto>
+   </summer>
+   
+   <aerosurface_scale name="fcs/rudder/pos-rad">
+    <input>fcs/rudder/cmd-sum-norm</input>
+    <range>
+     <min> -0.3927 </min>
+     <max>  0.3927 </max>
+    </range>
+    <output>fcs/rudder-pos-rad</output>
+   </aerosurface_scale>
+
+   <pure_gain name="fcs/rudder/pos-deg">
+    <input>fcs/rudder/pos-rad</input>
+    <gain> 57.29578 </gain>
+    <output>fcs/rudder-pos-deg</output>
+   </pure_gain>
+
+   <aerosurface_scale name="fcs/rudder/pos-norm">
+    <input>fcs/rudder/pos-rad</input>
+    <domain>
+     <min> -0.393 </min>
+     <max>  0.393 </max>
+    </domain>
+    <range>
+     <min> -1 </min>
+     <max>  1 </max>
+    </range>
+    <output>fcs/rudder-pos-norm</output>
+   </aerosurface_scale>
+
+  </channel>
+
+ </flight_control>
+
+ <external_reactions>
+
+  <force name="hydro-X" frame="LOCAL">
+   <location unit="M">
+    <x>  8.68 </x>
+    <y>  0.00 </y>
+    <z>  0.00 </z>
+   </location>
+   <direction>
+    <x> 1.0 </x>
+    <y> 0.0 </y>
+    <z> 0.0 </z>
+   </direction>
+  </force>
+  <force name="hydro-Y" frame="LOCAL">
+   <location unit="M">
+    <x>  8.68 </x>
+    <y>  0.00 </y>
+    <z>  0.00 </z>
+   </location>
+   <direction>
+    <x> 0.0 </x>
+    <y> 1.0 </y>
+    <z> 0.0 </z>
+   </direction>
+  </force>
+  <force name="hydro-Z" frame="LOCAL">
+   <location unit="M">
+    <x>  8.68 </x>
+    <y>  0.00 </y>
+    <z>  0.00 </z>
+   </location>
+   <direction>
+    <x> 0.0 </x>
+    <y> 0.0 </y>
+    <z>-1.0 </z>
+   </direction>
+  </force>
+
+  <force name="hydro-pitch[0]" frame="LOCAL">
+   <location unit="M">
+    <x> 8.3752 </x>
+    <y> 0.00 </y>
+    <z> 0.00 </z>
+   </location>
+   <direction>
+    <x> 0.0 </x>
+    <y> 0.0 </y>
+    <z>-1.0 </z>
+   </direction>
+  </force>
+  <force name="hydro-pitch[1]" frame="LOCAL">
+   <location unit="M">
+    <x> 8.9848 </x>
+    <y> 0.00 </y>
+    <z> 0.00 </z>
+   </location>
+   <direction>
+    <x> 0.0 </x>
+    <y> 0.0 </y>
+    <z>-1.0 </z>
+   </direction>
+  </force>
+
+  <force name="hydro-yaw[0]" frame="BODY">
+   <location unit="M">
+    <x> 8.68 </x>
+    <y> -0.3048 </y>
+    <z> 0.00 </z>
+   </location>
+   <direction>
+    <x> 1.0 </x>
+    <y> 0.0 </y>
+    <z> 0.0 </z>
+   </direction>
+  </force>
+  <force name="hydro-yaw[1]" frame="BODY">
+   <location unit="M">
+    <x> 8.68 </x>
+    <y> 0.3048 </y>
+    <z> 0.00 </z>
+   </location>
+   <direction>
+    <x> 1.0 </x>
+    <y> 0.0 </y>
+    <z> 0.0 </z>
+   </direction>
+  </force>
+
+
+  <force name="hydro-roll[0]" frame="LOCAL">
+   <location unit="M">
+    <x> 8.68 </x>
+    <y>-0.3048 </y>
+    <z> 0.00 </z>
+   </location>
+   <direction>
+    <x> 0.0 </x>
+    <y> 0.0 </y>
+    <z>-1.0 </z>
+   </direction>
+  </force>
+  <force name="hydro-roll[1]" frame="LOCAL">
+   <location unit="M">
+    <x> 8.68 </x>
+    <y> 0.3048 </y>
+    <z> 0.00 </z>
+   </location>
+   <direction>
+    <x> 0.0 </x>
+    <y> 0.0 </y>
+    <z>-1.0 </z>
+   </direction>
+  </force>
+
+  <!--Forces from the floats. -->
+  <force name="left-float-X" frame="LOCAL">
+   <location unit="M">
+    <x>  9.00 </x>
+    <y> -9.75 </y>
+    <z> -0.50 </z>
+   </location>
+   <direction>
+    <x> 1.0 </x>
+    <y> 0.0 </y>
+    <z> 0.0 </z>
+   </direction>
+  </force>
+  <force name="left-float-Y" frame="LOCAL">
+   <location unit="M">
+    <x>  9.00 </x>
+    <y> -9.75 </y>
+    <z> -0.50 </z>
+   </location>
+   <direction>
+    <x> 0.0 </x>
+    <y> 1.0 </y>
+    <z> 0.0 </z>
+   </direction>
+  </force>
+
+  <force name="right-float-X" frame="LOCAL">
+   <location unit="M">
+    <x>  9.00 </x>
+    <y>  9.75 </y>
+    <z> -0.50 </z>
+   </location>
+   <direction>
+    <x> 1.0 </x>
+    <y> 0.0 </y>
+    <z> 0.0 </z>
+   </direction>
+  </force>
+  <force name="right-float-Y" frame="LOCAL">
+   <location unit="M">
+    <x>  9.00 </x>
+    <y>  9.75 </y>
+    <z> -0.50 </z>
+   </location>
+   <direction>
+    <x> 0.0 </x>
+    <y> 1.0 </y>
+    <z> 0.0 </z>
+   </direction>
+  </force>
+
+ </external_reactions>
+
+ <system file="hydrodynamics"/>
+ <system file="Short_S23-hydrodynamics"/>
+
+ <!-- Sperry A-2 autopilot. -->
+ <system file="sperry-a2-autopilot"/>
+
+ <!-- Autopilot for JSBSim/standalone. -->
+ <system file="take-off-ap"/>
+
+ <!-- Engine controls. -->
+ <system file="engines"/>
+ <system file="fuel-system"/>
+
+ <!-- Electrical system. -->
+ <system file="electrical"/>
+
+ <!-- Control system for the flaps. -->
+ <system file="flaps"/>
+
+ <aerodynamics file="Systems/datcom_aero.xml"/>
+
+</fdm_config>

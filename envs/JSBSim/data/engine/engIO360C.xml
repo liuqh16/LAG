@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!--
+  minmp:         minimum manifold pressure in inches Hg
+  maxmp:         maximum manifold pressure in inches Hg
+  displacement:  total cylinder space (??) in cubic inches
+  maxhp:         maximum horsepower produced (=BRAKEHORSEPOWER in the old
+                 config)
+  cycles:        cycles/power stroke
+  idlerpm:       minimum RPM when the engine is running
+  maxthrottle:   maximum throttle setting (as before)
+  minthrottle:   minimum throttle setting (as before)
+-->
+<piston_engine name="IO360C">
+  <minmp unit="INHG">        10.0 </minmp>
+  <maxmp unit="INHG">        28.5 </maxmp>	
+  <displacement unit="IN3"> 360.0  </displacement>
+  <maxhp>                   180.0  </maxhp>	
+  <!--bsfc>                      0.37 </bsfc-->
+  <cycles>                    4.0  </cycles>
+  <idlerpm>                 550.0  </idlerpm>
+  <maxrpm>                 2700.0  </maxrpm>
+  <maxthrottle>               1.0  </maxthrottle>
+  <minthrottle>               0.1  </minthrottle>
+  <sparkfaildrop>             0.1 </sparkfaildrop>
+</piston_engine>

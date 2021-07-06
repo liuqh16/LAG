@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+
+<rotor name="ah1s_rotor">
+
+  <diameter  unit="FT">                  44.0 </diameter>
+  <numblades>                               2 </numblades>
+  <gearratio>                           20.37 </gearratio>
+  <nominalrpm>                          324.0 </nominalrpm> <!-- engine 6600rpm / 20.37  -->
+  <chord unit="FT">                      2.25 </chord>
+  <liftcurveslope>                        6.0 </liftcurveslope>
+  <flappingmoment unit="SLUG*FT2">     1382.0 </flappingmoment> <!-- mass approx. 8.57 slug -->
+  <twist>                              -0.175 </twist>
+  <massmoment>                           85.0 </massmoment> <!-- SLUG*FT, estimated from mass --> 
+  <tiplossfactor>                         1.0 </tiplossfactor>
+  <polarmoment unit="SLUG*FT2">        2900.0 </polarmoment>
+  <inflowlag>                            0.09 </inflowlag>
+  <hingeoffset unit="FT">                3.30 </hingeoffset> <!-- hingeless 15% -->
+
+  <!--
+        According to the operator's manual, the groundeffect yields to approx. 20% less
+        torque required when hovering near ground, and vanishes around 50ft h-agl.
+      -->
+  <groundeffectexp>                     0.19 </groundeffectexp>
+  <groundeffectshift unit="FT">           10 </groundeffectshift>
+
+</rotor>

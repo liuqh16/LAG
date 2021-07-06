@@ -1,0 +1,339 @@
+<?xml version="1.0"?>
+<system name="automated flight control">
+
+<!--  ===================================================================
+        Automatic flight control system (AFCS)
+
+        Based on the AFCS for the CH-54/S-64 helicopter described in
+        /SH79/, eqns. 13-16.
+
+        The system is adjustable via 'ap/afcs/adj/*' properties, it
+        offers basic altitude- and heading-hold features, but can 
+        also be turned into a pure 'Rate-Damper' (or SAS, 'Stability
+        Augmentation System').
+
+
+        'Altitude-hold' and 'heading-hold' features.
+
+        Setting ap/afcs/adj/altitude-error-ctrl-gain to zero disables
+        the altitude-hold feature. When altitude-hold is used the control
+        input can be turned to 'h-sl' by setting 'ap/afcs/h-agl-mode'
+        to zero.
+        The 'ap/afcs/heading-hold-enable' property switches a simple
+        'heading-hold' function on or off.
+
+
+        SH79: Shaugnessy, J. D., Deaux, Thomas N., and Yenni, Kenneth R.;
+              Development and Validation of a Piloted Simulation of a 
+              Helicopter and External Sling Load - NASA TP-1285; 1979
+
+      ===================================================================  -->
+
+
+  <!--  ==================
+          OUTPUT
+        ==================  -->
+
+  <property value="0.0"> ap/rudder-cmd </property>
+  <property value="0.0"> ap/aileron-cmd </property>
+  <property value="0.0"> ap/elevator-cmd </property>
+  <property value="0.0"> ap/collective-cmd </property>
+
+
+  <!--  ==================
+          ROLL CHANNEL
+        ==================  -->
+
+  <!-- 'control' parameters -->
+  <property value="0.0"> ap/afcs/roll-channel-active-norm </property>
+  <property value="0.0"> ap/afcs/phi-trim-rad </property>
+  <property value="0.0"> ap/afcs/lateral-trim </property>
+  <!-- afcs 'setup' parameters -->
+  <property value="0.33"> ap/afcs/adj/lateral-ctrl-gain </property>
+  <property value="-0.133"> ap/afcs/adj/roll-err-ctrl-gain </property>
+  <property value="-0.096"> ap/afcs/adj/roll-rate-ctrl-gain </property>
+
+  <channel name="afcs-roll">
+    <fcs_function name="ap/afcs/lateral-ctrl">
+      <function>
+        <product>
+          <property> ap/afcs/adj/lateral-ctrl-gain </property>
+          <difference>
+            <property> fcs/lateral-gain </property>
+            <property> ap/afcs/lateral-trim </property>
+          </difference>
+        </product>
+      </function>
+      <clipto>
+        <min> -0.20 </min>
+        <max>  0.20 </max>
+      </clipto>
+    </fcs_function>
+    <fcs_function name="ap/afcs/roll-err-ctrl">
+      <function>
+        <product>
+          <property> ap/afcs/adj/roll-err-ctrl-gain </property>
+          <difference>
+            <property> attitude/phi-rad </property>
+            <property> ap/afcs/phi-trim-rad </property>
+          </difference>
+        </product>
+      </function>
+      <clipto>
+        <min> -0.20 </min>
+        <max>  0.20 </max>
+      </clipto>
+    </fcs_function>
+    <fcs_function name="ap/afcs/roll-rate-ctrl">
+      <function>
+        <product>
+          <property> ap/afcs/adj/roll-rate-ctrl-gain </property>
+          <property> velocities/p-aero-rad_sec </property>
+        </product>
+      </function>
+      <clipto>
+        <min> -0.20 </min>
+        <max>  0.20 </max>
+      </clipto>
+    </fcs_function>
+    <fcs_function name="ap/afcs/roll-cmd-sum">
+      <function>
+        <product>
+          <property> ap/afcs/roll-channel-active-norm </property>
+          <sum>
+            <property> ap/afcs/lateral-ctrl   </property>
+            <property> ap/afcs/roll-err-ctrl  </property>
+            <property> ap/afcs/roll-rate-ctrl </property>
+          </sum>
+        </product>
+      </function>
+      <output> ap/aileron-cmd </output>
+    </fcs_function>
+  </channel>
+
+  <!--  ==================
+          PITCH CHANNEL
+        ==================  -->
+
+  <!-- 'control' parameters -->
+  <property value="0.0"> ap/afcs/pitch-channel-active-norm </property>
+  <property value="0.0"> ap/afcs/theta-trim-rad </property>
+  <property value="0.0"> ap/afcs/longitudinal-trim </property>
+  <!-- afcs 'setup' parameters -->
+  <property value="0.475"> ap/afcs/adj/longitudinal-ctrl-gain </property>
+  <property value="0.281"> ap/afcs/adj/pitch-err-ctrl-gain </property>
+  <property value="0.727"> ap/afcs/adj/pitch-rate-ctrl-gain </property>
+
+  <channel name="afcs-pitch">
+    <fcs_function name="ap/afcs/longitudinal-ctrl">
+      <function>
+        <product>
+          <property> ap/afcs/adj/longitudinal-ctrl-gain </property>
+          <difference>
+            <property> fcs/longitudinal-gain </property>
+            <property> ap/afcs/longitudinal-trim </property>
+          </difference>
+        </product>
+      </function>
+      <clipto>
+        <min> -0.20 </min>
+        <max>  0.20 </max>
+      </clipto>
+    </fcs_function>
+    <fcs_function name="ap/afcs/pitch-err-ctrl">
+      <function>
+        <product>
+          <property> ap/afcs/adj/pitch-err-ctrl-gain </property>
+          <difference>
+            <property> attitude/theta-rad </property>
+            <property> ap/afcs/theta-trim-rad </property>
+          </difference>
+        </product>
+      </function>
+      <clipto>
+        <min> -0.20 </min>
+        <max>  0.20 </max>
+      </clipto>
+    </fcs_function>
+    <fcs_function name="ap/afcs/pitch-rate-ctrl">
+      <function>
+        <product>
+          <property> ap/afcs/adj/pitch-rate-ctrl-gain </property>
+          <property> velocities/q-aero-rad_sec </property>
+        </product>
+      </function>
+      <clipto>
+        <min> -0.20 </min>
+        <max>  0.20 </max>
+      </clipto>
+    </fcs_function>
+    <fcs_function name="ap/afcs/pitch-cmd-sum">
+      <function>
+        <product>
+          <property> ap/afcs/pitch-channel-active-norm </property>
+          <sum>
+            <property> ap/afcs/longitudinal-ctrl </property>
+            <property> ap/afcs/pitch-err-ctrl    </property>
+            <property> ap/afcs/pitch-rate-ctrl   </property>
+          </sum>
+        </product>
+      </function>
+      <output> ap/elevator-cmd </output>
+    </fcs_function>
+  </channel>
+
+  <!--  ==================
+          YAW CHANNEL
+        ==================  -->
+
+  <!-- 'control' parameters -->
+  <property value="0.0"> ap/afcs/yaw-channel-active-norm </property>
+  <property value="0.0"> ap/afcs/psi-trim-rad </property>
+  <!-- afcs 'setup' parameters -->
+  <property value="1.0"> ap/afcs/heading-hold-enable </property>
+  <property value="0.0"> ap/afcs/adj/yaw-rate-ctrl-gain </property>
+
+  <channel name="afcs-yaw">
+
+    <fcs_function name="ap/afcs/psi-trim-deg">
+      <!-- utility -->
+      <function>
+        <product>
+          <value> 57.2958 </value>
+          <property> ap/afcs/psi-trim-rad </property>
+        </product>
+      </function>
+    </fcs_function>
+
+    <!-- if zero the pid integrator is enabled -->
+    <!-- if negative the pid integrator is reset -->
+    <switch name="ap/afcs/yaw-err-pid-inhibit">
+      <default value="-1.0"/>
+      <test value="0.0"> ap/afcs/yaw-channel-active-norm GT 0.999 </test>
+    </switch>
+
+    <fcs_function name="ap/afcs/psi-error-rad">
+      <function>
+        <sin>
+          <difference>
+            <property> attitude/psi-rad </property>
+            <property> ap/afcs/psi-trim-rad </property>
+          </difference>
+        </sin>
+      </function>
+    </fcs_function>
+
+    <pid name="ap/afcs/yaw-err-pid">
+      <input> ap/afcs/psi-error-rad </input>
+      <kp> 0.33 </kp>
+      <ki> 0.0025 </ki>
+      <kd> 0.0 </kd>
+      <trigger> ap/afcs/yaw-err-pid-inhibit </trigger>
+      <clipto>
+        <min> -0.25 </min>
+        <max>  0.25 </max>
+      </clipto>
+    </pid>
+    <fcs_function name="ap/afcs/yaw-rate-ctrl">
+      <function>
+        <product>
+          <property> ap/afcs/adj/yaw-rate-ctrl-gain </property>
+          <property> velocities/r-aero-rad_sec </property>
+        </product>
+      </function>
+      <clipto>
+        <min> -0.20 </min>
+        <max>  0.20 </max>
+      </clipto>
+    </fcs_function>
+    <fcs_function name="ap/afcs/yaw-cmd-sum">
+      <function>
+        <product>
+          <property> ap/afcs/yaw-channel-active-norm </property>
+          <sum>
+            <product>
+              <property> ap/afcs/heading-hold-enable </property>
+              <property> ap/afcs/yaw-err-pid </property>
+            </product>
+            <property> ap/afcs/yaw-rate-ctrl </property>
+          </sum>
+        </product>
+      </function>
+      <output> ap/rudder-cmd </output>
+   </fcs_function>
+
+  </channel>
+
+  <!--  =====================
+          ALTITUDE CHANNEL
+        =====================  -->
+
+  <!-- 'control' parameters -->
+  <property value="0.0"> ap/afcs/altitude-channel-active-norm </property>
+  <property value="50.0"> ap/afcs/altitude-trim-ft </property>
+  <!-- afcs 'setup' parameters -->
+  <property value="1.0"> ap/afcs/h-agl-mode </property>
+  <property value="-0.00035"> ap/afcs/adj/altitude-error-ctrl-gain </property>
+  <property value="0.00"> ap/afcs/adj/altitude-rate-ctrl-gain </property>
+
+
+  <channel name="afcs-altitude">
+    <!-- smooth out terrain jumps -->
+    <lag_filter name="position/h-agl-ft-lag">
+      <input> position/h-agl-ft </input>
+      <c1>    1.0 </c1>
+    </lag_filter>
+
+    <switch name="ap/afcs/altitude-input">
+      <default value="position/h-sl-ft"/>
+      <test value="position/h-agl-ft-lag">
+        ap/afcs/h-agl-mode == 1
+      </test>
+    </switch>
+
+    <fcs_function name="ap/afcs/altitude-error-ctrl">
+      <function>
+        <product>
+          <property> ap/afcs/adj/altitude-error-ctrl-gain </property>
+          <difference>
+            <property> ap/afcs/altitude-input </property>
+            <property> ap/afcs/altitude-trim-ft </property>
+          </difference>
+        </product>
+      </function>
+      <clipto>
+        <min> -0.40 </min>
+        <max>  0.40 </max>
+      </clipto>
+    </fcs_function>
+
+    <fcs_function name="ap/afcs/altitude-rate-ctrl">
+      <function>
+        <product>
+          <property> ap/afcs/adj/altitude-rate-ctrl-gain </property>
+          <property> velocities/h-dot-fps </property><!-- velocities/w-fps ?? -->
+        </product>
+      </function>
+      <clipto>
+        <min> -0.40 </min>
+        <max>  0.40 </max>
+      </clipto>
+    </fcs_function>
+
+    <fcs_function name="ap/afcs/collective-cmd-sum">
+      <function>
+        <product>
+          <property> ap/afcs/altitude-channel-active-norm </property>
+          <sum>
+            <property> ap/afcs/altitude-error-ctrl </property>
+            <property> ap/afcs/altitude-rate-ctrl  </property>
+          </sum>
+        </product>
+      </function>
+      <output> ap/collective-cmd </output>
+    </fcs_function>
+
+  </channel>
+
+</system>
+

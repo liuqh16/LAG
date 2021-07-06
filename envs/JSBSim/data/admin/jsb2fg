@@ -1,0 +1,78 @@
+#!/bin/sh
+#
+
+if [ x$1 = x ]; then
+   echo "Usage: $0 [FlightGear source path (where is AUTHORS)]"
+   exit;
+fi
+if [ ! -d $1 -o ! -d $1/src/FDM/JSBSim ]; then
+   echo "Not the FlightGear Aircraft directory: $1"
+   exit;
+fi
+if [ ! -d engine ]; then
+   echo "Please change to the root directory of the JSBSim package."
+   exit;
+fi
+
+FG_SRC=`(cd $1; pwd)`
+FG_DIR="$FG_SRC/src/FDM/JSBSim"
+
+cd src
+CUR_DIR=`pwd`
+
+CP="cp"
+#CP="echo"
+
+NEW_FILES=
+REMOVED_FILES=
+
+$CP $FG_DIR/JSBSim.cxx ../examples/FlightGear.cxx
+$CP $FG_DIR/JSBSim.hxx ../examples/FlightGear.hxx
+
+for n in `find . -path './simgear' -prune -o -path './utilities' -prune -o -type f -name 'FG*.cpp' -o -name '*.h' -o -name string_utilities.h`; do
+
+   if [ -f $FG_DIR/$n ]; then
+
+      NUM=`diff $n $FG_DIR/$n | grep -e "^>" -e "^<" | wc -l`;
+      NID=`diff $n $FG_DIR/$n | grep -e "^>" -e "^<" | grep "\\$Id:" | wc -l`;
+
+      if [ ! $NUM -eq $NID ]; then
+         echo "$FG_DIR/$n";
+         $CP $n $FG_DIR/$n
+      fi;
+
+   else
+
+      NEW_FILES="$NEW_FILES $n";
+
+   fi;
+
+done
+
+if [ "x$NEW_FILES" != "x" ]; then
+   echo
+   echo "The following files where not found in the FlightGear source"
+   echo "directory:"
+   for n in $NEW_FILES; do echo "    "$n; done
+   echo
+fi;
+
+cd $FG_DIR;
+for n in `find . -type f -name 'FG*.cpp' -o -name 'FG*.h'`; do
+
+    if [ ! -f $CUR_DIR/$n ]; then
+        REMOVED_FILES="$REMOVED_FILES $n";
+    fi;
+
+done
+cd $CUR_DIR
+
+if [ "x$REMOVED_FILES" != "x" ]; then
+    echo
+    echo "The following files where found in the FlightGear source"
+    echo "directory but are not present in the JSBSim root directory:"
+    for n in $REMOVED_FILES; do echo "    "$n; done
+    echo
+fi;
+
+exit 0

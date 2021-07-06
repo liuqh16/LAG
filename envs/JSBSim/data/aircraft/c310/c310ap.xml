@@ -1,0 +1,378 @@
+<?xml version="1.0"?>
+<!--
+
+  Author:   Jon Berndt
+  Date:     18 August 2002
+  Function: C-172 autopilot test file
+
+  Note: this file represents a test only of the new autopilot
+        setup in JSBSim. The same components used in the FCS
+        can also be used in the autopilot section. There are
+        some new FCS input and output identifiers directly
+        related to the autopilot:
+
+          ap/elevator_cmd,
+          ap/aileron_cmd,
+          ap/rudder_cmd,
+          ap/attitude_hold,
+          ap/altitude_hold,
+          ap/heading_hold,
+          ap/altitude_setpoint,
+          ap/heading_setpoint
+
+-->
+<autopilot name="C-310 Autopilot">
+
+<!-- INTERFACE PROPERTIES -->
+
+  <property>ap/attitude_hold</property>
+  <property>ap/altitude_hold</property>
+  <property>ap/heading_hold</property>
+  <property>ap/yaw_damper</property>
+  <property>ap/active-waypoint</property>
+  <property>ap/altitude_setpoint</property>
+  <property>ap/heading_setpoint</property>
+  <property>ap/heading-setpoint-select</property>
+  <property>ap/aileron_cmd</property>
+  <property>ap/elevator_cmd</property>
+  <property>ap/rudder_cmd</property>
+  <property>ap/airspeed_setpoint</property>
+  <property>ap/airspeed_hold</property>
+  <property>ap/throttle-cmd-norm</property>
+
+<!--  <property>attitude/sensor/phi-rad</property> -->
+
+<!-- SENSOR -->
+<!--
+  <sensor name="attitude/sensor/phi-rad">
+    <input> attitude/phi-rad </input>
+    <lag> 0.5 </lag>
+    <noise variation="PERCENT"> 0.05 </noise>
+    <quantization name="attitude/sensor/quantized/phi-rad">
+      <bits> 12 </bits>
+      <min> -180 </min>
+      <max> 180 </max>
+    </quantization>
+    <bias> 0.001 </bias>
+  </sensor>
+-->
+<!--
+=====================================================
+ROLL CHANNEL
+=====================================================
+-->
+
+<!-- Wing leveler -->
+
+<channel name="AP roll wing leveler">
+
+  <switch name="fcs/wing-leveler-ap-on-off">
+    <default value="-1"/>
+    <test value="0">
+      ap/attitude_hold == 1
+    </test>
+  </switch>
+
+  <pid name="fcs/roll-ap-error-pid">
+    <input>attitude/phi-rad</input>
+    <kp> ap/roll-pid-kp </kp>
+    <ki> ap/roll-pid-ki </ki>
+    <kd> ap/roll-pid-kd </kd>
+    <trigger> fcs/wing-leveler-ap-on-off </trigger>
+  </pid>
+
+  <switch name="fcs/roll-ap-autoswitch">
+    <default value="0.0"/>
+    <test value="-fcs/roll-ap-error-pid">
+      ap/attitude_hold == 1
+    </test>
+  </switch>
+
+  <pure_gain name="fcs/roll-ap-aileron-command-normalizer">
+     <input>fcs/roll-ap-autoswitch</input>
+     <gain>-1</gain>
+  </pure_gain>
+
+</channel>
+
+<!-- Heading hold -->
+
+<channel name="AP Roll Heading Hold">
+
+  <!-- The heading setpoint selector selects the heading
+       command (setpoint), which can either be set directly, or
+       calculated by the specification of waypoint. If the 
+       heading setpoint selector is 0, then the heading setpoint
+       is used, if the selector is 1, then the heading calculated
+       from the waypoint is used. -->
+  <switch name="fcs/heading-setpoint-selector">
+    <default value="ap/heading_setpoint"/>
+    <test value="guidance/wp-heading-deg">
+      ap/heading-setpoint-select == 1
+    </test>
+  </switch>
+
+  <pure_gain name="fcs/heading-true-degrees">
+    <input>attitude/heading-true-rad</input>
+    <gain>57.3</gain> <!-- convert to degrees -->
+  </pure_gain>
+
+  <summer name="fcs/heading-error">
+    <input> -fcs/heading-true-degrees</input>
+    <input> fcs/heading-setpoint-selector </input>
+  </summer>
+
+  <switch name="fcs/heading-error-bias-switch">
+    <default value="0.0"/>
+    <test value="360.0">
+      fcs/heading-error lt -180
+    </test>
+    <test value="-360.0">
+      fcs/heading-error gt 180
+    </test>
+  </switch>
+
+  <summer name="fcs/heading-corrected">
+    <input> fcs/heading-error-bias-switch </input>
+    <input> fcs/heading-error </input>
+    <clipto>
+      <min>-30</min>
+      <max> 30</max>
+    </clipto>
+  </summer>
+
+  <pure_gain name="fcs/heading-command">
+    <input> fcs/heading-corrected </input>
+    <gain> 0.01745 </gain>
+  </pure_gain>
+
+  <lag_filter name="fcs/heading-roll-error-lag">
+    <input> fcs/heading-command </input>
+    <c1> 0.50 </c1>
+  </lag_filter>
+
+  <summer name="fcs/heading-roll-error">
+    <input> fcs/heading-roll-error-lag </input>
+    <input> -attitude/phi-rad </input>
+  </summer>
+
+  <switch name="fcs/heading-roll-error-switch">
+    <default value="0.0"/>
+    <test value="fcs/heading-roll-error">
+      ap/heading_hold == 1
+    </test>
+  </switch>
+
+  <pid name="fcs/heading-pi-controller">
+    <input> fcs/heading-roll-error-switch </input>
+    <kp> 6.0 </kp>
+    <ki> 0.13 </ki>
+    <kd> 6.0 </kd>
+  </pid>
+
+  <switch name="fcs/roll-command-selector">
+    <default value="0.0"/>
+    <test value="fcs/heading-pi-controller">
+      ap/heading_hold == 1
+      gear/unit[2]/WOW == 0
+    </test>
+    <test value="fcs/roll-ap-aileron-command-normalizer">
+      ap/attitude_hold == 1
+      gear/unit[2]/WOW == 0
+    </test>
+    <output>ap/aileron_cmd</output>
+  </switch>
+
+  <switch name="fcs/roll-command-selector-steering">
+    <default value="0.0"/>
+    <test value="fcs/heading-pi-controller">
+      ap/heading_hold == 1
+      gear/unit/WOW == 1
+    </test>
+    <output>fcs/steer-cmd-norm</output>
+  </switch>
+
+</channel>
+
+<!--
+=====================================================
+PITCH CHANNEL
+=====================================================
+-->
+
+<!-- Altitude hold -->
+
+<!-- The Altitude Error component below computes the altitude error, subtracting
+     the desired altitude (altitude_setpoint) from the actual altitude above sea
+     level (_not_ Above Ground Level).  This error signal is interpreted as an
+     hdot command (hdot is time rate of change of altitude, or rate of climb). As
+     such it is limited to a maximum absolute value of 12 fps here (720 fpm). The
+     maximum achievable climb rate depends on altitude. The commanded climb rate
+     is scheduled in the HDot Command component, below. For the given altitude
+     (left column in the table), the commanded maaximum climb rate divided by 100
+     is given in the right column.
+-->
+
+<channel name="AP Pitch Altitude hold">
+
+  <!--
+  The difference between the desired altitude and the actual altitude
+  is determined, and limited to 100. The output from this component is
+  the desired climb rate in percent of maximum.
+  -->
+  <summer name="fcs/altitude-error">
+    <input> ap/altitude_setpoint </input>
+    <input> -position/h-sl-ft </input>
+    <clipto>
+      <min>-100</min>
+      <max> 100</max>
+    </clipto>
+  </summer>
+
+  <!--
+  The desired climb rate is lagged slightly for stability.
+  -->
+  <lag_filter name="fcs/alt-error-lag">
+    <input> fcs/altitude-error </input>
+    <c1> 1 </c1>
+  </lag_filter>
+
+  <!--
+  Dependent on altitude, the lagged (and limited) altitude error is multipled
+  by the gain determined from the function, below. The output from this
+  component is the absolute expected climb rate in feet/second. For example, if
+  the desired climb rate is 100 percent of maximum and the current altitude is
+  1000.0 ft., then the output from this component would be 24.5 ft. sec.
+  The equation representing climb rate for the C-310 is:
+
+  ROC (ft/sec) = 25.7 - h/833.33
+  -->
+
+  <fcs_function name="fcs/hdot-command">
+    <input>fcs/alt-error-lag</input>
+    <function>
+      <quotient>
+        <difference>
+          <value>25.70</value>
+          <quotient>
+            <property>position/h-sl-ft</property>
+            <value>833.33</value>
+          </quotient>
+        </difference>
+        <value>100.0</value>
+      </quotient>
+    </function>
+  </fcs_function>
+
+  <!--
+  This component calculates the climb rate error, taking the difference between
+  the commanded climb rate (from the previous component) and actual climb rate
+  in ft./sec.
+  -->
+  <summer name="fcs/hdot-error">
+    <input>fcs/hdot-command</input>
+    <input>-velocities/h-dot-fps</input>
+  </summer>
+
+  <!--
+  If the altitude hold autopilot command is ON, then this switch component will
+  pass through the climb rate error (from the previous component). Otherwise, it
+  will pass zero.
+  -->
+  <switch name="fcs/ap-alt-hold-switch">
+    <default value="0.0"/>
+    <test value="fcs/hdot-error">
+      ap/altitude_hold == 1
+    </test>
+  </switch>
+
+  <!--
+  The windup trigger below assumes the elevator will travel +/-23 degrees. The
+  elevator, however, does not travel symmetrically. This will need to be addressed
+  in a fix to the deadband component.
+  -->
+  <deadband name="fcs/windup-trigger">
+    <input> fcs/elevator-pos-deg </input>
+    <width>46.0</width>
+  </deadband>
+
+  <!--
+  The integrator integrates the hdot error (when the switch component passes that
+  signal through above when the altitude hold is selected ON). In the situation
+  where the elevator becomes saturated, the integrator ceases to integrate. The
+  windup protection is indicated below, with the windup-trigger property being
+  the trigger to halt integration. When the windup trigger is non-zero (when the
+  elevator position falls outside the range +/- 23 degrees - a deadband of 46
+  degrees) then the deadband passes a non-zero value, triggering the anti-windup
+  logic in the integrator.
+  -->
+  <integrator name="fcs/integral">
+    <input> fcs/ap-alt-hold-switch </input>
+    <trigger> fcs/windup-trigger </trigger>
+    <c1> 0.001 </c1>
+  </integrator>
+
+  <!--
+  The proportional component multiplies the error signal by a constant, providing
+  the proportional control action of this PI altitude hold controller.
+  -->
+  <pure_gain name="fcs/proportional">
+    <input> fcs/ap-alt-hold-switch </input>
+    <gain> 0.03 </gain>
+  </pure_gain>
+
+  <!--
+  The control summer component sums the proprortional and integral control
+  signals. It clips the sum to +/- 1.0.
+  -->
+  <summer name="fcs/control-summer">
+    <input> fcs/integral </input>
+    <input> fcs/proportional </input>
+    <clipto>
+      <min>-1.0</min>
+      <max> 1.0</max>
+    </clipto>
+  </summer>
+
+  <!--
+  The elevator component flips the sign on the output of the control summer
+  above and sets the ap/elevator_command property.
+  -->
+  <pure_gain name="fcs/elevator">
+    <input> fcs/control-summer </input>
+    <gain> -1.0 </gain>
+    <output> ap/elevator_cmd </output>
+  </pure_gain>
+
+</channel>
+
+<!--
+=====================================================
+YAW CHANNEL
+=====================================================
+-->
+
+<!-- Yaw Damper -->
+
+<channel name="Yaw Damper">
+
+   <scheduled_gain name="ap/rudder_control">
+      <input> aero/beta-rad </input>
+      <table>
+        <independentVar lookup="row">velocities/ve-kts</independentVar>
+         <tableData>
+            30      0.00
+            60    -40.00
+         </tableData>
+      </table>
+      <gain>ap/yaw_damper</gain>
+      <clipto>
+        <min>-1.0</min>
+        <max> 1.0</max>
+      </clipto>
+      <output> ap/rudder_cmd </output>
+   </scheduled_gain>
+
+</channel>
+
+</autopilot>

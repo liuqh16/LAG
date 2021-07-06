@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="http://jsbsim.sf.net/JSBSimScript.xsl"?>
+<runscript xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="http://jsbsim.sf.net/JSBSimScript.xsd"
+    name="Paraglider rotate test">
+  <description>For testing Paraglider rotate</description>
+  <use aircraft="paraglider" initialize="reset00"/>
+  <run start="0.0" end="30" dt="0.00833333">
+
+    <property value="0"> simulation/run_id </property>
+
+    <event name="Start engine: Starter">
+      <description>The starter for the engine is turned on.</description>
+      <condition>simulation/sim-time-sec gt 0.1</condition>
+      <set name="fcs/throttle-cmd-norm"  action="FG_RAMP" value="1.0" tc ="1.0"/>
+      <set name="fcs/mixture-cmd-norm" action="FG_RAMP" value="1.0" tc="1.0"/>
+      <set name="propulsion/magneto_cmd" value="3"/>
+      <set name="propulsion/starter_cmd" value="1"/>
+      <notify>
+        <property>position/h-agl-ft</property>
+        <property>accelerations/a-pilot-x-ft_sec2</property>
+        <property>accelerations/a-pilot-y-ft_sec2</property>
+        <property>accelerations/a-pilot-z-ft_sec2</property>
+        <property>velocities/vg-fps</property>
+      </notify>
+    </event>
+
+    <event name="Rotate">     
+      <condition>simulation/sim-time-sec ge 2.0</condition>
+      <set name="fcs/aileron-cmd-norm" value="1.0" action="FG_RAMP" tc="0.5"/>
+      <notify>
+        <property>position/h-agl-ft</property>
+        <property>accelerations/a-pilot-x-ft_sec2</property>
+        <property>accelerations/a-pilot-y-ft_sec2</property>
+        <property>accelerations/a-pilot-z-ft_sec2</property>
+        <property>accelerations/pdot-rad_sec2</property>
+        <property>accelerations/qdot-rad_sec2</property>
+        <property>accelerations/rdot-rad_sec2</property>
+        <property>accelerations/udot-ft_sec2</property>
+        <property>accelerations/vdot-ft_sec2</property>
+        <property>accelerations/wdot-ft_sec2</property>
+        <property>velocities/vg-fps</property>
+      </notify>     
+    </event>                  
+
+    <event name="Rotate">
+      <condition>simulation/sim-time-sec ge 4.7</condition>
+      <set name="fcs/aileron-cmd-norm" value="1.0" action="FG_RAMP" tc="0.5"/>
+      <notify>
+        <property>position/h-agl-ft</property>
+        <property>accelerations/a-pilot-x-ft_sec2</property>
+        <property>accelerations/a-pilot-y-ft_sec2</property>
+        <property>accelerations/a-pilot-z-ft_sec2</property>
+        <property>accelerations/pdot-rad_sec2</property>
+        <property>accelerations/qdot-rad_sec2</property>
+        <property>accelerations/rdot-rad_sec2</property>
+        <property>accelerations/udot-ft_sec2</property>
+        <property>accelerations/vdot-ft_sec2</property>
+        <property>accelerations/wdot-ft_sec2</property>
+        <property>velocities/vg-fps</property>
+      </notify>
+    </event>
+
+    <event name="Rotate">
+      <condition>simulation/sim-time-sec ge 4.9</condition>
+      <set name="fcs/aileron-cmd-norm" value="1.0" action="FG_RAMP" tc="0.5"/>
+      <notify>
+        <property>position/h-agl-ft</property>
+        <property>accelerations/a-pilot-x-ft_sec2</property>
+        <property>accelerations/a-pilot-y-ft_sec2</property>
+        <property>accelerations/a-pilot-z-ft_sec2</property>
+        <property>accelerations/n-pilot-x-norm</property>
+        <property>accelerations/n-pilot-y-norm</property>
+        <property>accelerations/n-pilot-z-norm</property>
+        <property>accelerations/Nz</property>
+        <property>accelerations/pdot-rad_sec2</property>
+        <property>accelerations/qdot-rad_sec2</property>
+        <property>accelerations/rdot-rad_sec2</property>
+        <property>accelerations/udot-ft_sec2</property>
+        <property>accelerations/vdot-ft_sec2</property>
+        <property>accelerations/wdot-ft_sec2</property>
+        <property>velocities/vg-fps</property>
+      </notify>
+    </event>
+
+  </run>
+
+</runscript>
+

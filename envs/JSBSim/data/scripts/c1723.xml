@@ -1,0 +1,180 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="http://jsbsim.sourceforge.net/JSBSimScript.xsl"?>
+<!DOCTYPE runscript [
+  <!ENTITY none  "0"> <!-- No magnetos    -->
+  <!ENTITY left  "1"> <!-- Left magnetos  -->
+  <!ENTITY right "2"> <!-- Right magnetos -->
+  <!ENTITY both  "3"> <!-- Both magnetos  -->
+  <!ENTITY wingLevelerMode  "0"> <!-- Roll autopilot: wing leveler mode    -->
+  <!ENTITY rollAngleHold    "1"> <!-- Roll autopilot: roll angle hold mode -->
+  <!ENTITY waypointHeading  "0"> <!-- Guidance-calculated waypoint heading -->
+  <!ENTITY specifiedHeading "1"> <!-- User-specified heading               -->
+  <!ENTITY on              "1">
+  <!ENTITY off             "0">
+]>
+<runscript xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="http://jsbsim.sf.net/JSBSimScript.xsd"
+    name="C172-01A takeoff run">
+  <!--
+    This run is for testing the C172 altitude hold autopilot
+  -->
+
+  <use aircraft="c172x" initialize="reset00"/>
+  <run start="0.0" end="200" dt="0.00833333333333333333">
+
+    <!-- Initialize with brakes on -->
+    <property> simulation/notify-time-trigger </property>
+    <property value="1"> simulation/run_id </property>
+    <property value="&on;"> fcs/left-brake-cmd-norm </property>
+    <property value="&on;"> fcs/right-brake-cmd-norm </property>
+    <property value="&on;"> fcs/center-brake-cmd-norm </property>
+    <property value="3.49"> guidance/specified-heading-rad </property>
+    <property value="&specifiedHeading;"> guidance/heading-selector-switch </property>
+    <property value="2498"> simulation/randomseed </property>
+
+    <event name="engine start">
+      <description>Start the engine and set roll control to heading hold</description>
+      <condition> simulation/sim-time-sec >= 0.25 </condition>
+      <set name="fcs/throttle-cmd-norm"  value="1.0" action="FG_RAMP" tc ="0.5"/>
+      <set name="propulsion/magneto_cmd" value="&both;"/>
+      <set name="propulsion/starter_cmd" value="&on;"/>
+      <set name="ap/roll-attitude-mode"  value="&rollAngleHold;"/>
+      <set name="ap/autopilot-roll-on"   value="&on;"/>
+      <notify>
+        <property caption="Sim Run ID: ">simulation/run_id</property>
+        <property>ap/hdg-roll-err-c1</property>
+        <property>accelerations/a-pilot-x-ft_sec2</property>
+        <property>accelerations/a-pilot-y-ft_sec2</property>
+        <property>accelerations/a-pilot-z-ft_sec2</property>
+        <property>accelerations/n-pilot-x-norm</property>
+        <property>accelerations/n-pilot-y-norm</property>
+        <property>accelerations/n-pilot-z-norm</property>
+        <property>accelerations/Nz</property>
+        <property>accelerations/pdot-rad_sec2</property>
+        <property>accelerations/qdot-rad_sec2</property>
+        <property>accelerations/rdot-rad_sec2</property>
+        <property>accelerations/udot-ft_sec2</property>
+        <property>accelerations/vdot-ft_sec2</property>
+        <property>accelerations/wdot-ft_sec2</property>
+        <property>velocities/h-dot-fps</property>
+        <property>velocities/v-north-fps</property>
+        <property>velocities/v-east-fps</property>
+        <property>velocities/v-down-fps</property>
+        <property>velocities/u-fps</property>
+        <property>velocities/v-fps</property>
+        <property>velocities/w-fps</property>
+        <property>velocities/p-rad_sec</property>
+        <property>velocities/q-rad_sec</property>
+        <property>velocities/r-rad_sec</property>
+        <property>velocities/pi-rad_sec</property>
+        <property>velocities/qi-rad_sec</property>
+        <property>velocities/ri-rad_sec</property>
+        <property>velocities/eci-velocity-mag-fps</property>
+        <property>velocities/vc-fps</property>
+        <property>velocities/vc-kts</property>
+        <property>velocities/ve-fps</property>
+        <property>velocities/ve-kts</property>
+        <property>velocities/vtrue-fps</property>
+        <property>velocities/vtrue-kts</property>
+        <property>velocities/machU</property>
+        <property>velocities/p-aero-rad_sec</property>
+        <property>velocities/q-aero-rad_sec</property>
+        <property>velocities/r-aero-rad_sec</property>
+        <property>velocities/phidot-rad_sec</property>
+        <property>velocities/thetadot-rad_sec</property>
+        <property>velocities/psidot-rad_sec</property>
+        <property>velocities/u-aero-fps</property>
+        <property>velocities/v-aero-fps</property>
+        <property>velocities/w-aero-fps</property>
+        <property>velocities/vt-fps</property>
+        <property>velocities/mach</property>
+        <property>velocities/vg-fps</property>
+      
+      </notify>
+    </event>
+
+    <event name="Begin roll">
+      <description>Release brakes and get rolling with flaps at 10 degrees. </description>
+      <condition> simulation/sim-time-sec >= 3.0 </condition>
+      <set name="fcs/left-brake-cmd-norm" value="0"/>
+      <set name="fcs/right-brake-cmd-norm" value="0"/>
+      <set name="fcs/center-brake-cmd-norm" value="0"/>
+      <set name="fcs/flap-cmd-norm" value="0.33"/>
+      <set name="fcs/elevator-cmd-norm" value="0.00"/>
+      <notify>
+        <property caption="Cal. airspeed (kts):  "> velocities/vc-kts</property>
+        <property caption="Altitude (AGL, ft):   "> position/h-agl-ft</property>
+        <property caption="Latitude (geod, deg): "> position/lat-geod-deg</property>
+        <property caption="Altitude (geod, ft):  "> position/geod-alt-ft</property>
+        <property caption="Throttle pos:         "> fcs/throttle-pos-norm[0] </property>
+        <property caption="Mixture pos:          "> fcs/mixture-pos-norm[0] </property>
+        <property caption="Weight (lbs):         "> inertia/weight-lbs </property>
+        <property caption="Propeller RPM:        "> propulsion/engine/propeller-rpm </property>
+      </notify>
+    </event>
+
+    <event name="Rotate">
+      <description>Set Autopilot for 1000 ft and rotate at 51 keas. </description>
+      <condition> velocities/vc-kts >= 51 </condition>
+      <set name="ap/altitude_setpoint" value="1000.0"/>
+      <set name="ap/altitude_hold" value="1"/>
+      <notify>
+        <property caption="Cal. airspeed (kts):  "> velocities/vc-kts</property>
+        <property caption="Altitude (AGL, ft):   "> position/h-agl-ft</property>
+        <property caption="Latitude (geod, deg): "> position/lat-geod-deg</property>
+        <property caption="Altitude (geod, ft):  "> position/geod-alt-ft</property>
+        <property caption="Throttle pos:         "> fcs/throttle-pos-norm[0] </property>
+        <property caption="Mixture pos:          "> fcs/mixture-pos-norm[0] </property>
+        <property caption="Weight (lbs):         "> inertia/weight-lbs </property>
+        <property caption="Propeller RPM:        "> propulsion/engine/propeller-rpm </property>
+      </notify>
+    </event>
+
+    <event name="Set autopilot for 6000 ft.">
+      <description>Set Autopilot for 6000 ft after a five second delay. </description>
+      <condition> velocities/vc-kts >= 51 </condition>
+      <delay>10.0</delay>
+      <set name="ap/altitude_setpoint" value="6000.0"/>
+      <set name="simulation/output/log_rate_hz" value="10"/>
+      <notify>
+        <property caption="Cal. airspeed (kts):  "> velocities/vc-kts</property>
+        <property caption="Altitude (AGL, ft):   "> position/h-agl-ft</property>
+        <property caption="Latitude (geod, deg): "> position/lat-geod-deg</property>
+        <property caption="Altitude (geod, ft):  "> position/geod-alt-ft</property>
+        <property caption="Throttle pos:         "> fcs/throttle-pos-norm[0] </property>
+        <property caption="Mixture pos:          "> fcs/mixture-pos-norm[0] </property>
+        <property caption="Weight (lbs):         "> inertia/weight-lbs </property>
+        <property caption="Propeller RPM:        "> propulsion/engine/propeller-rpm </property>
+      </notify>
+    </event>
+
+    <event name="Adjust throttle/flaps">
+      <description>Remove flaps at 1000 ft and set heading to 100; acquire heading.</description>
+      <notify/>
+      <condition>
+        position/h-agl-ft >= 1000
+      </condition>
+      <set name="fcs/flap-cmd-norm" value="0"/>
+      <set name="guidance/specified-heading-rad" value="1.75"/>
+      <set name="ap/roll-attitude-mode" value="1"/>
+      <set name="simulation/write-state-file" value="2"/>
+    </event>
+
+    <event name="Time Notify" persistent="true">
+      <description>Output message at 1 minute intervals</description>
+      <condition> simulation/sim-time-sec >= simulation/notify-time-trigger </condition>
+      <set name="simulation/notify-time-trigger" value="60" type="FG_DELTA"/>
+      <notify>
+        <property caption="Cal. airspeed (kts):  "> velocities/vc-kts</property>
+        <property caption="Altitude (AGL, ft):   "> position/h-agl-ft</property>
+        <property caption="Latitude (geod, deg): "> position/lat-geod-deg</property>
+        <property caption="Altitude (geod, ft):  "> position/geod-alt-ft</property>
+        <property caption="Throttle pos:         "> fcs/throttle-pos-norm[0] </property>
+        <property caption="Mixture pos:          "> fcs/mixture-pos-norm[0] </property>
+        <property caption="Weight (lbs):         "> inertia/weight-lbs </property>
+        <property caption="Propeller RPM:        "> propulsion/engine/propeller-rpm </property>
+      </notify>
+    </event>
+
+  </run>
+</runscript>

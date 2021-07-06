@@ -1,0 +1,156 @@
+<?xml version="1.0"?>
+<!-- $Id: Submarine_Scout_crew_ap.xml,v 1.1 2009/04/14 19:33:22 andgi Exp $ -->
+<!--
+
+  Submarine Scout airship flight model for JSBSim.
+
+    Copyright (C) 2007 - 2009  Anders Gidenstam  (anders(at)gidenstam.org)
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+  
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  
+-->
+
+<system name="Submarine Scout Crew Autopilot">
+
+  <!-- INTERFACE PROPERTIES -->
+  <property>ap/yaw-damper-active</property>
+  <property>ap/pitch-setpoint-degrees</property>
+  <property>ap/pitch-hold-active</property>
+
+  <!-- SENSORS -->
+
+  <!-- CHANNELS -->
+
+  <channel name="Rudder">
+
+    <pid name="ap/yaw-damper-pid"> 
+      <input> aero/beta-deg </input>
+      <kp>   -2.000 </kp>
+      <ki>    0.000 </ki>
+      <kd>    0.000 </kd>
+      <clipto>
+        <min>-1.0</min>
+        <max> 1.0</max>
+      </clipto> 
+    </pid>
+
+    <summer name="ap/heading-sum">
+      <input> ap/yaw-damper-pid </input>
+    </summer>
+
+    <switch name="ap/heading-switch">
+      <default value="0.0"/>
+      <test logic="AND" value="ap/heading-sum">
+            ap/yaw-damper-active == 1
+            fcs/rudder-cmd-norm gt -0.1
+            fcs/rudder-cmd-norm lt 0.1
+      </test>
+      <output>ap/rudder-cmd-norm</output>
+    </switch>
+
+  </channel>
+
+  <channel name="Elevator">
+
+    <pure_gain name="ap/pitch-setpoint-rad">
+      <input> ap/pitch-setpoint-degrees </input>
+      <gain> 0.017453 </gain>
+    </pure_gain>
+
+    <summer name="ap/pitch-error-rad">
+      <input> attitude/theta-rad</input>
+      <input> -ap/pitch-setpoint-rad </input>
+    </summer>
+
+    <pid name="ap/elevator-pid"> 
+      <input> ap/pitch-error-rad </input>
+      <kp>   5.00 </kp>
+      <ki>   0.00 </ki>
+      <kd>   0.01 </kd>
+      <clipto>
+        <min>-1.0</min>
+        <max> 1.0</max>
+      </clipto> 
+    </pid>
+
+    <switch name="ap/elevator-switch">
+      <default value="0.0"/>
+      <test logic="AND" value="ap/elevator-pid">
+            ap/pitch-hold-active == 1
+      </test>
+      <output>ap/elevator-cmd-norm</output>
+    </switch>
+
+  </channel>
+
+  <channel name="Static trim via ballonets">
+
+   <pid name="ap/ballonet-trim-pid"> 
+    <input> ap/pitch-error-rad </input>
+    <kp>  40.00 </kp>
+    <ki>   0.00 </ki>
+    <kd>   0.00 </kd>
+    <clipto>
+     <min>-1.0</min>
+     <max> 1.0</max>
+    </clipto> 
+   </pid>
+
+   <switch name="ap/ballonet-switch">
+    <!-- greater than 0 means trim towards nose heavy. -->
+    <default value="0.0"/>
+    <test logic="AND" value="ap/ballonet-trim-pid">
+     ap/pitch-hold-active == 1
+    </test>
+    <output>ap/ballonet-trim-cmd-norm</output>
+   </switch>
+
+   <fcs_function name="ap/ballonet-valve-cmd-norm[0]">
+    <function>
+     <product>
+      <value>-1.0</value>
+      <min>
+       <value> 0.0 </value>
+       <property>ap/ballonet-trim-cmd-norm</property>
+      </min>
+     </product>
+    </function>
+   </fcs_function>
+
+   <fcs_function name="ap/ballonet-valve-cmd-norm[1]">
+    <function>
+     <product>
+      <value>1.0</value>
+      <max>
+       <value> 0.0 </value>
+       <property>ap/ballonet-trim-cmd-norm</property>
+      </max>
+     </product>
+    </function>
+   </fcs_function>
+
+  </channel>
+
+  <channel name="Envelope pressure">
+
+   <fcs_function name="ap/gas-valve-cmd-norm">
+    <function>
+     <value>0.0</value>
+    </function>
+   </fcs_function>
+
+  </channel>
+
+</system>

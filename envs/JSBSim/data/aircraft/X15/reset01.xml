@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<initialize name="reset01">
+  <!--
+    This file sets up the X15 to start off at altitude.
+  -->
+  <ubody unit="FT/SEC">  750.0  </ubody>
+  <vbody unit="FT/SEC">    0.0  </vbody>
+  <wbody unit="FT/SEC">  100.0  </wbody>
+  <latitude unit="DEG">   33.0  </latitude>
+  <longitude unit="DEG">-110.0  </longitude>
+  <phi unit="DEG">         0.0  </phi>
+  <theta unit="DEG">       0.0  </theta>
+  <psi unit="DEG">       260.0  </psi>
+  <altitude unit="FT"> 40000.0  </altitude>
+</initialize>
+

@@ -1,0 +1,1460 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="http://jsbsim.sourceforge.net/JSBSim.xsl"?>
+<fdm_config name="Czech Republic LET 410 Light Twin" version="2.0" release="BETA"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="http://jsbsim.sourceforge.net/JSBSim.xsd">
+    <fileheader>
+        <author> Jiri Javurek, jjavurek@walterengines.com </author>
+        <author> Jiri Javurek, javky@rozhled.cz </author>
+        <author> Jon Berndt, jsb@hal-pc.org (conversion to v2.0 only) </author>
+        <filecreationdate> 2005-11-01 </filecreationdate>
+        <version> 4.0 </version>
+        <description> Czech Republic LET 410 Light Twin </description>
+      <note>
+        This model was created using publicly available data, publicly available
+        technical reports, textbooks, and guesses. It contains no proprietary or
+        restricted data. If this model has been validated at all, it would be
+        only to the extent that it seems to "fly right", and that it possibly
+        complies with published, publicly known, performance data (maximum speed,
+        endurance, etc.). Thus, this model is meant for educational and entertainment
+        purposes only.
+
+        This simulation model is not endorsed by the manufacturer. This model is not
+        to be sold.
+      </note>
+    </fileheader>
+
+    <metrics>
+        <wingarea unit="FT2"> 376.7800 </wingarea>
+        <wingspan unit="FT"> 64.6400 </wingspan>
+        <chord unit="FT"> 7.0000 </chord>
+        <htailarea unit="FT2"> 103.0000 </htailarea>
+        <htailarm unit="FT"> 21.3200 </htailarm>
+        <vtailarea unit="FT2"> 78.0000 </vtailarea>
+        <vtailarm unit="FT"> 0.0000 </vtailarm>
+        <location name="AERORP" unit="IN">
+            <x> 220.0000 </x>
+            <y> 0.0000 </y>
+            <z> 20.0000 </z>
+        </location>
+        <location name="EYEPOINT" unit="IN">
+            <x> 100.4000 </x>
+            <y> -18.0000 </y>
+            <z> 45.0000 </z>
+        </location>
+        <location name="VRP" unit="IN">
+            <x> 0.0000 </x>
+            <y> 0.0000 </y>
+            <z> 0.0000 </z>
+        </location>
+    </metrics>
+
+    <mass_balance>
+        <ixx unit="SLUG*FT2"> 60000.0000 </ixx>
+        <iyy unit="SLUG*FT2"> 42000.0000 </iyy>
+        <izz unit="SLUG*FT2"> 107845.0000 </izz>
+        <ixy unit="SLUG*FT2"> -0.0000 </ixy>
+        <ixz unit="SLUG*FT2"> -0.0000 </ixz>
+        <iyz unit="SLUG*FT2"> -0.0000 </iyz>
+        <emptywt unit="LBS"> 8467.0000 </emptywt>
+        <location name="CG" unit="IN">
+            <x> 212.0000 </x>
+            <y> 0.0000 </y>
+            <z> 0.0000 </z>
+        </location>
+    </mass_balance>
+
+    <ground_reactions>
+        <contact type="BOGEY" name="NOSE_LG">
+            <location unit="IN">
+                <x> 105.0000 </x>
+                <y> 0.0000 </y>
+                <z> -82.0000 </z>
+            </location>
+            <static_friction> 0.8000 </static_friction>
+            <dynamic_friction> 0.5000 </dynamic_friction>
+            <rolling_friction> 0.0200 </rolling_friction>
+            <spring_coeff unit="LBS/FT"> 19756.8000 </spring_coeff>
+            <damping_coeff unit="LBS/FT/SEC"> 1411.2000 </damping_coeff>
+            <max_steer unit="DEG"> 45.0000 </max_steer>
+            <brake_group> NOSE </brake_group>
+            <retractable>1</retractable>
+        </contact>
+        <contact type="BOGEY" name="LEFT_MLG">
+            <location unit="IN">
+                <x> 265.9000 </x>
+                <y> -69.8000 </y>
+                <z> -78.0000 </z>
+            </location>
+            <static_friction> 0.8000 </static_friction>
+            <dynamic_friction> 0.5000 </dynamic_friction>
+            <rolling_friction> 0.0200 </rolling_friction>
+            <spring_coeff unit="LBS/FT"> 70560.0000 </spring_coeff>
+            <damping_coeff unit="LBS/FT/SEC"> 2822.4000 </damping_coeff>
+            <max_steer unit="DEG"> 0.0 </max_steer>
+            <brake_group> LEFT </brake_group>
+            <retractable>1</retractable>
+        </contact>
+        <contact type="BOGEY" name="RIGHT_MLG">
+            <location unit="IN">
+                <x> 265.9000 </x>
+                <y> 69.8000 </y>
+                <z> -78.0000 </z>
+            </location>
+            <static_friction> 0.8000 </static_friction>
+            <dynamic_friction> 0.5000 </dynamic_friction>
+            <rolling_friction> 0.0200 </rolling_friction>
+            <spring_coeff unit="LBS/FT"> 70560.0000 </spring_coeff>
+            <damping_coeff unit="LBS/FT/SEC"> 2822.4000 </damping_coeff>
+            <max_steer unit="DEG"> 0.0 </max_steer>
+            <brake_group> RIGHT </brake_group>
+            <retractable>1</retractable>
+        </contact>
+    </ground_reactions>
+    <propulsion>
+        <engine file="engtm601">
+            <location unit="IN">
+                <x>203.0</x>
+                <y>-105</y>
+                <z>35.0</z>
+            </location>
+            <orient unit="DEG">
+                <roll>0</roll>
+                <pitch>0</pitch>
+                <yaw>0</yaw>
+            </orient>
+            <feed>0</feed>
+            <thruster file="vrtule2">
+                <location unit="IN">
+                    <x>163.0</x>
+                    <y>-105</y>
+                    <z>35.0</z>
+                </location>
+                <orient unit="DEG">
+                    <roll>0</roll>
+                    <pitch>0</pitch>
+                    <yaw>0</yaw>
+                </orient>
+                <sense>1</sense>
+                <p_factor>10.0</p_factor>
+            </thruster>
+        </engine>
+        <engine file="engtm601">
+            <location unit="IN">
+                <x>203.0</x>
+                <y>105</y>
+                <z>35.0</z>
+            </location>
+            <orient unit="DEG">
+                <roll>0</roll>
+                <pitch>0</pitch>
+                <yaw>0</yaw>
+            </orient>
+            <feed>1</feed>
+            <thruster file="vrtule2">
+                <location unit="IN">
+                    <x>163.0</x>
+                    <y>105</y>
+                    <z>35.0</z>
+                </location>
+                <orient unit="DEG">
+                    <roll>0</roll>
+                    <pitch>0</pitch>
+                    <yaw>0</yaw>
+                </orient>
+                <sense>1</sense>
+                <p_factor>10.0</p_factor>
+            </thruster>
+        </engine>
+
+        <tank type="FUEL">    <!-- Tank number 0 -->
+            <location unit="IN">
+                <x> 210.0000 </x>
+                <y> 8.0000 </y>
+                <z> 39.0000 </z>
+            </location>
+            <capacity unit="LBS"> 981.0000 </capacity>
+            <contents unit="LBS"> 981.0000 </contents>
+        </tank>
+        <tank type="FUEL">    <!-- Tank number 1 -->
+            <location unit="IN">
+                <x> 210.0000 </x>
+                <y> -8.0000 </y>
+                <z> 39.0000 </z>
+            </location>
+            <capacity unit="LBS"> 981.0000 </capacity>
+            <contents unit="LBS"> 981.0000 </contents>
+        </tank>
+    </propulsion>
+
+    <flight_control name="FCS: l410">
+
+      <!-- Interface properties : ONLY for use in JSBSim standalone     -->
+      <!-- THIS MUST BE COMMENTED OUT FOR USE IN FLIGHTGEAR ... I think -->
+
+      <property>/systems/l410/battery-all-ok</property>
+      <property>/systems/l410/battery1-ok</property>
+      <property>/systems/l410/battery2-ok</property>
+      <property>/systems/l410/bus36v-on</property>
+      <property>/systems/l410/bus24v-on</property>
+      <property>/systems/l410/extinguish-e1-1-ok</property>
+      <property>/systems/l410/extinguish-e1-2-ok</property>
+      <property>/systems/l410/extinguish-e2-1-ok</property>
+      <property>/systems/l410/extinguish-e2-2-ok</property>
+
+      <property>/systems/electrical/outputs/bus28v</property>
+      <property>/systems/electrical/outputs/bus36v</property>
+      <property>/systems/electrical/outputs/bus115v</property>
+      <property>/systems/electrical/outputs/beacon-lights</property>
+      <property>/systems/electrical/outputs/navigation-lights</property>
+      <property>/systems/electrical/outputs/landing-lights</property>
+
+      <property>/instrumentation/warn-disp/wde1-beta</property>
+      <property>/instrumentation/warn-disp/wde2-beta</property>
+      <property>/instrumentation/warn-disp/wd-e1-on</property>
+      <property>/instrumentation/warn-disp/wd-e2-on</property>
+      <property>/instrumentation/warn-disp/wd-extinguish-eng</property>
+
+      <property>/instrumentation/engine/indicated-tl-norm</property>
+      <property>/instrumentation/engine/indicated-throttlel-norm</property>
+      <property>/instrumentation/engine/indicated-tr-norm</property>
+      <property>/instrumentation/engine/indicated-throttler-norm</property>
+      <property>/instrumentation/engine/indicated-cutoffl-norm</property>
+      <property>/instrumentation/engine/indicated-cutoffr-norm</property>
+      <property>/instrumentation/engine/eng-n-koef</property>
+      <property>/instrumentation/engine/indicated-gen1-perc</property>
+      <property>/instrumentation/engine/indicated-gen2-perc</property>
+      <property>/instrumentation/engine/indicated-prop1-rpm</property>
+      <property>/instrumentation/engine/indicated-prop2-rpm</property>
+      <property>/instrumentation/engine/indicated-pshaft1-perc</property>
+      <property>/instrumentation/engine/indicated-pshaft2-perc</property>
+      <property>/instrumentation/engine/indicated-itt1-degc</property>
+      <property>/instrumentation/engine/indicated-itt2-degc</property>
+      <property>/instrumentation/engine/indicated-fuelfl1-kgph</property>
+      <property>/instrumentation/engine/indicated-fuelfl2-kgph</property>
+      <property>/instrumentation/engine/indicated-fuel1-kg</property>
+      <property>/instrumentation/engine/indicated-fuel2-kg</property>
+
+      <property>/instrumentation/pressure/indicated-parkingbrake-kp_cm2</property>
+      <property>/instrumentation/pressure/indicated-leftbrake-kp_cm2</property>
+      <property>/instrumentation/pressure/indicated-rightbrake-kp_cm2</property>
+
+      <property>/instrumentation/temperature/indicated-oil1-degc</property>
+      <property>/instrumentation/temperature/indicated-oil2-degc</property>
+      <property>/instrumentation/temperature/c-f-s-konst</property>
+
+      <property>/instrumentation/lights/beacon-kinemat-in</property>
+      <property>/instrumentation/lights/beacon-kinemat-out</property>
+      <property>/instrumentation/lights/beacon-on</property>
+      <property>/instrumentation/lights/navigation-on</property>
+      <property>/instrumentation/lights/search1-on</property>
+      <property>/instrumentation/lights/search2-on</property>
+      <property>/instrumentation/lights/instr-flash-out</property>
+      <property>/instrumentation/lights/instr-flash-in</property>
+
+      <property>/instrumentation/wiper/position-dir</property>
+      <property>/instrumentation/wiper/position-norm</property>
+      <property>/instrumentation/wiper/switched-on</property>
+
+      <property>/gear/gear[0]/steering-lever-norm</property>
+
+      <property>/controls/switches/specbus_28v_115v_36v</property>
+      <property>/controls/switches/full-steering-sw</property>
+      <property>/controls/switches/isolvalve1-sw</property>
+      <property>/controls/switches/isolvalve2-sw</property>
+      <property>/controls/switches/wiper-sw</property>
+      <property>/controls/switches/lgh-beacon-sw</property>
+      <property>/controls/switches/lgh-navigation-sw</property>
+      <property>/controls/switches/chck-extinguish-eng-sw</property>
+
+      <property>/controls/engines/engine[0]/reverser</property>
+      <property>/controls/engines/engine[1]/reverser</property>
+      <property>/controls/engines/engine[0]/cutoff-cmd</property>
+      <property>/controls/engines/engine[1]/cutoff-cmd</property>
+      <property>/controls/engines/aileron-abc-norm</property>
+
+      <property>/controls/gear/brake-left</property>
+      <property>/controls/gear/brake-right</property>
+      <property>/controls/gear/brake-parking</property>
+      <property>/controls/gear/parking-brake-cmd</property>
+      <property>/controls/gear/wheel[0]/brake-cmd-cond</property>
+      <property>/controls/gear/wheel[1]/brake-cmd-cond</property>
+      <property>/controls/gear/gear-down-cond</property>
+      <property>/controls/flight/flaps-cond</property>
+      <property>/controls/flight/spoilers-cond</property>
+
+      <property>/engines/engine[0]/n1</property>
+      <property>/engines/engine[1]/n1</property>
+      <property>/engines/engine[0]/thruster/rpm</property>
+      <property>/engines/engine[1]/thruster/rpm</property>
+      <property>/engines/engine[0]/thruster/torque</property>
+      <property>/engines/engine[1]/thruster/torque</property>
+      <property>/engines/engine[0]/itt_degC</property>
+      <property>/engines/engine[1]/itt_degC</property>
+      <property>/engines/engine[0]/fuel-flow_pph</property>
+      <property>/engines/engine[1]/fuel-flow_pph</property>
+      <property>/engines/engine[0]/oil-temperature-degf</property>
+      <property>/engines/engine[1]/oil-temperature-degf</property>
+
+      <property>/consumables/fuel/tank[0]/level-lb</property>
+      <property>/consumables/fuel/tank[1]/level-lb</property>
+
+      <!-- END of Interface Properties -->
+
+      <channel name="Electrical">
+
+        <!-- battery status -->
+
+        <switch name="battery-all-ok">
+            <default value="0.0000"/>
+            <test logic="AND" value="1.0000">
+                /systems/l410/battery1-ok == 1
+                /systems/l410/battery2-ok == 1
+            </test>
+            <output>/systems/l410/battery-all-ok</output>
+        </switch>
+
+        <switch name="battery-one-ok">
+            <default value="0.0000"/>
+            <test logic="OR" value="1.0000">
+                /systems/l410/battery1-ok == 1
+                /systems/l410/battery2-ok == 1
+            </test>
+            <output>/systems/l410/battery-one-ok</output>
+        </switch>
+
+        <!-- special electrical buses (simplification for instruments that
+             need more different voltage inputs) -->
+
+        <switch name="spec-turn">
+            <default value="0.0000"/>
+            <test logic="AND" value="1.0000">
+                /systems/electrical/outputs/bus28v > 10
+                /systems/electrical/outputs/bus36v > 10
+                /systems/electrical/outputs/bus115v > 10
+            </test>
+            <output>/controls/switches/specbus_28v_115v_36v</output>
+        </switch>
+
+        <!-- Engine warnings -->
+
+        <switch name="wd-1beta1">
+            <default value="0.0000"/>
+            <test logic="AND" value="1.0000">
+                /instrumentation/warn-disp/wd-e1-on == 1
+                /controls/engines/engine[0]/reverser == 1
+            </test>
+            <output>/instrumentation/warn-disp/wde1-beta</output>
+        </switch>
+
+        <switch name="wd-2beta1">
+            <default value="0.0000"/>
+            <test logic="AND" value="1.0000">
+                /instrumentation/warn-disp/wd-e2-on == 1
+                /controls/engines/engine[1]/reverser == 1
+            </test>
+            <output>/instrumentation/warn-disp/wde2-beta</output>
+        </switch>
+
+        <!-- end warnings -->
+
+        <switch name="indicated-throttle-l3">
+            <default value="0.0000"/>
+            <test logic="AND" value="0.0000">
+                /controls/switches/isolvalve1-sw lt 2
+            </test>
+            <output>/instrumentation/engine/indicated-tl-norm</output>
+        </switch>
+
+        <scheduled_gain name="indicated-throttle-l">
+            <input>fcs/indicated-throttle-l3</input>
+            <table>
+                <independentVar>/controls/engines/engine[0]/reverser</independentVar>
+                <tableData>
+                    0.0000	1.0000
+                    1.0000	-0.7000
+                </tableData>
+            </table>
+            <output>/instrumentation/engine/indicated-throttlel-norm</output>
+        </scheduled_gain>
+
+        <switch name="indicated-throttle-r3">
+            <default value="0.0000"/>
+            <test logic="AND" value="0.0000">
+                /controls/switches/isolvalve2-sw lt 2
+            </test>
+            <output>/instrumentation/engine/indicated-tr-norm</output>
+        </switch>
+
+        <scheduled_gain name="indicated-throttle-r">
+            <input>fcs/indicated-throttle-r3</input>
+            <table>
+                <independentVar>/controls/engines/engine[1]/reverser</independentVar>
+                <tableData>
+                    0.0000	1.0000
+                    1.0000	-0.7000
+                </tableData>
+            </table>
+            <output>/instrumentation/engine/indicated-throttler-norm</output>
+        </scheduled_gain>
+
+        <switch name="indicated-cutoff-l1">
+            <default value="0.0000"/>
+            <test logic="AND" value="-1.0000">
+                /controls/engines/engine[0]/cutoff-cmd == 1
+            </test>
+            <test logic="AND" value="0.0000">
+                /controls/switches/isolvalve1-sw == 2
+                /controls/engines/engine[0]/cutoff-cmd == 0
+            </test>
+            <output>/instrumentation/engine/indicated-cutoffl-norm</output>
+        </switch>
+
+        <switch name="indicated-cutoff-r1">
+            <default value="0.0000"/>
+            <test logic="AND" value="-1.0000">
+                /controls/engines/engine[1]/cutoff-cmd == 1
+            </test>
+            <test logic="AND" value="0.0000">
+                /controls/switches/isolvalve2-sw == 2
+                /controls/engines/engine[1]/cutoff-cmd == 0
+            </test>
+            <output>/instrumentation/engine/indicated-cutoffr-norm</output>
+        </switch>
+
+        <kinematic name="eng-n-koef">
+            <input>/systems/l410/bus36v-on</input>
+            <traverse>
+                <setting>
+                    <position>0.0000</position>
+                    <time>0.0000</time>
+                </setting>
+                <setting>
+                    <position>1.0000</position>
+                    <time>0.5000</time>
+                </setting>
+            </traverse>
+            <output>/instrumentation/engine/eng-n-koef</output>
+        </kinematic>
+
+        <scheduled_gain name="indicated-eng-ngen1">
+            <input>/engines/engine/n1</input>
+            <table>
+                <independentVar>/instrumentation/engine/eng-n-koef</independentVar>
+                <tableData>
+                    0.0000	0.0000
+                    1.0000	1.0000
+                </tableData>
+            </table>
+            <output>/instrumentation/engine/indicated-gen1-perc</output>
+        </scheduled_gain>
+
+        <scheduled_gain name="indicated-eng-ngen2">
+            <input>/engines/engine[1]/n1</input>
+            <table>
+                <independentVar>/instrumentation/engine/eng-n-koef</independentVar>
+                <tableData>
+                    0.0000	0.0000
+                    1.0000	1.0000
+                </tableData>
+            </table>
+            <output>/instrumentation/engine/indicated-gen2-perc</output>
+        </scheduled_gain>
+
+        <scheduled_gain name="indicated-eng-nprop1">
+            <input>/engines/engine/thruster/rpm</input>
+            <table>
+                <independentVar>/instrumentation/engine/eng-n-koef</independentVar>
+                <tableData>
+                    0.0000	0.0000
+                    1.0000	1.0000
+                </tableData>
+            </table>
+            <output>/instrumentation/engine/indicated-prop1-rpm</output>
+        </scheduled_gain>
+
+        <scheduled_gain name="indicated-eng-nprop2">
+            <input>/engines/engine[1]/thruster/rpm</input>
+            <table>
+                <independentVar>/instrumentation/engine/eng-n-koef</independentVar>
+                <tableData>
+                    0.0000	0.0000
+                    1.0000	1.0000
+                </tableData>
+            </table>
+            <output>/instrumentation/engine/indicated-prop2-rpm</output>
+        </scheduled_gain>
+
+        <scheduled_gain name="indicated-eng-propshaft1">
+            <input>/engines/engine[0]/thruster/torque</input>
+            <gain>-0.0571</gain>
+            <table>
+                <independentVar>/instrumentation/engine/eng-n-koef</independentVar>
+                <tableData>
+                    0.0000	0.0000
+                    1.0000	1.0000
+                </tableData>
+            </table>
+            <output>/instrumentation/engine/indicated-pshaft1-perc</output>
+        </scheduled_gain>
+
+        <scheduled_gain name="indicated-eng-propshaft2">
+            <input>/engines/engine[1]/thruster/torque</input>
+            <gain>-0.0571</gain>
+            <table>
+                <independentVar>/instrumentation/engine/eng-n-koef</independentVar>
+                <tableData>
+                    0.0000	0.0000
+                    1.0000	1.0000
+                </tableData>
+            </table>
+            <output>/instrumentation/engine/indicated-pshaft2-perc</output>
+        </scheduled_gain>
+
+        <scheduled_gain name="indicated-itt1-degc">
+            <input>/engines/engine/itt_degC</input>
+            <table>
+                <independentVar>/instrumentation/engine/eng-n-koef</independentVar>
+                <tableData>
+                    0.0000	0.0000
+                    1.0000	1.0000
+                </tableData>
+            </table>
+            <output>/instrumentation/engine/indicated-itt1-degc</output>
+        </scheduled_gain>
+
+        <scheduled_gain name="indicated-itt2-degc">
+            <input>/engines/engine[1]/itt_degC</input>
+            <table>
+                <independentVar>/instrumentation/engine/eng-n-koef</independentVar>
+                <tableData>
+                    0.0000	0.0000
+                    1.0000	1.0000
+                </tableData>
+            </table>
+            <output>/instrumentation/engine/indicated-itt2-degc</output>
+        </scheduled_gain>
+
+        <scheduled_gain name="indicated-fuelfl1-kgph">
+            <input>/engines/engine[0]/fuel-flow_pph</input>
+            <gain>0.4536</gain>
+            <table>
+                <independentVar>/instrumentation/engine/eng-n-koef</independentVar>
+                <tableData>
+                    0.0000	0.0000
+                    1.0000	1.0000
+                </tableData>
+            </table>
+            <output>/instrumentation/engine/indicated-fuelfl1-kgph</output>
+        </scheduled_gain>
+
+        <scheduled_gain name="indicated-fuelfl2-kgph">
+            <input>/engines/engine[1]/fuel-flow_pph</input>
+            <gain>0.4536</gain>
+            <table>
+                <independentVar>/instrumentation/engine/eng-n-koef</independentVar>
+                <tableData>
+                    0.0000	0.0000
+                    1.0000	1.0000
+                </tableData>
+            </table>
+            <output>/instrumentation/engine/indicated-fuelfl2-kgph</output>
+        </scheduled_gain>
+
+        <scheduled_gain name="indicated-fuel1-kg">
+            <input>/consumables/fuel/tank/level-lb</input>
+            <gain>0.4536</gain>
+            <table>
+                <independentVar>/instrumentation/engine/eng-n-koef</independentVar>
+                <tableData>
+                    0.0000	0.0000
+                    1.0000	1.0000
+                </tableData>
+            </table>
+            <output>/instrumentation/engine/indicated-fuel1-kg</output>
+        </scheduled_gain>
+
+        <scheduled_gain name="indicated-fuel2-kg">
+            <input>/consumables/fuel/tank[1]/level-lb</input>
+            <gain>0.4536</gain>
+            <table>
+                <independentVar>/instrumentation/engine/eng-n-koef</independentVar>
+                <tableData>
+                    0.0000	0.0000
+                    1.0000	1.0000
+                </tableData>
+            </table>
+            <output>/instrumentation/engine/indicated-fuel2-kg</output>
+        </scheduled_gain>
+
+        <!-- windshield wipers -->
+
+        <switch name="sterace-endpos1">
+            <default value="0.0000"/>
+            <test logic="AND" value="1.0000">
+                /instrumentation/wiper/position-dir == 0
+                /instrumentation/wiper/position-norm == 0
+                /instrumentation/wiper/switched-on == 1
+            </test>
+            <test logic="AND" value="0.0000">
+                /instrumentation/wiper/position-dir == 1
+                /instrumentation/wiper/position-norm == 1
+            </test>
+            <output>/instrumentation/wiper/position-dir</output>
+        </switch>
+
+        <kinematic name="sterace-norm">
+            <input>/instrumentation/wiper/position-dir</input>
+            <traverse>
+                <setting>
+                    <position>0.0000</position>
+                    <time>0.0000</time>
+                </setting>
+                <setting>
+                    <position>1.0000</position>
+                    <time>1.5000</time>
+                </setting>
+            </traverse>
+            <output>/instrumentation/wiper/position-norm</output>
+        </kinematic>
+
+        <pure_gain name="sterace-vyp">
+            <input>/controls/switches/wiper-sw</input>
+            <gain>1</gain>
+            <output>/instrumentation/wiper/switched-on</output>
+        </pure_gain>
+
+        <!-- Brakes -->
+
+        <kinematic name="brzdy1">
+            <input>/controls/gear/wheel/brake-cmd-cond</input>
+            <traverse>
+                <setting>
+                    <position>0.0000</position>
+                    <time>0.0000</time>
+                </setting>
+                <setting>
+                    <position>1.0000</position>
+                    <time>0.3000</time>
+                </setting>
+            </traverse>
+            <output>/controls/gear/brake-left</output>
+        </kinematic>
+
+        <kinematic name="brzdy2">
+            <input>/controls/gear/wheel[1]/brake-cmd-cond</input>
+            <traverse>
+                <setting>
+                    <position>0.0000</position>
+                    <time>0.0000</time>
+                </setting>
+                <setting>
+                    <position>1.0000</position>
+                    <time>0.3000</time>
+                </setting>
+            </traverse>
+            <output>/controls/gear/brake-right</output>
+        </kinematic>
+
+        <kinematic name="brzdy4">
+            <input>/controls/gear/parking-brake-cmd</input>
+            <traverse>
+                <setting>
+                    <position>0.0000</position>
+                    <time>0.0000</time>
+                </setting>
+                <setting>
+                    <position>1.0000</position>
+                    <time>0.9000</time>
+                </setting>
+            </traverse>
+            <output>/controls/gear/brake-parking</output>
+        </kinematic>
+
+        <scheduled_gain name="indicated-parkingbrake-kp_cm2">
+            <input>/controls/gear/brake-parking</input>
+            <gain>25.0000</gain>
+            <table>
+                <independentVar>/instrumentation/engine/eng-n-koef</independentVar>
+                <tableData>
+                    0.0000	0.0000
+                    1.0000	1.0000
+                </tableData>
+            </table>
+            <output>/instrumentation/pressure/indicated-parkingbrake-kp_cm2</output>
+        </scheduled_gain>
+
+        <scheduled_gain name="indicated-leftbrake-kp_cm2">
+            <input>/controls/gear/brake-left</input>
+            <gain>45.0000</gain>
+            <table>
+                <independentVar>/instrumentation/engine/eng-n-koef</independentVar>
+                <tableData>
+                    0.0000	0.0000
+                    1.0000	1.0000
+                </tableData>
+            </table>
+            <output>/instrumentation/pressure/indicated-leftbrake-kp_cm2</output>
+        </scheduled_gain>
+
+        <scheduled_gain name="indicated-rightbrake-kp_cm2">
+            <input>/controls/gear/brake-right</input>
+            <gain>45.0000</gain>
+            <table>
+                <independentVar>/instrumentation/engine/eng-n-koef</independentVar>
+                <tableData>
+                    0.0000	0.0000
+                    1.0000	1.0000
+                </tableData>
+            </table>
+            <output>/instrumentation/pressure/indicated-rightbrake-kp_cm2</output>
+        </scheduled_gain>
+
+        <summer name="temp-oil1-1">
+            <input>/engines/engine/oil-temperature-degf</input>
+            <input>/instrumentation/temperature/c-f-s-konst</input>
+        </summer>
+
+        <scheduled_gain name="temp-oil1-2">
+            <input>fcs/temp-oil1-1</input>
+            <gain>0.5555</gain>
+            <table>
+                <independentVar>/instrumentation/engine/eng-n-koef</independentVar>
+                <tableData>
+                    0.0000	0.0000
+                    1.0000	1.0000
+                </tableData>
+            </table>
+            <output>/instrumentation/temperature/indicated-oil1-degc</output>
+        </scheduled_gain>
+
+        <summer name="temp-oil2-1">
+            <input>/engines/engine[1]/oil-temperature-degf</input>
+            <input>/instrumentation/temperature/c-f-s-konst</input>
+        </summer>
+
+        <scheduled_gain name="temp-oil2-2">
+            <input>fcs/temp-oil2-1</input>
+            <gain>0.5555</gain>
+            <table>
+                <independentVar>/instrumentation/engine/eng-n-koef</independentVar>
+                <tableData>
+                    0.0000	0.0000
+                    1.0000	1.0000
+                </tableData>
+            </table>
+            <output>/instrumentation/temperature/indicated-oil2-degc</output>
+        </scheduled_gain>
+
+        <!-- Lights -->
+
+        <switch name="instr-flash">
+            <default value="0.0000"/>
+            <test logic="AND" value="1.0000">
+                /instrumentation/lights/instr-flash-out == 0
+                /instrumentation/lights/instr-flash-in == 0
+            </test>
+            <test logic="AND" value="0.0000">
+                /instrumentation/lights/instr-flash-out == 1
+                /instrumentation/lights/instr-flash-in == 1
+            </test>
+            <output>/instrumentation/lights/instr-flash-in</output>
+        </switch>
+
+        <kinematic name="instr-flash3">
+            <input>/instrumentation/lights/instr-flash-in</input>
+            <traverse>
+                <setting>
+                    <position>0.0000</position>
+                    <time>0.0000</time>
+                </setting>
+                <setting>
+                    <position>1.0000</position>
+                    <time>1.0000</time>
+                </setting>
+            </traverse>
+            <output>/instrumentation/lights/instr-flash-out</output>
+        </kinematic>
+
+        <!-- Beacon -->
+
+        <switch name="beacon-swon">
+            <default value="0.0000"/>
+            <test logic="AND" value="1.0000">
+                /controls/switches/lgh-beacon-sw == 1
+                /systems/electrical/outputs/beacon-lights > 20
+                /instrumentation/lights/beacon-kinemat-in == 0
+                /instrumentation/lights/beacon-kinemat-out == 0
+            </test>
+            <test logic="AND" value="0.0000">
+                /instrumentation/lights/beacon-kinemat-in == 1
+                /instrumentation/lights/beacon-kinemat-out == 1
+            </test>
+            <output>/instrumentation/lights/beacon-kinemat-in</output>
+        </switch>
+
+        <kinematic name="beacon-norm">
+            <input>/instrumentation/lights/beacon-kinemat-in</input>
+            <traverse>
+                <setting>
+                    <position>0.0000</position>
+                    <time>0.0000</time>
+                </setting>
+                <setting>
+                    <position>1.0000</position>
+                    <time>1.0000</time>
+                </setting>
+            </traverse>
+            <output>/instrumentation/lights/beacon-kinemat-out</output>
+        </kinematic>
+
+        <switch name="beacon-swon3">
+            <default value="0.0000"/>
+            <test logic="AND" value="1.0000">
+                /instrumentation/lights/beacon-kinemat-out > 0.90
+                /instrumentation/lights/beacon-kinemat-out lt 0.97
+            </test>
+            <output>/instrumentation/lights/beacon-on</output>
+        </switch>
+
+       <!-- navigation (red, green) -->
+
+       <switch name="navig-swon">
+            <default value="0.0000"/>
+            <test logic="AND" value="1.0000">
+                /controls/switches/lgh-navigation-sw == 1
+                /systems/electrical/outputs/navigation-lights > 20
+            </test>
+            <output>/instrumentation/lights/navigation-on</output>
+        </switch>
+
+        <!-- Front -->
+
+        <switch name="search1-swon">
+            <default value="0.0000"/>
+            <test logic="AND" value="0.0000">
+                /systems/electrical/outputs/landing-lights > 20
+            </test>
+            <output>/instrumentation/lights/search1-on</output>
+        </switch>
+
+        <switch name="search2-swon">
+            <default value="0.0000"/>
+            <test logic="AND" value="0.0000">
+                /systems/electrical/outputs/landing-lights > 20
+            </test>
+            <output>/instrumentation/lights/search2-on</output>
+        </switch>
+
+        <!-- FIRE and EXTINGUISH -->
+
+        <switch name="chck-extinguish">
+            <default value="0.0000"/>
+            <test logic="AND" value="1.0000">
+                /systems/l410/bus24v-on == 1
+                /controls/switches/chck-extinguish-eng-sw == -1
+                /systems/l410/extinguish-e1-1-ok == 1
+            </test>
+            <test logic="AND" value="2.0000">
+                /systems/l410/bus24v-on == 1
+                /controls/switches/chck-extinguish-eng-sw == -2
+                /systems/l410/extinguish-e1-2-ok == 1
+            </test>
+            <test logic="AND" value="3.0000">
+                /systems/l410/bus24v-on == 1
+                /controls/switches/chck-extinguish-eng-sw == 1
+                /systems/l410/extinguish-e2-1-ok == 1
+            </test>
+            <test logic="AND" value="4.0000">
+                /systems/l410/bus24v-on == 1
+                /controls/switches/chck-extinguish-eng-sw == 2
+                /systems/l410/extinguish-e2-2-ok == 1
+            </test>
+            <output>/instrumentation/warn-disp/wd-extinguish-eng</output>
+        </switch>
+
+        <pure_gain name="abc-position">
+            <input>/controls/engines/aileron-abc-norm</input>
+            <gain>1</gain>
+        </pure_gain>
+      </channel>
+
+          <!-- Standard flight control components -->
+
+      <channel name="Pitch">
+
+        <pure_gain name="pitch-trim-uprava-nase">
+            <input>fcs/pitch-trim-cmd-norm</input>
+            <gain>0.3333</gain>
+        </pure_gain>
+
+        <summer name="Pitch Trim Sum">
+            <input>fcs/elevator-cmd-norm</input>
+            <input>fcs/pitch-trim-uprava-nase</input>
+            <clipto>
+                <min>-1.0000</min>
+                <max>1.0000</max>
+            </clipto>
+        </summer>
+
+        <aerosurface_scale name="Elevator Control">
+            <input>fcs/pitch-trim-sum</input>
+            <range>
+                <min>-0.3500</min>
+                <max>0.1750</max>
+            </range>
+            <output>fcs/elevator-pos-rad</output>
+        </aerosurface_scale>
+      </channel>
+
+      <channel name="Roll">
+        <pure_gain name="roll-trim-uprava-nase">
+            <input>fcs/roll-trim-cmd-norm</input>
+            <gain>0.3333</gain>
+        </pure_gain>
+
+        <summer name="Roll Trim Sum nase">
+            <input>fcs/aileron-cmd-norm</input>
+            <input>fcs/roll-trim-uprava-nase</input>
+            <clipto>
+                <min>-1.0000</min>
+                <max>1.0000</max>
+            </clipto>
+        </summer>
+
+        <aerosurface_scale name="Left Aileron Control">
+            <input>fcs/roll-trim-sum-nase</input>
+            <range>
+                <min>-0.4500</min>
+                <max>0.4500</max>
+            </range>
+            <output>fcs/left-aileron-pos-rad</output>
+        </aerosurface_scale>
+
+        <aerosurface_scale name="Right Aileron Control">
+            <input>-fcs/roll-trim-sum-nase</input>
+            <range>
+                <min>-0.4500</min>
+                <max>0.4500</max>
+            </range>
+            <output>fcs/right-aileron-pos-rad</output>
+        </aerosurface_scale>
+      </channel>
+
+      <channel name="Yaw">
+        <pure_gain name="yaw-trim-uprava-nase">
+            <input>fcs/yaw-trim-cmd-norm</input>
+            <gain>0.4000</gain>
+        </pure_gain>
+
+        <summer name="Rudder Command Sum">
+            <input>fcs/rudder-cmd-norm</input>
+            <input>fcs/yaw-trim-uprava-nase</input>
+            <clipto>
+                <min>-1.0000</min>
+                <max>1.0000</max>
+            </clipto>
+        </summer>
+
+        <aerosurface_scale name="Rudder Control">
+            <input>fcs/rudder-command-sum</input>
+            <range>
+                <min>-0.3500</min>
+                <max>0.3500</max>
+            </range>
+            <output>fcs/rudder-pos-rad</output>
+        </aerosurface_scale>
+      </channel>
+
+      <channel name="Flaps">
+        <kinematic name="Flaps Control">
+            <input>/controls/flight/flaps-cond</input>
+            <traverse>
+                <setting>
+                    <position>0.0000</position>
+                    <time>0.0000</time>
+                </setting>
+                <setting>
+                    <position>21.0000</position>
+                    <time>5.0000</time>
+                </setting>
+                <setting>
+                    <position>42.0000</position>
+                    <time>4.0000</time>
+                </setting>
+            </traverse>
+            <output>fcs/flap-pos-deg</output>
+        </kinematic>
+
+        <aerosurface_scale name="Flap Position Normalizer">
+          <input>fcs/flap-pos-deg</input>
+          <domain>
+            <min>0</min>  <!-- Flaps actual minimum position -->
+            <max>42</max>  <!-- Flaps actual maximum position -->
+          </domain>
+          <range>
+            <min>0</min>  <!-- Flaps normalized minimum position -->
+            <max>1</max>  <!-- Flaps normalized maximum position -->
+          </range>
+          <output>fcs/flap-pos-norm</output>
+        </aerosurface_scale>
+      </channel>
+
+      <channel name="Gear">
+        <kinematic name="Gear Control">
+            <input>/controls/gear/gear-down-cond</input>
+            <traverse>
+                <setting>
+                    <position>0.0000</position>
+                    <time>0.0000</time>
+                </setting>
+                <setting>
+                    <position>1.0000</position>
+                    <time>5.0000</time>
+                </setting>
+            </traverse>
+            <output>gear/gear-pos-norm</output>
+        </kinematic>
+      </channel>
+
+      <channel name="Speedbrake">
+        <kinematic name="Speedbrake Control">
+            <input>fcs/speedbrake-cmd-norm</input>
+            <traverse>
+                <setting>
+                    <position>0.0000</position>
+                    <time>0.0000</time>
+                </setting>
+                <setting>
+                    <position>1.0000</position>
+                    <time>1.0000</time>
+                </setting>
+            </traverse>
+            <output>fcs/speedbrake-pos-norm</output>
+        </kinematic>
+      </channel>
+
+      <channel name="Spoiler">
+        <kinematic name="Spoiler Control">
+            <input>/controls/flight/spoilers-cond</input>
+            <traverse>
+                <setting>
+                    <position>0.0000</position>
+                    <time>0.0000</time>
+                </setting>
+                <setting>
+                    <position>1.0000</position>
+                    <time>2.0000</time>
+                </setting>
+            </traverse>
+            <output>fcs/spoiler-pos-norm</output>
+        </kinematic>
+
+        <pure_gain name="Spoiler Control rad">
+            <input>fcs/spoiler-pos-norm</input>
+            <gain>72.0000</gain>
+            <output>fcs/spoiler-pos-rad</output>
+        </pure_gain>
+      </channel>
+
+      <channel name="Steering">
+        <scheduled_gain name="Scheduled Steer Pos Deg">
+            <input>fcs/steer-cmd-norm</input>
+            <table>
+                <independentVar>/controls/switches/full-steering-sw</independentVar>
+                <tableData>
+                    0.0000	5.0000
+                    1.0000	0.0000
+                    2.0000	45.0000
+                </tableData>
+            </table>
+            <output>fcs/steer-pos-deg[0]</output>
+        </scheduled_gain>
+
+        <scheduled_gain name="Steer lever Pos Deg">
+            <input>fcs/steer-cmd-norm</input>
+            <table>
+                <independentVar>/controls/switches/full-steering-sw</independentVar>
+                <tableData>
+                    0.0000	0.0000
+                    1.0000	0.0000
+                    2.0000	1.0000
+                </tableData>
+            </table>
+            <output>/gear/gear[0]/steering-lever-norm</output>
+        </scheduled_gain>
+     </channel>
+    </flight_control>
+
+    <aerodynamics>
+
+        <axis name="DRAG">
+            <function name="aero/coefficient/CD0">
+                <description>Drag_at_zero_lift</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                      <table>
+                          <independentVar>aero/alpha-rad</independentVar>
+                          <tableData>
+                              -1.5700	2.0000
+                              -0.2600	0.0670
+                              0.0000	0.0330
+                              0.2600	0.0670
+                              1.5700	3.0000
+                          </tableData>
+                      </table>
+                </product>
+            </function>
+            <function name="aero/coefficient/CDi">
+                <description>Induced_drag</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>aero/cl-squared</property>
+                    <value>0.0600</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/CDmach">
+                <description>Drag_due_to_mach</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                      <table>
+                          <independentVar>velocities/mach</independentVar>
+                          <tableData>
+                              0.0000	0.0000
+                              0.7200	0.0000
+                              1.1000	0.0230
+                              1.8000	0.0150
+                          </tableData>
+                      </table>
+                </product>
+            </function>
+            <function name="aero/coefficient/CDflap">
+                <description>Drag_due_to_flaps</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>fcs/flap-pos-norm</property>
+                    <value>0.0390</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/CDgear">
+                <description>Drag_due_to_gear</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>gear/gear-pos-norm</property>
+                    <value>0.0300</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/CDsb">
+                <description>Drag_due_to_speedbrakes</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>fcs/speedbrake-pos-norm</property>
+                    <value>0.0250</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/CDsp">
+                <description>Drag_due_to_spoiler</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>fcs/spoiler-pos-norm</property>
+                    <value>0.0300</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/CDbeta">
+                <description>Drag_due_to_sideslip</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                      <table>
+                          <independentVar>aero/beta-rad</independentVar>
+                          <tableData>
+                              -1.5700	1.2300
+                              -0.2600	0.0500
+                              0.0000	0.0000
+                              0.2600	0.0500
+                              1.5700	1.2300
+                          </tableData>
+                      </table>
+                </product>
+            </function>
+            <function name="aero/coefficient/CDde">
+                <description>Drag_due_to_Elevator_Deflection</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>fcs/mag-elevator-pos-rad</property>
+                    <value>0.0390</value>
+                </product>
+            </function>
+        </axis>
+
+        <axis name="SIDE">
+            <function name="aero/coefficient/CYb">
+                <description>Side_force_due_to_beta</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>aero/beta-rad</property>
+                    <value>-1.4000</value>
+                </product>
+            </function>
+        </axis>
+
+        <axis name="LIFT">
+            <function name="aero/coefficient/CLalpha">
+                <description>Lift_due_to_alpha</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                      <table>
+                          <independentVar>aero/alpha-wing-rad</independentVar>
+                          <tableData>
+                              -0.2000	-0.7200
+                              0.0000	0.2600
+                              0.2200	1.4000
+                              0.6000	0.8000
+                          </tableData>
+                      </table>
+                </product>
+            </function>
+            <function name="aero/coefficient/dCLflap">
+                <description>Delta_Lift_due_to_flaps</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>fcs/flap-pos-norm</property>
+                    <value>0.4000</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/dCLsb">
+                <description>Delta_Lift_due_to_speedbrake</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>fcs/speedbrake-pos-norm</property>
+                    <value>0.0000</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/dCLsp">
+                <description>Delta_Lift_due_to_spoiler</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>fcs/spoiler-pos-norm</property>
+                    <value>-0.0500</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/CLde">
+                <description>Lift_due_to_Elevator_Deflection</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>fcs/elevator-pos-rad</property>
+                    <value>0.2000</value>
+                </product>
+            </function>
+        </axis>
+
+        <axis name="ROLL">
+            <function name="aero/coefficient/Clroll">
+                <description>Roll_moment_due_to_roll</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>attitude/roll-rad</property>
+                    <value>-0.0050</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Clb">
+                <description>Roll_moment_due_to_beta</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>aero/beta-rad</property>
+                    <value>-0.2000</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Clp">
+                <description>Roll_moment_due_to_roll_rate</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>aero/bi2vel</property>
+                    <property>velocities/p-aero-rad_sec</property>
+                    <value>-0.5000</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Clr">
+                <description>Roll_moment_due_to_yaw_rate</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>aero/bi2vel</property>
+                    <property>velocities/r-aero-rad_sec</property>
+                    <value>0.0000</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Clda">
+                <description>Roll_moment_due_to_aileron</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>fcs/left-aileron-pos-rad</property>
+                      <table>
+                          <independentVar>velocities/mach</independentVar>
+                          <tableData>
+                              0.0000	0.1200
+                              2.0000	0.0400
+                          </tableData>
+                      </table>
+                </product>
+            </function>
+            <function name="aero/coefficient/Cldr">
+                <description>Roll_moment_due_to_rudder</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>fcs/rudder-pos-rad</property>
+                    <value>0.0001</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Clabc">
+                <description>Roll_moment_due_to_auto_bank_control</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>fcs/abc-position</property>
+                    <value>0.0070</value>
+                </product>
+            </function>
+        </axis>
+
+        <axis name="PITCH">
+            <function name="aero/coefficient/Cmo">
+                <description>Pitching_moment_at_zero_alpha</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/cbarw-ft</property>
+                    <value>0.0150</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Cmalpha">
+                <description>Pitch_moment_due_to_alpha</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/cbarw-ft</property>
+                    <property>aero/alpha-rad</property>
+                    <value>-0.4000</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Cmde">
+                <description>Pitch_moment_due_to_elevator</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/cbarw-ft</property>
+                    <property>fcs/elevator-pos-rad</property>
+                      <table>
+                          <independentVar>velocities/mach</independentVar>
+                          <tableData>
+                              0.0000	-1.0000
+                              2.0000	-0.2500
+                          </tableData>
+                      </table>
+                </product>
+            </function>
+            <function name="aero/coefficient/Cmq">
+                <description>Pitch_moment_due_to_pitch_rate</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/cbarw-ft</property>
+                    <property>aero/ci2vel</property>
+                    <property>velocities/q-aero-rad_sec</property>
+                    <value>-50.0000</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Cmadot">
+                <description>Pitch_moment_due_to_alpha_rate</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/cbarw-ft</property>
+                    <property>aero/ci2vel</property>
+                    <property>aero/alphadot-rad_sec</property>
+                    <value>-30.0000</value>
+                </product>
+            </function>
+        </axis>
+
+        <axis name="YAW">
+            <function name="aero/coefficient/Cnb">
+                <description>Yaw_moment_due_to_beta</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>aero/beta-rad</property>
+                    <value>0.1200</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Cnr">
+                <description>Yaw_moment_due_to_yaw_rate</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>aero/bi2vel</property>
+                    <property>velocities/r-aero-rad_sec</property>
+                    <value>-0.1000</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Cndr">
+                <description>Yaw_moment_due_to_rudder</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>fcs/rudder-pos-rad</property>
+                    <value>-0.0150</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Cnda">
+                <description>Adverse_yaw</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>fcs/left-aileron-pos-rad</property>
+                    <value>-0.0080</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Cnabc">
+                <description>Yaw_moment_due_to_auto_bank_control</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>fcs/abc-position</property>
+                    <value>0.0300</value>
+                </product>
+            </function>
+        </axis>
+    </aerodynamics>
+</fdm_config>

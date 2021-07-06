@@ -1,0 +1,1788 @@
+<?xml version="1.0"?>
+<?xml-stylesheet href="http://jsbsim.sourceforge.net/JSBSim.xsl" type="text/xsl"?>
+<fdm_config name="Aerospatiale/BAC Concorde" version="2.0" release="PRODUCTION"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:noNamespaceSchemaLocation="http://jsbsim.sourceforge.net/JSBSim.xsd">
+
+    <fileheader>
+        <author> </author>
+        <filecreationdate> 14 August 2010 </filecreationdate>
+        <version> 1.13 </version>
+        <description>Aerospatiale/British Aerospace Concorde</description>
+
+        <license>
+           <licenseName>GPL (General Public License)</licenseName>
+           <licenseURL>http://www.gnu.org/licenses/gpl.html</licenseURL>
+        </license>
+
+        <note>Nose gear is longer.</note>
+        <note>Air intake effect, which allows more drag at Mach 1.3-2.0.</note>
+        <note>Full tanks at maximum takeoff load.</note>
+        <note>Tanks with dissymmetry.</note>
+        <note>Landing pitch is 10 deg (maximum landing load) and ground effect.</note>
+        <note>Climb pitch at 10 deg (maximum landing load).</note>
+        <note>Climb Mach 0.95 to 1.7 in 10 minutes.</note>
+        <note>Weaker supersonic lift</note>
+        <note>Can reach Mach 2.0, below the VMO.</note>
+        <note>Inside of center of gravity corridor.</note>
+        <note>Shift of center of pressure.</note>
+        <note>London - New York : lands below max landing weight (aloft westerly at 39 kt).</note>
+        <note>Gear height adjusted by 3D model, supposed accurate.</note>
+        <note>Pushback.</note>
+
+        <limitation>Model uses flaps as nose.</limitation>
+        <limitation>Cross feed by additional tanks :
+                    engine may run out of fuel above X 3 speed-up.</limitation>
+        <limitation>Without an additional PID, above Mach 1,
+                    autopilot heading hold would lock with a right roll.</limitation>
+        <limitation>Air intake failure only on the 4 engines at once.</limitation>
+        <limitation>Ground idle only on the 4 engines at once.</limitation>
+
+      <note>
+        This model was created using publicly available data, publicly available
+        technical reports, textbooks, and guesses. It contains no proprietary or
+        restricted data. If this model has been validated at all, it would be
+        only to the extent that it seems to "fly right", and that it possibly
+        complies with published, publicly known, performance data (maximum speed,
+        endurance, etc.). Thus, this model is meant for educational and entertainment
+        purposes only.
+
+        This simulation model is not endorsed by the manufacturer. This model is not
+        to be sold.
+      </note>
+
+<!--
+  File:     Concorde.xml
+  Author:   Aero-Matic v 0.71
+
+  Inputs:
+    name:          Concorde
+    type:          four-engine transonic transport
+    max weight:    408000 lb
+    wing span:     83.83 ft
+    length:        202.33 ft
+    wing area:     3856 sq-ft
+    gear type:     tricycle
+    retractable?:  yes
+    # engines:     4
+    engine type:   turbine
+    engine layout: wings
+    yaw damper?    yes
+  Outputs:
+    wing loading:  105.81 lb/sq-ft
+    CL-alpha:      4.4 per radian
+    CL-0:          0.2
+    CL-max:        1.2
+    CD-0:          0.017
+    K:             0.042
+-->
+
+        <note>notation : "=>" denotes a final choice based on certain real values.</note>
+
+        <reference
+          refID="FAA certificate, A45eu"
+          author="FAA"
+          title="http://www.airweb.faa.gov/Regulatory_and_Guidance_Library/rgMakeModel.nsf/MainFrame?OpenFrameSet"
+          date="9 January 1979"/>
+        <documentation>
+          Vlo (landing gear operation)                 : 270 kt.
+          Vle (landing gear extended)                  : 270 kt.
+          Vmc (minimum control speed with engine inoperative)
+          Vmcl (approach)                              : 150 kt.
+          Vmc (takeoff)                                : 132 kt.
+          Vmcg (ground)                                : 116 kt.
+
+          Datum : the datum for center of gravity computation is a vertical
+          reference plane located 8.333 feet (2.540 m) forward of Fuselage
+          Station X.A.0. A reference rigging point "C" is provided on the
+          airframe 83.172 feet (25.351 m) aft of the datum at 13.66% C0.
+
+          M.A.C. : the "reference root choord" (C0) is 90.748 feet (27.660 m) in
+          length; its leading edge is located 70.771 feet (21.570 m) aft of the datum.
+
+          Fuel tank capacity (at density 6.68 lb / US Gallon) :
+
+          Tank      Usable weight     Total weight     Arm (% MAC)
+          ........................................................
+          1              9348            9361             39.80
+          2             10176           10207             76.10
+          3             10176           10207             76.10
+          4              9348            9361             39.80
+          5             16032           16072             49.40
+          5A             4956            4963             74.80
+          6             25803           25889             66.70
+          7             16490           16525             64.70
+          7A             4956            4963             74.80
+          8             28590           28645             46.70
+          9             24710           24747             16.90
+          10            26597           26618             30.50
+          11            23192           23218            113.90
+          Systems         827            1021             69.43
+          ........................................................
+          Totals       211200 lb       211797 lb          56.23
+        </documentation>
+        <documentation>
+          - http://perso.wanadoo.fr/hsors/FS_Soft/FAQ-FS2K2-Decode_Forum.txt/
+
+          Ron Freimuth (for MSFS) :
+
+          TYPE OF AIRCRAFT - ROLL,Rx PITCH,Ry YAW,Rz
+          Single Low Wing          .248 .338 .393
+          Single High Wing(C182R)  .242 .397 .393
+          Light Twin               .373 .269 .461
+          Biz Jet, Light           .293 .312 .420
+          Biz Jet, Heavy           .370 .356 .503
+          Twin Turbo- Prop         .235 .363 .416
+          Jet Airliner 4 eng.      .322 .339 .464
+          Jet Airliner 3 aft eng   .249 .375 .452
+          Jet Airliner 2 eng wing  .246 .382 .456
+          Prop Airliner 4 eng      .322 .324 .456
+          Prop Airliner 2 eng      .308 .345 .497
+          Jet Fighter              .266 .346 .400
+          Prop Fighter 1 eng       .268 .360 .420
+          Prop Fighter 2 eng       .330 .299 .447
+          Prop Bomber 2 eng        .270 .320 .410
+          Prop Bomber 4 eng        .316 .320 .376
+          Concorde Delta Wing      .255 .380 .390 (added, Ron Freimuth)
+
+          Note: Delta Wing adds more to Pitch MoI due to Long Root Chord.
+          Note: Yaw MoI ~ Pitch MoI + Roll MoI or a bit less.
+
+      ... Estimate Aircraft Moments of Inertia - from Jan Roskam ...
+
+          Roll  Ixx = (W/g)*(Rx*b/2)^2
+          Pitch Iyy = (W/g)*(Ry*d/2)^2
+          Yaw   Izz = (W/g)*(Rz*e/2)^2
+          Roll-Yaw Ixz less than or equal to 0.02 Iz, often 0.0 (added, Ron Freimuth)
+          g = 32.174 ft/s^2
+          W = gross wt. lb
+          b = span ft
+          d = length ft
+          e = (b+d)/2
+
+          Max TO  - 408,000 lb
+          No Fuel - 197,768 lb
+          Length - 204.5 ft  (.38*102)^2 = 1502
+          Span   -  84.25 ft (.253*42)^2
+                    = 113(Span+Length)/2 - 144.8 ft (.39*72.4)^2 = 797
+          Width  -  9.5 ft
+          Empty Mass - 197,768/32.174 = 6,142 slugs
+          Max Mass   - 408,000/32.174 = 12,670 slugs
+
+      .... Empty
+
+          Pitch: 1502 * 6142 = 9,227,000, Max: 19,034,000 slug ft^2
+          Roll:   113 * 6142 =   694,000, Max:  1,432,000
+          Yaw:    797 * 6142 = 4,897,000, Max: 10,100,000
+          Pitch is about 9,300,000, Yaw is 4,900,000, Roll is 696,000.
+
+
+          The moments of inertia had been changed, as an attempt to solve the autopilot roll.
+        </documentation>
+        <documentation>
+          - http://www.concordesst.com/ :
+
+          Length : overall 202'4", nose to cockpit 24'.
+          Height : fuselage max external 10'10".
+          Width : fuselage max external 9'5".
+          Gear : main track 25'4".
+          Wing : span 83 ft. 10 in., length (root chord) 90 ft. 9 in..
+          Area (sq. ft) : Wing 3856, Elevon (each side) 172.2, Tail 365, Rudder 112.
+          Weight (lbs) : max take off 408000, zero fuel 203000, operating empty 173500,
+                         max payload 29500, max taxing 412000, max landing 245000.
+
+          Fuel : max 26400 gallons.
+
+          TABLE A :
+
+          Fuel tanks          tank       liters         kg (density 0.792)
+          ..................................................
+          Engines supplies      1         5300         4198
+                                2         5770         4570
+                                3         5770         4570
+                                4         5300         4198
+          Main storages         5         9090         7200
+                                6        14630        11587
+                                7         9350         7405
+                                8        16210        12838
+          Auxiliary             5A        2810         2225
+                                7A        2810         2225
+          Transfer and reserve  9        14010        11096
+                                10       15080        11943
+                                11       13150        10415
+          ..................................................
+          Totals                        119280 l      94470 kg
+
+          Note that 1 US gal = 3.7854 liters.
+
+          Maximum operating altitude : 60000 ft.
+          Range : 4500 miles (3900 NM).
+          Speed : max operating Mach 2.04, average takeoff 250 mph (217 kt),
+                  average landing 185 mph (161 kt).
+
+          AOA : min -5.5 deg (above Mach 1), max 16.5 deg.
+          Vortex above the entire wing creates lift at low speed and high AOA.
+          Ground effect at landing : downwash of the air betweeen the wing and the ground.
+          Delta wing provides a great deal of lift at Mach speed, with very little drag.
+
+          Flight systems (range up and down) : inner elevons 9 deg, middle and
+                                               outer elevons 23.5 deg, rudder 30 deg.
+          Actual travel limits are a little lower than these mechanical limits.
+
+          Turbulence mode reduces the trim rate.
+
+          Gear :
+          - main gear : track 7 ft. 72 in., brakes.
+          - nose : wheelbase to main gear 59 ft. 8 1/4 in., no brake, +/-60 deg steering angle.
+          - tail : no brake.
+          - up process takes 12 s : door opening 2 s, gear retract 8 s, door closing 8 s.
+
+          Nose :
+          - from UP : visor transit 0 deg 6-8 s.
+          - nose transit 5 deg 4-6 s.
+          - to DOWN : nose transit 12.5 deg 5.7 s.
+
+          Max total temperature (TMO) : 127 degC (on nose).
+          Max oil temperature : start and takeoff 125 degC, takeoff and 5 minutes
+                                transient 195 degC, continuous operation 190 degC,
+                                starting -35 degC, adavance above idle -20 degC.
+          Mas oil pressure : continued operation 5 PSI, takeoff 10 PSI.
+          Max fuel temperature : startup -40 degC, advance above idle -40 degC,
+                                 continued operation 50 degC.
+        </documentation>
+        <documentation>
+          - http://www.alpa.org/alpa/DesktopModules/ViewDocument.aspx?DocumentID=814 :
+
+          Mass gross weight : takeoff lasts 45 s, V1 165 kt, VR 195 kt, V2 220.
+          Initial pitch at rotation is 13.5 deg.
+          Cockpit is very noisy until nose is streamlined.
+          Climb rate is slowly increased from 1500 to 3000 ft/s.
+          Best lift-over-drag ratio over 300 kt.
+          At takeoff, center of gravity is 51-52%, 58% at Mach 2.04.
+          At Mach 1.3, inlet-guide ramps lower to slow down the intake air.
+          At Mach 1.7 the afterburners are turned off, and the non-bypass engines
+          are able to increase to Mach 2.04 (1150 kt)
+          with about half the fuel flow.
+          At cruise speed, the air entering the engines is reduced by intake
+          ramps to 500 kt. This drop in intakes provides 45% of thrust, the
+          engines 50%, and the convergent/divergent effect of the nozzle and
+          stowed thrust reversers, 5%.
+          At Mach 2.04, fuel flow is 45200 lb/h.
+          Heathrow to Kennedy : 3h50.
+          VREF is 162 kt at 275000 lb.
+        </documentation>
+        <documentation>
+          - http://www.concorde-jet.com/ :
+
+          Nose : O deg visor up supersonic, 0 deg visor down subsonic,
+                 5 deg takeoff/subsonic, and 12.5 deg approach/landing/taxi.
+          Takeoff : 175 kt, in 24 s, 1700-2100 ft/minute.
+          Landing : 162 kt, 1500-1700 ft/minute.
+          Subsonic cruise : Mach 0.93.
+          Fuel : capacity 95680 kg, 20500 kg/h, 10000 at arrival.
+          Aero reference point steps back of 2 m at Mach 2.
+        </documentation>
+        <documentation>
+          - http://www.club-concorde.org/ :
+
+          Min runway : takeoff 3600 m, landing : 2200 m..
+          Max wing loading : 488 kg/m2.
+          Max climbing rate : 1525 m/minute.
+          Takeoff speed : 214 kt.
+          Landing speed : 130 kt, max 162 kt.
+        </documentation>
+        <reference
+          refID="incident report"
+          author="BEA"
+          title="http://www.bea-fr.org/docspa/2000/f-sc000725/htm/f-sc000725.html/"
+          date="july 2000"/>
+        <documentation>
+          Droop nose : 0.53 m.
+          Front gear from nose (without droop nose) : 18.7 m.
+          Main gear from front gear : 18.2 m.
+          Distance of twin engine join : 11 m.
+
+          Reheat provides 18% of additional thrust during take off.
+
+          TABLE A corresponds to an effective filling at 95% of tanks (94% for tank 5).
+          It is possible to surpass fuel gauges with 1660 additional liters.
+        </documentation>
+        <reference
+          refID="AIAA Professional studies series"
+          author="Jean Rech and Clive S. Leyman"
+          title="A Case Study by Aerospatiale and British Aerospace on the Concorde"
+          date=""/>
+        <documentation>
+          - http://www.aoe.vt.edu/~mason/Mason_f/ConfigAeroSupersonicNotes.pdf/ (Willian H. Mason) :
+
+                    CG (without          CG (with          Aerodynamic
+          Mach     fuel transfer)     fuel transfer)     center location
+          ..............................................................
+          0.5          53.5                53.5                55.0
+          0.75                             53.5
+          0.9                              55.0                58.0
+          1.0                              55.0                64.5
+          1.2                                                  63.5
+          1.5                              57.5                62.5
+          2.0          53.5                58.5                62.0
+
+          (all positions in % of aerodynamic chord C0, 90.748 feet).
+        </documentation>
+        <documentation>
+          - http://www.titanic.com/story/159/Concorde/ :
+
+          Runway : 11200 ft takeoff, 7300 ft landing.
+          Max climb rate : 5000 ft/s.
+          Range : 3550 nm supersonic, 2760 nm subsonic (Mach 0.95 FL300).
+
+          Areas (sq ft) : wings (gross) 3856, elevons (total) 344.44, fin
+                          (excluding dorsal fin) 365, rudder 112.
+        </documentation>
+        <documentation>
+          - http://www.dft.gov.uk/stellent/groups/dft_avsafety/documents/page/dft_avsafety_029047.hcsp/
+            (incident report, 13 june 2003) :
+
+          The fuel tanks are arranged in 3 groups : the left main transfer group,
+          the right main transfer and the trim transfer. The left and right main
+          transfer groups store fuel in the wings and sections of the center fuselage,
+          and both groups are comprised of 3 main tanks, which supply 2 collector
+          tanks per group, from which the engines are fed.
+
+          The collector tanks on the right main transfer group are tanks 3 and 4,
+          which feed engines 3 and 4 respectively. The main fuel transfer system
+          transfers fuel from the main transfer tanks to the collector tanks at
+          a rate sufficiently high to ensure that the collectors tanks are always
+          maintained in a near full condition.
+        </documentation>
+        <reference
+          refID="Nasa TM X-3532"
+          author="Henry H. Arnaiz"
+          title="Flight-measured lift and drag characteristics of a large, flexible, high supersonic cruise airplane"
+          date="May 1977"/>
+        <documentation>
+          - http://www.nasa.gov/centers/dryden/pdf/87877main_H-913.pdf :
+
+          The lift curve (delta wing) shifts downwards, temporarily at Mach 1.06, and completely near Mach 1.65.
+
+          Differences of XB-70 :
+          - cruise Mach 3 at 70,000 feet.
+          - wider canards.
+          - wingtips fold from 0 deg at Mach 0.75 to 65.70 deg at Mach 1.5 (transonic 25.30 deg).
+        </documentation>
+
+
+    </fileheader>
+
+    <metrics>
+        <documentation>
+             Pilot's eyepoint location, in aircraft's own coord system, FROM cg.
+             X, Y, Z, in inches
+
+             ORIGIN (0,0,0) is at NOSE.
+
+             Center of gravity :
+             - level at wing level : -1/4 of max external fuselage height (130 in.).
+             - 51.7%, inside corridor of C0 (maximum takeoff load)
+               => real C0 starts over front gear location (18.7 m).
+
+             Aero refence point :
+             - level at wing level : -1/8 of max external fuselage height (130 in.).
+             - back of center of gravity reduces autopilot roll (step back at supersonic cruise).
+               It has been found that 200 inches behind CG reduces AUTOPILOT ROLL.
+               => real at Mach 2 is 62% of C0.
+
+             Eye point location : length from nose to cockpit (24 ft),
+                                  1/4 of max external fuselage width (113 in.),
+                                  1/4 of max fuselage height (113 in.).
+
+             Add ac_wingincidence : 1/20 of wing chord (C0).
+
+             Htailarm : distance from CG to horizontal tail tip, none (5 ft).
+             Vtailarm : distance from CG to vertical tail tip.
+        </documentation>
+
+        <wingarea unit="FT2"> 3856.0000 </wingarea>
+        <wingspan unit="FT"> 83.8300 </wingspan>
+        <chord unit="FT"> 90.7500 </chord>                                               <!-- aeromatic 46.0 (C0) -->
+        <htailarea unit="FT2"> 0.0000 </htailarea>                                       <!-- aeromatic 964.0 -->
+        <htailarm unit="FT"> 5.0000 </htailarm>                                          <!-- aeromatic 18.0 -->
+        <vtailarea unit="FT2"> 365.0000 </vtailarea>                                     <!-- aeromatic 771.20 -->
+        <vtailarm unit="FT"> 5.0000 </vtailarm>                                          <!-- added (turbulence) -->
+        <wing_incidence unit="DEG"> 2.86 </wing_incidence>                               <!-- aeromatic none (0.0) -->
+        <!-- AC_LV        91.05                                      unit ? -->
+        <location name="AERORP" unit="IN">                                               <!-- aeromatic 1335.4, 0.0, 0.0 -->
+            <x> 736.22 </x>
+            <y> 0.0000 </y>
+            <z> -16.2500 </z>
+        </location>
+        <location name="EYEPOINT" unit="IN">                                             <!-- aeromatic 170.0, -32.0, 80.0 -->
+            <x> 288.0000 </x>
+            <y> -28.2500 </y>
+            <z> 32.5000 </z>
+        </location>
+        <location name="VRP" unit="IN">
+            <x> 0.0000 </x>
+            <y> 0.0000 </y>
+            <z> 0.0000 </z>
+        </location>
+    </metrics>
+
+    <mass_balance>
+        <documentation>
+             Center of gravity location, empty weight, in aircraft's own structural coord
+             system. X, Y, Z, in inches; X is positive out the tail, Y positive out the
+             right wing.
+        </documentation>
+
+        <ixx unit="SLUG*FT2"> 1432000.0000 </ixx>                                        <!-- aeromatic 3419278 -->
+        <iyy unit="SLUG*FT2"> 19034000.0000 </iyy>                                       <!-- aeromatic 22486091 -->
+        <izz unit="SLUG*FT2"> 10100000.0000 </izz>                                       <!-- aeromatic 21487661 -->
+        <ixy unit="SLUG*FT2"> 0.0000 </ixy>
+        <ixz unit="SLUG*FT2"> 0.0000 </ixz>
+        <iyz unit="SLUG*FT2"> 0.0000 </iyz>
+        <emptywt unit="LBS"> 173500.0000 </emptywt>                                      <!-- aeromatic 244800 -->
+        <location name="CG" unit="IN">                                                   <!-- aeromatic 1335.4, 0.0, -60.7 -->
+            <x> 1299.4000 </x>
+            <y> 0.0000 </y>
+            <z> -32.5000 </z>
+        </location>
+        <pointmass name="payload">
+            <weight unit="LBS"> 29500 </weight>
+            <location name="payload" unit="IN">
+                <x> 1299.4 </x>
+                <y> 0 </y>
+                <z> -32.5 </z>
+            </location>
+        </pointmass>
+    </mass_balance>
+
+    <ground_reactions>
+        <documentation>
+            - => real nose (18.7 m = 736.2 in.), wing (18.7 m + 18.2 m = 1452.8 in.).
+            - gear height determined by 3D model, supposed at scale.
+
+            - tyre diameter of main gears, at 3/42 of the length between the gears (18.2 m) = 51.2 in.
+
+            - adjust the front spring, to be horizontal at full load.
+        </documentation>
+
+        <contact type="BOGEY" name="NOSE_LG">
+            <location unit="IN">
+                <x> 736.2000 </x>
+                <y> 0.0000 </y>
+                <z> -178.5000 </z>
+            </location>
+            <static_friction> 0.8000 </static_friction>
+            <dynamic_friction> 0.5000 </dynamic_friction>
+            <rolling_friction> 0.0200 </rolling_friction>
+            <spring_coeff unit="LBS/FT"> 40000.0000 </spring_coeff>
+            <damping_coeff unit="LBS/FT/SEC"> 40800.0000 </damping_coeff>
+            <max_steer unit="DEG"> 60.0000 </max_steer>
+            <brake_group> NONE </brake_group>
+            <retractable>1</retractable>
+        </contact>
+        <contact type="BOGEY" name="LEFT_FWD">
+            <location unit="IN">
+                <x> 1427.2000 </x>
+                <y> -152.0000 </y>
+                <z> -158.5000 </z>
+            </location>
+            <static_friction> 0.8000 </static_friction>
+            <dynamic_friction> 0.5000 </dynamic_friction>
+            <rolling_friction> 0.0200 </rolling_friction>
+            <spring_coeff unit="LBS/FT"> 408000.0000 </spring_coeff>
+            <damping_coeff unit="LBS/FT/SEC"> 81600.0000 </damping_coeff>
+            <max_steer unit="DEG"> 0.0 </max_steer>
+            <brake_group> LEFT </brake_group>
+            <retractable>1</retractable>
+        </contact>
+        <contact type="BOGEY" name="LEFT_REAR">
+            <location unit="IN">
+                <x> 1478.4000 </x>
+                <y> -152.0000 </y>
+                <z> -158.5000 </z>
+            </location>
+            <static_friction> 0.8000 </static_friction>
+            <dynamic_friction> 0.5000 </dynamic_friction>
+            <rolling_friction> 0.0200 </rolling_friction>
+            <spring_coeff unit="LBS/FT"> 408000.0000 </spring_coeff>
+            <damping_coeff unit="LBS/FT/SEC"> 81600.0000 </damping_coeff>
+            <max_steer unit="DEG"> 0.0 </max_steer>
+            <brake_group> LEFT </brake_group>
+            <retractable>1</retractable>
+        </contact>
+        <contact type="BOGEY" name="RIGHT_FWD">
+            <location unit="IN">
+                <x> 1427.2000 </x>
+                <y> 152.0000 </y>
+                <z> -158.5000 </z>
+            </location>
+            <static_friction> 0.8000 </static_friction>
+            <dynamic_friction> 0.5000 </dynamic_friction>
+            <rolling_friction> 0.0200 </rolling_friction>
+            <spring_coeff unit="LBS/FT"> 408000.0000 </spring_coeff>
+            <damping_coeff unit="LBS/FT/SEC"> 81600.0000 </damping_coeff>
+            <max_steer unit="DEG"> 0.0 </max_steer>
+            <brake_group> RIGHT </brake_group>
+            <retractable>1</retractable>
+        </contact>
+        <contact type="BOGEY" name="RIGHT_REAR">
+            <location unit="IN">
+                <x> 1478.4000 </x>
+                <y> 152.0000 </y>
+                <z> -158.0000 </z>
+            </location>
+            <static_friction> 0.8000 </static_friction>
+            <dynamic_friction> 0.5000 </dynamic_friction>
+            <rolling_friction> 0.0200 </rolling_friction>
+            <spring_coeff unit="LBS/FT"> 408000.0000 </spring_coeff>
+            <damping_coeff unit="LBS/FT/SEC"> 81600.0000 </damping_coeff>
+            <max_steer unit="DEG"> 0.0 </max_steer>
+            <brake_group> RIGHT </brake_group>
+            <retractable>1</retractable>
+        </contact>
+        <contact type="BOGEY" name="TAIL">
+            <location unit="IN">
+                <x> 2081.0000 </x>
+                <y> 0.0000 </y>
+                <z> 20.0000 </z>
+            </location>
+            <static_friction> 0.8000 </static_friction>
+            <dynamic_friction> 0.5000 </dynamic_friction>
+            <rolling_friction> 0.0200 </rolling_friction>
+            <spring_coeff unit="LBS/FT"> 122400.0000 </spring_coeff>
+            <damping_coeff unit="LBS/FT/SEC"> 40800.0000 </damping_coeff>
+            <max_steer unit="DEG"> 0.0 </max_steer>
+            <brake_group> NONE </brake_group>
+            <retractable>1</retractable>
+        </contact>
+
+        <documentation>
+            additional contact points, for crash detection when gear retracted.
+        </documentation>
+
+        <contact type="STRUCTURE" name="NOSE_TIP">
+            <location unit="IN">
+                <x> 0.0000 </x>
+                <y> 0.0000 </y>
+                <z> 0.0000 </z>
+            </location>
+            <static_friction> 0.8000 </static_friction>
+            <dynamic_friction> 0.5000 </dynamic_friction>
+            <rolling_friction> 0.0200 </rolling_friction>
+            <spring_coeff unit="LBS/FT"> 122400.0000 </spring_coeff>
+            <damping_coeff unit="LBS/FT/SEC"> 40800.0000 </damping_coeff>
+        </contact>
+        <contact type="STRUCTURE" name="LEFT_TIP">
+            <location unit="IN">
+                <x> 1825.2000 </x>
+                <y> -503.0000 </y>
+                <z> 0.0000 </z>
+            </location>
+            <static_friction> 0.8000 </static_friction>
+            <dynamic_friction> 0.5000 </dynamic_friction>
+            <rolling_friction> 0.0200 </rolling_friction>
+            <spring_coeff unit="LBS/FT"> 122400.0000 </spring_coeff>
+            <damping_coeff unit="LBS/FT/SEC"> 40800.0000 </damping_coeff>
+        </contact>
+        <contact type="STRUCTURE" name="RIGHT_TIP">
+            <location unit="IN">
+                <x> 1825.2000 </x>
+                <y> 503.0000 </y>
+                <z> 0.0000 </z>
+            </location>
+            <static_friction> 0.8000 </static_friction>
+            <dynamic_friction> 0.5000 </dynamic_friction>
+            <rolling_friction> 0.0200 </rolling_friction>
+            <spring_coeff unit="LBS/FT"> 122400.0000 </spring_coeff>
+            <damping_coeff unit="LBS/FT/SEC"> 40800.0000 </damping_coeff>
+        </contact>
+        <contact type="STRUCTURE" name="TAIL_TIP">
+            <location unit="IN">
+                <x> 2427.6000 </x>
+                <y> 0.0000 </y>
+                <z> 50.0000 </z>
+            </location>
+            <static_friction> 0.8000 </static_friction>
+            <dynamic_friction> 0.5000 </dynamic_friction>
+            <rolling_friction> 0.0200 </rolling_friction>
+            <spring_coeff unit="LBS/FT"> 122400.0000 </spring_coeff>
+            <damping_coeff unit="LBS/FT/SEC"> 40800.0000 </damping_coeff>
+        </contact>
+    </ground_reactions>
+
+    <system name="Nose Wheel Steering">
+     <property>systems/NWS/engaged</property>
+     <property value="1">systems/NWS/hydraulics</property>
+
+     <channel name="Nose Wheel Steering">
+        <scheduled_gain name="systems/NWS/pedal-cmd">
+         <documentation>
+              default is rudder pedal (flight).
+         </documentation>
+         <input>fcs/rudder-cmd-norm</input>
+         <table>
+          <independentVar lookup="row">systems/NWS/engaged</independentVar>
+           <tableData>
+              0      1.0
+              1      0.0
+           </tableData>
+         </table>
+         <output>fcs/rudder-pedal-norm</output>
+        </scheduled_gain>
+
+        <scheduled_gain name="systems/NWS/steer-cmd">
+         <documentation>
+              - default is no wheel steering (flight).
+              - default is hydraulics.
+              - rudder steering at 10 deg.
+         </documentation>
+         <input>fcs/rudder-cmd-norm</input>
+         <table>
+          <independentVar lookup="row">systems/NWS/engaged</independentVar>
+          <independentVar lookup="column">systems/NWS/hydraulics</independentVar>
+           <tableData>
+                     0.0      1.0
+              0     -0.0     -0.171
+              1     -0.0     -1.0
+           </tableData>
+         </table>
+         <output>fcs/steer-cmd-norm</output>
+      </scheduled_gain>
+     </channel>
+    </system>
+    
+    <system name="Tractor">
+     <property>/sim/model/pushback/target-speed-fps</property>
+     <property>/sim/model/pushback/position-norm</property>     
+     <property>/sim/model/pushback/kp</property>
+     <property>/sim/model/pushback/ki</property>
+     <property>/sim/model/pushback/kd</property>
+     <channel name="Tractor">
+
+      <switch name="systems/pushback/linked">
+        <default value="-1"/>
+        <test value="0">
+          /sim/model/pushback/position-norm gt 0.95
+          gear/unit[0]/WOW == 1
+          gear/unit[0]/wheel-speed-fps lt 50
+        </test>
+      </switch>
+
+      <summer name="systems/pushback/speed-error">
+        <input>/sim/model/pushback/target-speed-fps</input>
+        <input>-gear/unit[0]/wheel-speed-fps</input>
+      </summer>
+
+      <pid name="systems/pushback/force">
+        <input>systems/pushback/speed-error</input>
+        <kp>/sim/model/pushback/kp</kp>
+        <ki>/sim/model/pushback/ki</ki>
+        <kd>/sim/model/pushback/kd</kd>
+        <trigger>systems/pushback/linked</trigger>
+        <output>/sim/model/pushback/force</output>
+      </pid>
+
+      <switch name="systems/pushback/force-output">
+        <default value="0"/>
+        <test value="systems/pushback/force">
+          systems/pushback/linked == 0
+        </test>
+        <output>external_reactions/tractor/magnitude</output>
+      </switch>
+
+    </channel>
+   </system>
+
+    <flight_control name="Concorde">
+
+     <property>fcs/elevator-surface</property>
+     <property>fcs/aileron-surface</property>
+     <property>fcs/rudder-surface</property>
+
+     <channel name="Pitch">
+
+        <summer name="Pitch Trim Sum">
+            <input>fcs/elevator-cmd-norm</input>
+            <input>fcs/pitch-trim-cmd-norm</input>
+            <clipto>
+                <min>-1.0000</min>
+                <max>1.0000</max>
+            </clipto>
+        </summer>
+
+        <actuator name="Elevator Actuator">
+            <input>fcs/pitch-trim-sum</input>
+            <output>fcs/elevator-surface</output>
+        </actuator>
+
+        <aerosurface_scale name="Elevator Control">
+            <input>fcs/elevator-surface</input>
+            <gain>0.0175</gain>
+            <range>
+                <documentation>
+                  => change -0.35/0.30 to -22.5/22.5 deg real.
+                </documentation>
+                <min>-22.5000</min>
+                <max>22.5000</max>
+            </range>
+            <output>fcs/elevator-pos-rad</output>
+        </aerosurface_scale>
+        <aerosurface_scale name="Elevator Position Normalizer">
+            <input>fcs/elevator-surface</input>
+            <range>
+                <min>-1</min>
+                <max>1</max>
+            </range>
+            <output>fcs/elevator-pos-norm</output>
+        </aerosurface_scale>
+
+     </channel>
+     <channel name="Roll">
+
+        <summer name="Roll Trim Sum">
+            <input>fcs/aileron-cmd-norm</input>
+            <input>fcs/roll-trim-cmd-norm</input>
+            <clipto>
+                <min>-1.0000</min>
+                <max>1.0000</max>
+            </clipto>
+        </summer>
+
+        <actuator name="Aileron Actuator">
+            <input>fcs/roll-trim-sum</input>
+            <output>fcs/aileron-surface</output>
+        </actuator>
+
+        <aerosurface_scale name="Left Aileron Control">
+            <input>fcs/aileron-surface</input>
+            <gain>0.0175</gain>
+            <range>
+                <documentation>
+                   => change 0.35 to 22.5 deg real.
+                </documentation>
+                <min>-22.5000</min>
+                <max>22.5000</max>
+            </range>
+            <output>fcs/left-aileron-pos-rad</output>
+        </aerosurface_scale>
+        <aerosurface_scale name="Left Aileron Position Normalizer">
+            <input>fcs/aileron-surface</input>
+            <range>
+                <min>-1</min>
+                <max>1</max>
+            </range>
+            <output>fcs/left-aileron-pos-norm</output>
+        </aerosurface_scale>
+
+        <aerosurface_scale name="Right Aileron Control">
+            <input>-fcs/aileron-surface</input>
+            <gain>0.0175</gain>
+            <range>
+                <documentation>
+                   => change 0.35 to 22.5 deg real.
+                </documentation>
+                <min>-22.5000</min>
+                <max>22.5000</max>
+            </range>
+            <output>fcs/right-aileron-pos-rad</output>
+        </aerosurface_scale>
+        <aerosurface_scale name="Right Aileron Position Normalizer">
+            <input>fcs/aileron-surface</input>
+            <range>
+                <min>-1</min>
+                <max>1</max>
+            </range>
+            <output>fcs/right-aileron-pos-norm</output>
+        </aerosurface_scale>
+
+     </channel>
+     <channel name="Yaw">
+
+        <summer name="Rudder Command Sum">
+            <input>fcs/rudder-pedal-norm</input>
+            <input>fcs/yaw-trim-cmd-norm</input>
+            <clipto>
+                <min>-1.0000</min>
+                <max>1.0000</max>
+            </clipto>
+        </summer>
+
+        <scheduled_gain name="Yaw Damper Rate">
+            <input>velocities/r-aero-rad_sec</input>
+            <table>
+                <independentVar>aero/qbar-psf</independentVar>
+                <tableData>
+                    3.0000	0.0000
+                    11.0000	2.0000
+                </tableData>
+            </table>
+        </scheduled_gain>
+
+        <scheduled_gain name="Yaw Damper Beta">
+            <input>aero/beta-rad</input>
+            <table>
+                <independentVar>aero/qbar-psf</independentVar>
+                <tableData>
+                    3.0000	0.0000
+                    11.0000	0.0000
+                </tableData>
+            </table>
+        </scheduled_gain>
+
+        <summer name="Yaw Damper Sum">
+            <input>fcs/yaw-damper-beta</input>
+            <input>fcs/yaw-damper-rate</input>
+            <clipto>
+                <min>-0.2000</min>
+                <max>0.2000</max>
+            </clipto>
+        </summer>
+
+        <scheduled_gain name="Yaw Damper Final">
+            <input>fcs/yaw-damper-sum</input>
+            <table>
+                <independentVar>aero/qbar-psf</independentVar>
+                <tableData>
+                    2.9900	0.0000
+                    3.0000	1.0000
+                </tableData>
+            </table>
+        </scheduled_gain>
+
+        <summer name="Rudder Sum">
+            <input>fcs/rudder-command-sum</input>
+            <input>fcs/yaw-damper-final</input>
+            <clipto>
+                <min>-1.0000</min>
+                <max>1.0000</max>
+            </clipto>
+        </summer>
+
+        <actuator name="Rudder Actuator">
+            <input>fcs/rudder-sum</input>
+            <output>fcs/rudder-surface</output>
+        </actuator>
+
+        <aerosurface_scale name="Rudder Control">
+            <input>fcs/rudder-surface</input>
+            <gain>0.0175</gain>
+            <range>
+                <documentation>
+                  => change 0.35 to 29 deg real.
+                </documentation>
+                <min>-29.0000</min>
+                <max>29.0000</max>
+            </range>
+            <output>fcs/rudder-pos-rad</output>
+        </aerosurface_scale>
+        <aerosurface_scale name="Rudder Position Normalizer">
+            <input>fcs/rudder-surface</input>
+            <range>
+                <min>-1</min>
+                <max>1</max>
+            </range>
+            <output>fcs/rudder-pos-norm</output>
+        </aerosurface_scale>
+
+     </channel>
+     <channel name="Aeromechanical">
+
+        <kinematic name="Flaps Control">
+            <input>fcs/flap-cmd-norm</input>
+            <traverse>
+                <documentation>
+                  changed 30 deg / 3 positions : use flaps as nose.
+                </documentation>
+                <setting>
+                    <position>0.0000</position>
+                    <time>0.0000</time>
+                </setting>
+                <setting>
+                    <position>0.0000</position>
+                    <time>7.0000</time>
+                </setting>
+                <setting>
+                    <position>5.0000</position>
+                    <time>5.0000</time>
+                </setting>
+                <setting>
+                    <position>12.5000</position>
+                    <time>6.0000</time>
+                </setting>
+            </traverse>
+            <output>fcs/flap-pos-deg</output>
+        </kinematic>
+        <aerosurface_scale name="Flap Position Normalizer">
+          <input>fcs/flap-pos-deg</input>
+          <domain>
+            <min>0</min>
+            <max>12.5</max>
+          </domain>
+          <range>
+            <min>0</min>
+            <max>1</max>
+          </range>
+          <output>fcs/flap-pos-norm</output>
+        </aerosurface_scale>
+
+        <kinematic name="Gear Control">
+            <input>gear/gear-cmd-norm</input>
+            <traverse>
+                <documentation>
+                   => up in 12 s.
+                </documentation>
+                <setting>
+                    <position>0.0000</position>
+                    <time>0.0000</time>
+                </setting>
+                <setting>
+                    <position>1.0000</position>
+                    <time>12.0000</time>
+                </setting>
+            </traverse>
+            <output>gear/gear-pos-norm</output>
+        </kinematic>
+
+        <kinematic name="Speedbrake Control">
+            <input>fcs/speedbrake-cmd-norm</input>
+            <traverse>
+                <setting>
+                    <position>0.0000</position>
+                    <time>0.0000</time>
+                </setting>
+                <setting>
+                    <position>1.0000</position>
+                    <time>1.0000</time>
+                </setting>
+            </traverse>
+            <output>fcs/speedbrake-pos-norm</output>
+        </kinematic>
+
+     </channel>
+
+    </flight_control>
+
+    <propulsion>
+        <documentation>
+            - after FCS, which creates the intake command variable.
+            - air intake on (supersonic) by default.
+        </documentation>
+
+        <documentation>
+            - Engine center at 5/7 of length (2428 in.), -2/5 of fuselage height (130 in.).
+            - Border aligned with main gear track (304 in. / 2).
+              => real engine diameter is 1.65 m = (11 - 7.7) / 2.
+            - Thruster center 3/4 of length (2428 in.), aligned with engines.
+        </documentation>
+
+        <property>fcs/ground-idle</property>
+        <property>fcs/intake-subsonic-pos</property>
+
+        <engine file="Olympus593Mrk610">
+            <location unit="IN">
+                <x> 1734.0000 </x>
+                <y> -249.4000 </y>
+                <z> -52.0000 </z>                                                      <!-- aeromatic -40 -->
+            </location>
+            <orient unit="DEG">
+                <roll> 0.0 </roll>
+                <pitch> 0.0000 </pitch>
+                <yaw> 0.0000 </yaw>
+            </orient>
+            <feed>13</feed>
+            <thruster file="direct">
+                <location unit="IN">
+                    <x> 1821.0000 </x>
+                    <y> -249.4000 </y>
+                    <z> -52.0000 </z>
+                </location>
+                <orient unit="DEG">
+                    <roll> 0.0 </roll>
+                    <pitch> 0.0 </pitch>
+                    <yaw> 0.0 </yaw>
+                </orient>
+            </thruster>
+        </engine>
+        <engine file="Olympus593Mrk610">
+            <location unit="IN">
+                <x> 1734.0000 </x>
+                <y> -184.5000 </y>
+                <z> -52.0000 </z>
+            </location>
+            <orient unit="DEG">
+                <roll> 0.0 </roll>
+                <pitch> 0.0000 </pitch>
+                <yaw> 0.0000 </yaw>
+            </orient>
+            <feed>14</feed>
+            <thruster file="direct">
+                <location unit="IN">
+                    <x> 1821.0000 </x>
+                    <y> -184.5000 </y>
+                    <z> -52.0000 </z>
+                </location>
+                <orient unit="DEG">
+                    <roll> 0.0 </roll>
+                    <pitch> 0.0 </pitch>
+                    <yaw> 0.0 </yaw>
+                </orient>
+            </thruster>
+        </engine>
+        <engine file="Olympus593Mrk610">
+            <location unit="IN">
+                <x> 1734.0000 </x>
+                <y> 184.5000 </y>
+                <z> -52.0000 </z>
+            </location>
+            <orient unit="DEG">
+                <roll> 0.0 </roll>
+                <pitch> 0.0000 </pitch>
+                <yaw> 0.0000 </yaw>
+            </orient>
+            <feed>15</feed>
+            <thruster file="direct">
+                <location unit="IN">
+                    <x> 1821.0000 </x>
+                    <y> 184.5000 </y>
+                    <z> -52.0000 </z>
+                </location>
+                <orient unit="DEG">
+                    <roll> 0.0 </roll>
+                    <pitch> 0.0 </pitch>
+                    <yaw> 0.0 </yaw>
+                </orient>
+            </thruster>
+        </engine>
+        <engine file="Olympus593Mrk610">
+            <location unit="IN">
+                <x> 1734.0000 </x>
+                <y> 249.4000 </y>
+                <z> -52.0000 </z>
+            </location>
+            <orient unit="DEG">
+                <roll> 0.0 </roll>
+                <pitch> 0.0000 </pitch>
+                <yaw> 0.0000 </yaw>
+            </orient>
+            <feed>16</feed>
+            <thruster file="direct">
+                <location unit="IN">
+                    <x> 1821.0000 </x>
+                    <y> 249.4000 </y>
+                    <z> -52.0000 </z>
+                </location>
+                <orient unit="DEG">
+                    <roll> 0.0 </roll>
+                    <pitch> 0.0 </pitch>
+                    <yaw> 0.0 </yaw>
+                </orient>
+            </thruster>
+        </engine>
+
+        <documentation>
+           The parameters are gear track, and tank 5 radius;
+           to check against engine center.
+
+           => Real length is arm, % of MAC (see table above) : real MAC (C0 1089 in.)
+              starts at 18.7 m (736.2 in.).
+           => Real half gear track is 7.7 m / 2 (151.6 in.).
+
+           Configuration for take off with maximum weight :
+           all tanks full, except tank 11 at 86%.
+        </documentation>
+
+        <tank type="FUEL">    <!-- Tank number 0 -->
+            <documentation>
+                Tank 1 :
+                - 1/2 radius of tank 5.
+                - align 3/4 of gear track.
+                - => 39.80 % MAC.
+            </documentation>
+
+            <location unit="IN">
+                <x> 1170.0000 </x>
+                <y> -114.0000 </y>
+                <z>  -12.0000 </z>                                                    <!-- aeromatic -12 -->
+            </location>
+            <radius unit="IN"> 50 </radius>
+            <capacity unit="LBS"> 9255.0100 </capacity>
+            <contents unit="LBS"> 9255.0100 </contents>
+            <temperature> 59 </temperature>                                           <!-- 15 deg C -->
+        </tank>
+        <tank type="FUEL">    <!-- Tank number 1 -->
+            <documentation>
+                Tank 2 :
+                - 1/2 radius of tank 5.
+                - align 1/2 of gear track.
+                - near engine center.
+                - => 76.10 % MAC.
+            </documentation>
+            <location unit="IN">
+                <x> 1565.0000 </x>
+                <y> -76.0000 </y>
+                <z> -12.0000 </z>
+            </location>
+            <radius unit="IN"> 50 </radius>
+            <capacity unit="LBS"> 10075.1300 </capacity>
+            <contents unit="LBS"> 10075.1300 </contents>
+            <temperature> 59 </temperature>
+        </tank>
+        <tank type="FUEL">    <!-- Tank number 2 -->
+            <documentation>
+                Tank 3 :
+                - 1/2 radius of tank 5.
+                - align 1/2 of gear track.
+                - near engine center.
+                - => 76.10 % MAC.
+            </documentation>
+            <location unit="IN">
+                <x> 1565.0000 </x>
+                <y> 76.0000 </y>
+                <z> -12.0000 </z>
+            </location>
+            <radius unit="IN"> 50 </radius>
+            <capacity unit="LBS"> 10075.1300 </capacity>
+            <contents unit="LBS"> 10075.1300 </contents>
+            <temperature> 59 </temperature>
+        </tank>
+        <tank type="FUEL">    <!-- Tank number 3 -->
+            <documentation>
+                Tank 4 :
+                - 1/2 radius of tank 5.
+                - align 3/4 of gear track.
+                - => 39.80 % MAC
+            </documentation>
+            <location unit="IN">
+                <x> 1170.0000 </x>
+                <y> 114.0000 </y>
+                <z> -12.0000 </z>
+            </location>
+            <radius unit="IN"> 50 </radius>
+            <capacity unit="LBS"> 9255.0100 </capacity>
+            <contents unit="LBS"> 9255.0100 </contents>
+            <temperature> 59 </temperature>
+        </tank>
+        <tank type="FUEL">    <!-- Tank number 4 -->
+            <documentation>
+                Tank 5 :
+                - center + radius = gear position.
+                - => 49.40 % MAC.
+            </documentation>
+            <location unit="IN">
+                <x> 1274.0000 </x>
+                <y> -152.0000 </y>
+                <z> -12.0000 </z>
+            </location>
+            <radius unit="IN"> 100 </radius>
+            <capacity unit="LBS"> 15873.2800 </capacity>
+            <contents unit="LBS"> 15873.2800 </contents>
+        </tank>
+        <tank type="FUEL">    <!-- Tank number 5 -->
+            <documentation>
+                Tank 6 :
+                - 3/2 radius of tank 5.
+                - align 1/2 of gear track.
+                - before engine center.
+                - => 66.70 % MAC.
+            </documentation>
+            <location unit="IN">
+                <x> 1463.0000 </x>
+                <y> -76.0000 </y>
+                <z> -12.0000 </z>
+            </location>
+            <radius unit="IN"> 150 </radius>
+            <capacity unit="LBS"> 25544.9600 </capacity>
+            <contents unit="LBS"> 25544.9600 </contents>
+        </tank>
+        <tank type="FUEL">    <!-- Tank number 6 -->
+            <documentation>
+                Tank 7 :
+                - radius of tank 5.
+                - before engine center.
+                - => 64.70 % MAC.
+            </documentation>
+            <location unit="IN">
+                <x> 1441.0000 </x>
+                <y> 152.0000 </y>
+                <z> -12.0000 </z>
+            </location>
+            <radius unit="IN"> 100 </radius>
+            <capacity unit="LBS"> 16325.2300 </capacity>
+            <contents unit="LBS"> 16325.2300 </contents>
+        </tank>
+        <tank type="FUEL">    <!-- Tank number 7 -->
+            <documentation>
+                Tank 8 :
+                - 3/2 radius of tank 5.
+                - align 1/2 of gear track.
+                - => 46.70 % MAC.
+            </documentation>
+            <location unit="IN">
+                <x> 1245.0000 </x>
+                <y> 76.0000 </y>
+                <z> -12.0000 </z>
+            </location>
+            <radius unit="IN"> 150 </radius>
+            <capacity unit="LBS"> 28302.9500 </capacity>
+            <contents unit="LBS"> 28302.9500 </contents>
+        </tank>
+        <tank type="FUEL">    <!-- Tank number 8 -->
+            <documentation>
+                Tank 9 :
+                - 3/2 radius of tank 5.
+                - centred on plane axis.
+                - => 16.90 % MAC
+            </documentation>
+            <location unit="IN">
+                <x> 920.0000 </x>
+                <y> 0.0000 </y>
+                <z> -12.0000 </z>
+            </location>
+            <radius unit="IN"> 150 </radius>
+            <capacity unit="LBS"> 24462.4900 </capacity>
+            <contents unit="LBS"> 24462.4900 </contents>
+        </tank>
+        <tank type="FUEL">    <!-- Tank number 9 -->
+            <documentation>
+                Tank 10 :
+                - 1/2 radius of tank 5.
+                - centered on plane axis.
+                - => 30.50 % MAC
+            </documentation>
+            <location unit="IN">
+                <x> 1068.0000 </x>
+                <y> 0.0000 </y>
+                <z> -12.0000 </z>
+            </location>
+            <radius unit="IN"> 50 </radius>
+            <capacity unit="LBS"> 26329.8100 </capacity>
+            <contents unit="LBS"> 26329.8100 </contents>
+        </tank>
+        <tank type="FUEL">    <!-- Tank number 10 -->
+            <documentation>
+                Tank 11 :
+                - 1/2 radius of tank 5.
+                - centered on plane axis.
+                - => 113.90 % MAC
+            </documentation>
+            <location unit="IN">
+                <x> 1977.0000 </x>
+                <y> 0.0000 </y>
+                <z> -12.0000 </z>
+            </location>
+            <radius unit="IN"> 50 </radius>
+            <capacity unit="LBS"> 22961.1400 </capacity>
+            <contents unit="LBS"> 19735.3100 </contents>
+        </tank>
+        <tank type="FUEL">    <!-- Tank number 11 -->
+            <documentation>
+                Tank 5A :
+                - radius of tank 5.
+                - align 5/2 of gear track.
+                - => 74.80 % MAC
+            </documentation>
+            <location unit="IN">
+                <x> 1551.0000 </x>
+                <y> -380.0000 </y>
+                <z> -12.0000 </z>
+            </location>
+            <radius unit="IN"> 100 </radius>
+            <capacity unit="LBS"> 4905.2900 </capacity>
+            <contents unit="LBS"> 4905.2900 </contents>
+        </tank>
+        <tank type="FUEL">    <!-- Tank number 12 -->
+            <documentation>
+                Tank 7A :
+                - radius of tank 5.
+                - align 5/2 of gear track.
+                - => 74.80 % MAC
+            </documentation>
+            <location unit="IN">
+                <x> 1551.0000 </x>
+                <y> 380.0000 </y>
+                <z> -12.0000 </z>
+            </location>
+            <radius unit="IN"> 100 </radius>
+            <capacity unit="LBS"> 4905.2900 </capacity>
+            <contents unit="LBS"> 4905.2900 </contents>
+        </tank>
+
+        <documentation>
+            LP valve to emulate cross feed of engine :
+            - position like the engine tank.
+            - not empty, to avoid stop at launch.
+            - can feed 75000 kg/h per engine (takeoff with reheat X 3 speed up) :
+              25000 x 3 / 3600 = 46 lb content, if supplied every 1 s from other tanks.
+        </documentation>
+
+        <tank type="FUEL">
+            <location unit="IN">
+                <x> 1170.0 </x>
+                <y> -114.0 </y>
+                <z>  -12.0 </z>
+            </location>
+            <capacity unit="LBS"> 46 </capacity>
+            <contents unit="LBS"> 46 </contents>
+        </tank>
+        <tank type="FUEL">
+            <location unit="IN">
+                <x> 1565.0 </x>
+                <y> -76.0 </y>
+                <z> -12.0 </z>
+            </location>
+            <capacity unit="LBS"> 46 </capacity>
+            <contents unit="LBS"> 46 </contents>
+        </tank>
+        <tank type="FUEL">
+            <location unit="IN">
+                <x> 1565.0 </x>
+                <y> 76.0 </y>
+                <z> -12.0 </z>
+            </location>
+            <capacity unit="LBS"> 46 </capacity>
+            <contents unit="LBS"> 46 </contents>
+        </tank>
+        <tank type="FUEL">
+            <location unit="IN">
+                <x> 1170.0 </x>
+                <y> 114.0 </y>
+                <z>  -12.0 </z>
+            </location>
+            <capacity unit="LBS"> 46 </capacity>
+            <contents unit="LBS"> 46 </contents>
+        </tank>
+    </propulsion>
+
+    <aerodynamics>
+
+        <alphalimits unit="DEG">
+            <documentation>
+              added : => real -5.5 to 16.5 deg.
+            </documentation>
+            <min>-5.5</min>
+            <max>16.5</max>
+        </alphalimits>
+
+        <aero_ref_pt_shift_x>
+          <function name="aero/function/kC0">
+            <description>Shift_of_center_of_pressure</description>
+            <table>
+              <independentVar>velocities/mach</independentVar>
+              <tableData>
+                0.5   	0.550
+                0.9   	0.580
+                1.0   	0.645
+                1.2   	0.635
+                1.5   	0.625
+                2.0   	0.620
+              </tableData>
+            </table>
+          </function>
+        </aero_ref_pt_shift_x>
+
+        <documentation>
+           Added :
+           - additional lift on takeoff, otherwise tail touches the ground.
+           - downwash of the air between the wing and the ground creates a cushion,
+             making the landing smooth.
+        </documentation>
+        <function name="aero/function/kCLge">
+            <description>Change_in_lift_due_to_ground_effect</description>
+            <table>
+                <independentVar>aero/h_b-mac-ft</independentVar>
+                <tableData>
+                    0.0000	1.2000
+                    0.1000	1.1500
+                    0.1500	1.0900
+                    0.2000	1.0200
+                    1.1000	1.0000
+                </tableData>
+            </table>
+        </function>
+
+        <axis name="DRAG">
+            <documentation>
+               Add Mach 0.0, 0.6, 1.1 and 1.4 :
+               - increase (x1.2) climb drag to get 10 pitch;
+               - increase (x1.2) landing drag to get 10 pitch and VREF 162 kt.
+               - supersonic decreases drag (in front of the wave);
+               - Mach 1.1 is end of transonic wall.
+               - Mach 1.4 is supersonic cruise.
+            </documentation>
+            <function name="aero/coefficient/CD0">
+                <description>Drag_at_zero_lift</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                      <table>
+                          <independentVar lookup="row">aero/alpha-rad</independentVar>
+                          <independentVar lookup="column">velocities/mach</independentVar>
+                          <tableData>
+                                        0.0000	0.6000	0.8000	1.1000	1.4000
+                              -1.5700	1.5000	1.5000	1.5000	1.5000	1.5000
+                              -0.2600	0.0408	0.0408	0.0340	0.0200	0.0120
+                               0.0000	0.0204	0.0204	0.0170	0.0100	0.0060
+                               0.2600	0.0408	0.0408	0.0340	0.0200	0.0120
+                               1.5700	1.5000	1.5000	1.5000	1.5000	1.5000
+                          </tableData>
+                      </table>
+                </product>
+            </function>
+            <function name="aero/coefficient/CDi">
+                <description>Induced_drag</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>aero/cl-squared</property>
+                    <value>0.042</value>
+                </product>
+            </function>
+            <documentation>
+              Add Mach 1.15, 1.3, 1.7 and 2.0 :
+              - respect the thrust X 2.7 by air intakes.
+              - supersonic decreases drag (in front of the wave).
+              - Mach 1.8 adjusts climb rate : 0.015 -> 0.018.
+              - Mach 2.0 adjusts consumption during supersonic cruise.
+              Climb from Mach 0.95 to 1.7 in 10 minutes, adjusted by :
+              - Mach 1.1 is end of transonic wall.
+              - Mach 1.3 is start of effect of air intakes.
+              - Mach 1.7 is end of reaheat.
+            </documentation>
+            <function name="aero/coefficient/CDmach">
+                <description>Drag_due_to_mach</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                      <table>
+                          <independentVar>velocities/mach</independentVar>
+                          <tableData>
+                              0.0       0.000
+                              0.79      0.000
+                              1.1       0.023
+                              1.15      0.020
+                              1.3       0.019
+                              1.7       0.016
+                              1.8       0.013
+                              2.0       0.010
+                          </tableData>
+                      </table>
+                </product>
+            </function>
+            <documentation>
+              nose drag.
+            </documentation>
+            <function name="aero/coefficient/CDflap">
+                <description>Drag_due_to_flaps</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>fcs/flap-cmd-norm</property>
+                    <value>0.0550</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/CDgear">
+                <description>Drag_due_to_gear</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>gear/gear-pos-norm</property>
+                    <value>0.0110</value>
+                </product>
+            </function>
+            <documentation>
+               0.0170 replaced by 0.0 : ctrl-B enables speedbrakes.
+            </documentation>
+            <function name="aero/coefficient/CDsb">
+                <description>Drag_due_to_speedbrakes</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>fcs/speedbrake-pos-norm</property>
+                    <value>0.0</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/CDbeta">
+                <description>Drag_due_to_sideslip</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                      <table>
+                          <independentVar>aero/beta-rad</independentVar>
+                          <tableData>
+                              -1.5700	1.2300
+                              -0.2600	0.0500
+                               0.0000	0.0000
+                               0.2600	0.0500
+                               1.5700	1.2300
+                          </tableData>
+                      </table>
+                </product>
+            </function>
+            <documentation>
+              - drag is always positiv.
+              - divide by 10.
+            </documentation>
+            <function name="aero/coefficient/CDde">
+                <description>Drag_due_to_Elevator_Deflection</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <abs>
+                     <property>fcs/elevator-pos-norm</property>
+                    </abs>
+                    <value>0.0055</value>
+                </product>
+            </function>
+        </axis>
+
+        <axis name="SIDE">
+            <function name="aero/coefficient/CYb">
+                <description>Side_force_due_to_beta</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>aero/beta-rad</property>
+                    <value>-1.0000</value>
+                </product>
+            </function>
+        </axis>
+
+        <axis name="LIFT">
+            <documentation>
+             Add Mach 0.0 and 0.6 :
+             - decrease (0 and x1/3 at 0 radian) landing lift to get 10 pitch;
+             - decrease climb lift to get 10 pitch;
+             - at low speed, lift is better (x0.75) at high AOA, because of vortex over the wing.
+
+             Add Mach above 0.8 :
+             - transonic (Mach 1.06) shifts the curve vertically (XB-70).
+             - supersonic (above Mach 1.18) shifts the curve vertically (XB-70).
+             - adjust consumption during supersonic cruise : drag increases with alpha.
+            </documentation>
+            <function name="aero/coefficient/CLalpha">
+                <description>Lift_due_to_alpha</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>aero/function/kCLge</property>
+                      <table>
+                          <independentVar lookup="row">aero/alpha-rad</independentVar>
+                          <independentVar lookup="column">velocities/mach</independentVar>
+                          <tableData>
+                                      0.0      0.6      0.8      1.0      1.06     1.18     1.65     2.10
+                              -0.20  -0.227   -0.227   -0.680   -0.680   -0.700   -0.680   -0.780   -0.880
+                               0.00   0.000    0.067    0.200    0.200    0.180    0.200    0.100    0.000
+                               0.23   0.900    0.900    1.200    1.200    1.180    1.200    1.100    1.000
+                               0.60   0.200    0.200    0.600    0.600    0.580    0.600    0.500    0.400
+                          </tableData>
+                      </table>
+                </product>
+            </function>
+            <documentation>
+              changed 1.5 to 0.0 : used flaps as nose.
+            </documentation>
+            <function name="aero/coefficient/dCLflap">
+                <description>Delta_Lift_due_to_flaps</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>fcs/flap-cmd-norm</property>
+                    <value>0.0000</value>
+                </product>
+            </function>
+           <documentation>
+               -0.0800 replaced by 0.0 : ctrl-B enables speedbrakes.
+            </documentation>
+            <function name="aero/coefficient/dCLsb">
+                <description>Delta_Lift_due_to_speedbrake</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>fcs/speedbrake-pos-norm</property>
+                    <value>0.0</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/CLde">
+                <description>Lift_due_to_Elevator_Deflection</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>fcs/elevator-pos-rad</property>
+                    <value>0.2000</value>
+                </product>
+            </function>
+        </axis>
+
+        <axis name="ROLL">
+            <function name="aero/coefficient/Clb">
+                <description>Roll_moment_due_to_beta</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>aero/beta-rad</property>
+                    <value>-0.1000</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Clp">
+                <description>Roll_moment_due_to_roll_rate</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>aero/bi2vel</property>
+                    <property>velocities/p-aero-rad_sec</property>
+                    <value>-0.4000</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Clr">
+                <description>Roll_moment_due_to_yaw_rate</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>aero/bi2vel</property>
+                    <property>velocities/r-aero-rad_sec</property>
+                    <value>0.1500</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Clda">
+                <description>Roll_moment_due_to_aileron</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>fcs/left-aileron-pos-rad</property>
+                      <table>
+                          <independentVar>velocities/mach</independentVar>
+                          <tableData>
+                              0.0000	0.1000
+                              2.0000	0.0330
+                          </tableData>
+                      </table>
+                </product>
+            </function>
+            <function name="aero/coefficient/Cldr">
+                <description>Roll_moment_due_to_rudder</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>fcs/rudder-pos-rad</property>
+                    <value>0.0100</value>
+                </product>
+            </function>
+        </axis>
+
+        <axis name="PITCH">
+            <function name="aero/coefficient/Cmalpha">
+                <description>Pitch_moment_due_to_alpha</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/cbarw-ft</property>
+                    <property>aero/alpha-rad</property>
+                    <value>-0.7000</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Cmde">
+                <description>Pitch_moment_due_to_elevator</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/cbarw-ft</property>
+                    <property>fcs/elevator-pos-rad</property>
+                      <table>
+                          <independentVar>velocities/mach</independentVar>
+                          <tableData>
+                              0.0000	-1.3000
+                              2.0000	-0.3250
+                          </tableData>
+                      </table>
+                </product>
+            </function>
+            <function name="aero/coefficient/Cmq">
+                <description>Pitch_moment_due_to_pitch_rate</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/cbarw-ft</property>
+                    <property>aero/ci2vel</property>
+                    <property>velocities/q-aero-rad_sec</property>
+                    <value>-21.0000</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Cmadot">
+                <description>Pitch_moment_due_to_alpha_rate</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/cbarw-ft</property>
+                    <property>aero/ci2vel</property>
+                    <property>aero/alphadot-rad_sec</property>
+                    <value>-4.0000</value>
+                </product>
+            </function>
+        </axis>
+
+        <axis name="YAW">
+            <function name="aero/coefficient/Cnb">
+                <description>Yaw_moment_due_to_beta</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>aero/beta-rad</property>
+                    <value>0.1200</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Cnr">
+                <description>Yaw_moment_due_to_yaw_rate</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>aero/bi2vel</property>
+                    <property>velocities/r-aero-rad_sec</property>
+                    <value>-0.1500</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Cndr">
+                <description>Yaw_moment_due_to_rudder</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>fcs/rudder-pos-rad</property>
+                    <value>-0.1000</value>
+                </product>
+            </function>
+            <function name="aero/coefficient/Cnda">
+                <description>Adverse_yaw</description>
+                <product>
+                    <property>aero/qbar-psf</property>
+                    <property>metrics/Sw-sqft</property>
+                    <property>metrics/bw-ft</property>
+                    <property>fcs/left-aileron-pos-rad</property>
+                    <value>0.0000</value>
+                </product>
+            </function>
+        </axis>
+    </aerodynamics>
+
+   <external_reactions>
+       <force name="tractor" frame="BODY">
+         <location unit="IN">
+           <x> 736.2000 </x>
+           <y> 0.0000 </y>
+           <z> -100.0000 </z>
+         </location>
+         <direction>
+           <x>1</x>
+           <y>0</y>
+           <z>0</z>
+         </direction>
+       </force>
+   </external_reactions>
+</fdm_config>

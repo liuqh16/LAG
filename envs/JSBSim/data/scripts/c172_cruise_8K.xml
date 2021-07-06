@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="http://jsbsim.sourceforge.net/JSBSimScript.xsl"?>
+<runscript xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="http://jsbsim.sf.net/JSBSimScript.xsd"
+    name="C172 cruise at 4K, 100% power">
+  <description>This run is for testing the C172 altitude hold autopilot and cruise performance</description>
+  <use aircraft="c172x" initialize="reset01"/>
+
+  <run start="0.0" end="50" dt="0.0083333">
+  
+    <property value="0" persistent="true"> simulation/run_id </property>
+
+    <event name="Set Temperature">
+      <condition>
+        simulation/sim-time-sec  ge  0.0
+      </condition>
+      <set name="atmosphere/delta-T">
+        <function>
+          <switch>
+            <p> simulation/run_id </p>
+            <v>   0.0 </v>
+            <v> -36.0 </v>
+            <v>  36.0 </v>
+          </switch>
+        </function>
+      </set>
+      <set name="ap/altitude_setpoint" value="4000.0"/>
+    </event>
+    
+    <event name="Start engine">
+      <condition>
+        simulation/sim-time-sec  ge  0.01
+      </condition>
+      <set name="fcs/throttle-cmd-norm" action="FG_RAMP" value="0.50" tc="0.05"/>
+      <set name="fcs/mixture-cmd-norm" action="FG_RAMP" value="1.0" tc="0.05"/> 
+      <set name="propulsion/magneto_cmd" value="3"/>
+      <set name="propulsion/starter_cmd" value="1"/>
+      <notify/>
+    </event> 
+
+    <event name="Trim">
+      <condition>
+        simulation/sim-time-sec  gt  1.0
+      </condition>
+      <set name="simulation/do_simple_trim" value="1"/>
+      <notify>
+        <property> velocities/u-aero-fps </property>
+        <property> velocities/v-aero-fps </property>
+        <property> velocities/w-aero-fps </property>
+        <property> attitude/psi-rad </property>
+        <property> attitude/theta-rad </property>
+        <property> attitude/phi-rad </property>
+        <property> position/h-agl-ft </property>
+        <property> accelerations/pdot-rad_sec2 </property>
+        <property> accelerations/qdot-rad_sec2 </property>
+        <property> accelerations/rdot-rad_sec2 </property>
+        <property> propulsion/engine/thrust-lbs </property>
+        <property> propulsion/engine/propeller-rpm </property>
+        <property> velocities/p-rad_sec </property>
+        <property> velocities/q-rad_sec </property>
+        <property> velocities/r-rad_sec </property>
+        <property> fcs/elevator-cmd-norm </property>
+        <property> fcs/aileron-cmd-norm </property>
+        <property> fcs/rudder-cmd-norm </property>
+        <property> fcs/elevator-pos-norm </property>
+        <property> fcs/right-aileron-pos-norm </property>
+        <property> fcs/rudder-pos-norm </property>
+        <property> fcs/throttle-pos-norm[0] </property>
+        <property> fcs/mixture-pos-norm[0] </property>
+        <property> inertia/weight-lbs </property>
+        <property> velocities/vc-kts </property>
+        <property> velocities/ve-kts </property>
+        <property> velocities/vtrue-kts </property>
+        <property> atmosphere/T-R </property>
+        <property> propulsion/engine/fuel-flow-rate-gph </property>
+        <property> propulsion/engine/power-hp </property>
+      </notify>
+    </event>
+
+    <event name="Hold heading and altitude">
+      <condition>simulation/sim-time-sec ge 5</condition>
+      <set name="ap/heading_setpoint" value="200"/>
+      <set name="ap/heading_hold" value="1"/>
+      <set name="ap/altitude_setpoint" value="4000.0"/>
+      <set name="ap/altitude_hold" value="1"/>
+      <notify/>
+    </event>
+
+    <event name="Introduce gust">
+      <condition> simulation/sim-time-sec ge 10 </condition>
+      <set name="atmosphere/cosine-gust/startup-duration-sec" value="5"/>
+      <set name="atmosphere/cosine-gust/steady-duration-sec" value="1"/>
+      <set name="atmosphere/cosine-gust/end-duration-sec" value="5"/>
+      <set name="atmosphere/cosine-gust/magnitude-ft_sec" value="30"/>
+      <set name="atmosphere/cosine-gust/frame" value="2"/>
+      <set name="atmosphere/cosine-gust/X-velocity-ft_sec" value="-1"/>
+      <set name="atmosphere/cosine-gust/Y-velocity-ft_sec" value="0"/>
+      <set name="atmosphere/cosine-gust/Z-velocity-ft_sec" value="0"/>
+      <set name="atmosphere/cosine-gust/start" value="1"/>
+      <notify/>
+    </event>
+
+    <event name="Reset">
+      <condition logic="AND">
+        simulation/sim-time-sec >= 30.0
+        simulation/terminate != 1
+      </condition>
+      <set name="ap/heading_setpoint" value="0"/>
+<!--      <set name="ap/altitude_setpoint" value="0"/> -->
+      <set name="ap/altitude_hold" value="0"/>
+      <set name="ap/heading_hold" value="0"/>
+      <set name="simulation/reset" value="1"/>
+      <set name="simulation/run_id" type="FG_DELTA" value="1"/>
+      <notify>
+        <property> simulation/run_id </property>
+      </notify>
+    </event>
+
+    <event name="Terminate on run ID">
+      <condition>
+        simulation/run_id  ge  3
+      </condition>
+      <set name="simulation/terminate" value="1"/>
+      <notify>
+        <property caption="Terminate: "> simulation/terminate </property>
+      </notify>
+    </event>
+
+  </run>
+</runscript>

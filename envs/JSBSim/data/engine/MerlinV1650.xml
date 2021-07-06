@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<!--
+  File:     MerlinV1650.xml
+  Author:   Aero-Matic v 0.8
+
+  Inputs:
+    name:           MerlinV1650
+    type:           piston
+    power:          1650.0 hp
+    augmented?      no
+    injected?       no
+
+    refference:
+    http://www.thunderboats.org/history/history0324.html
+-->
+
+<piston_engine name="MerlinV1650">
+  <minmp unit="INHG">         10.0 </minmp>
+  <maxmp unit="INHG">         30.0 </maxmp>
+  <displacement unit="IN3"> 1649.0 </displacement>
+  <maxhp>       1650.0 </maxhp>
+  <cycles>         4.0 </cycles>
+  <idlerpm>      700.0 </idlerpm>
+  <maxrpm>      3000.0 </maxrpm>
+  <maxthrottle>    1.0 </maxthrottle>
+  <minthrottle>    0.1 </minthrottle>
+  <sparkfaildrop>  0.0 </sparkfaildrop>
+</piston_engine>

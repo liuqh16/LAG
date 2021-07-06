@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<nozzle name="CLV SRB Nozzle">
+  <!--
+    area = nozzle exit area
+  -->
+  <area unit="FT2">  122.1 </area>
+</nozzle>

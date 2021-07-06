@@ -1,0 +1,57 @@
+#!/bin/sh
+
+# For debugging
+CP="echo cp -p"
+#CP="cp -p"
+
+if [ x$1 = x ]; then
+   echo "Usage:"
+   echo " $0 [path to the Aircraft directory of the FlightGear base package]"
+   exit;
+fi
+if [ ! -d $1 -o ! -d $1/Generic ]; then
+   echo "Not the FlightGear Aircraft directory: $1"
+   exit;
+fi
+if [ ! -d engine ]; then
+   echo "Please change to the root directory of the JSBSim package."
+   exit;
+fi
+
+JSBDIR=`pwd`
+FGDIR=$1
+
+NOTFOUND=
+cd aircraft
+DIRS=`find . -maxdepth 1 -type d -print | sed s/^[\./]*// | grep -v "^CVS"`
+for n in $DIRS; do
+    if [ -f $n/INSTALL ]; then
+        d1="`grep "^FlightGear:" $n/INSTALL`";
+        if [ "$d1""x" != "x" ]; then
+            d2="`echo $d1 | awk '{print $2}'`";
+            if [ "$d2""x" != "x" ]; then
+                INSTALL="$FGDIR/$d2";
+            else
+                INSTALL="$FGDIR/$n/$n.xml";
+            fi;
+
+            if [ ! -f $INSTALL ]; then
+                NOTFOUND="$NOTFOUND $INSTALL";
+            else
+                NUM=`diff $n/$n.xml $INSTALL | grep -e "^>" | wc -l`;
+                NUM_ID=`diff $n/$n.xml $INSTALL | grep -e "^<" | grep "<version>" | wc -l`;
+
+                if [ $NUM_ID -lt $NUM ]; then
+                    $CP $n/$n.xml $INSTALL;
+                fi;
+            fi;
+        fi;
+    fi;
+done
+
+if [ "x$NOTFOUND" != "x" ]; then
+   echo "\nThe following aircraft files could not be found in the FlightGear"
+   echo "base package:"
+   for n in $NOTFOUND; do echo "    "$n; done
+   echo
+fi

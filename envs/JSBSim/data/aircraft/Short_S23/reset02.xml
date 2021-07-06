@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<initialize name="reset02">
+  <!--
+    This file sets up the aircraft to cruise at 172kt indicated at 5500 ft.
+  -->
+  <vc unit="KTS">        172.0   </vc>
+  <latitude unit="DEG">   37.86  </latitude>
+  <longitude unit="DEG">-122.34  </longitude>
+  <phi unit="DEG">         0.0   </phi>
+  <theta unit="DEG">      -2.0   </theta>
+  <psi unit="DEG">       180.0   </psi>
+  <altitude unit="FT">  5500.0   </altitude>
+</initialize>

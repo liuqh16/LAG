@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<!--
+  File:     engRRMerlin61.xml
+  Author:   Aero-Matic v 0.8
+
+  Inputs:
+    name:           RR-Merlin_61
+    type:           piston
+    power:          160.0 hp
+    augmented?      no
+    injected?       no
+-->
+
+<piston_engine name="RR-Merlin_61">
+  <minmp unit="INHG">         10.0  </minmp>
+  <maxmp unit="INHG">         54.32 </maxmp>	
+  <displacement unit="IN3"> 1649.00 </displacement>
+  <maxhp>       1650.00 </maxhp>
+  <cycles>         4.0 </cycles>
+  <idlerpm>      700.0 </idlerpm>
+  <maxrpm>      3000.0 </maxrpm>
+  <maxthrottle>    1.0 </maxthrottle>
+  <minthrottle>    0.1 </minthrottle>
+  <numboostspeeds> 2   </numboostspeeds>
+  <boostoverride>  1   </boostoverride>
+  <ratedboost1>    9   </ratedboost1>
+  <ratedpower1> 1400   </ratedpower1>
+  <ratedrpm1>   2850   </ratedrpm1>
+  <ratedaltitude1> 12000 </ratedaltitude1>
+  <ratedboost2>    9   </ratedboost2>
+  <ratedpower2> 1250   </ratedpower2>
+  <ratedrpm2>   2850   </ratedrpm2>
+  <ratedaltitude2> 24000 </ratedaltitude2>
+  <takeoffboost> 12    </takeoffboost>
+  <sparkfaildrop>  0.0 </sparkfaildrop>
+</piston_engine>

@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<system name="RPM Governor (AH1S)">
+
+<!--  =================================================================
+
+       RPM governor for the ah1s model (Adjusted for electric engines,
+       and rather 'crisp').
+
+       A more basic/lazy PID might use the following values:
+         <kp> 0.0035 </kp>
+         <ki> 0.001  </ki>
+         <kd> 0.0    </kd>
+
+       Note:
+         When developing a new helicopter fdm you should run the rotor
+         in constant-speed mode (by setting ExternalRPM to -1 and 
+         manipulate propulsion/engine[x]/x-rpm-dict accordingly).
+         Implement the governor as last step, otherwise chances are high 
+         that a bad governor might spoil a good model.
+
+      =================================================================  -->
+
+
+  <property value="0.0">fcs/rpm-governor-active-norm</property>
+  <property value="324.0"> fcs/nominal-rpm </property>
+
+  <channel name="RPM-Governor">
+    <switch name="fcs/rpm-governor-pid-inhibit">
+      <default value="-1.0"/>
+      <test value="0.0"> fcs/rpm-governor-active-norm GT 0.0 </test>
+    </switch>
+    <fcs_function name="fcs/rpm-delta">
+      <function>
+        <product>
+          <property> fcs/rpm-governor-active-norm </property>
+          <difference>
+            <property> fcs/nominal-rpm </property>
+            <property> propulsion/engine/rotor-rpm </property>
+          </difference>
+        </product>
+      </function>
+      <clipto>
+        <min> -50.0 </min>
+        <max>  50.0 </max>
+      </clipto>
+    </fcs_function>
+    <pid name="fcs/throttle-pid">
+      <input>fcs/rpm-delta</input>
+      <kp>  0.07   </kp>
+      <ki>  0.0012 </ki>
+      <kd> -0.0008 </kd>
+      <trigger> fcs/rpm-governor-pid-inhibit </trigger>
+      <clipto>
+        <min>  0.00 </min>
+        <max>  1.00 </max>
+      </clipto>
+      <output>fcs/throttle-pos-norm</output> 
+    </pid>
+  </channel>
+
+</system>
