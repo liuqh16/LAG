@@ -5,9 +5,9 @@ import pdb
 import numpy as np
 from collections import OrderedDict
 from gym import spaces
-from .task_base import Task
+from .task_base import BaseTask
 from ..core.catalog import Catalog as c
-from ..utils.utils import parse_config, get_root_dir
+from ..utils.utils import lonlat2dis, get_AO_TA_R
 
 
 act_space = spaces.Dict(
@@ -35,24 +35,23 @@ obs_space = spaces.Dict(
 )
 
 
-class SelfPlayTask(Task):
-    def __init__(self, config='r_hyperparams.yaml'):
-        super(SelfPlayTask, self).__init__()
-        env_config = parse_config(os.path.join(get_root_dir(), 'configs', config))
-        self.init_variables()
-        self.init_conditions(env_config)
+class SelfPlayTask(BaseTask):
+    def __init__(self, config: str):
+        super(SelfPlayTask, self).__init__(config)
 
-        self.blue_aircraft_name = env_config.b_aircraft_name
-        self.red_aircraft_name = env_config.r_aircraft_name
+        self.agent_names = self.config.init_config.keys()
+        self.aircraft_names = OrderedDict(
+           [(agent, self.config.init_config[agent]['aircraft_name']) for agent in self.agent_names]
+        )
 
-        self.max_episode_steps = env_config.max_episode_steps
-        self.reward_scale = env_config.reward_scale
-        self.final_reward_scale = env_config.final_reward_scale
-        self.danger_altitude = env_config.danger_altitude
-        self.safe_altitude = env_config.safe_altitude
-        self.target_dist = env_config.target_dist
-        self.KL = env_config.KL
-        self.Kv = env_config.Kv
+        self.max_episode_steps = self.config.max_episode_steps
+        self.reward_scale = self.config.reward_scale
+        self.final_reward_scale = self.config.final_reward_scale
+        self.danger_altitude = self.config.danger_altitude
+        self.safe_altitude = self.config.safe_altitude
+        self.target_dist = self.config.target_dist
+        self.KL = self.config.KL
+        self.Kv = self.config.Kv
 
         self.bloods = {'blue_fighter': 100, 'red_fighter': 100}
         self.all_type_rewards = {'blue_fighter': None, 'red_fighter': None}
@@ -89,41 +88,28 @@ class SelfPlayTask(Task):
             c.attitude_heading_true_rad
         ]
 
-    def init_conditions(self, config):
+    def init_conditions(self):
         self.init_position_conditions = {
             c.ic_long_gc_deg: 120.,  # 1.1  geodesic longitude [deg]
             c.ic_lat_geod_deg: 60.,  # 1.2  geodesic latitude  [deg]
         }
-        self.blue_init_conditions = {
-            c.ic_h_sl_ft: config.b_ic_h_sl_ft,                  # 1.1  altitude above mean sea level [ft]
-            c.ic_terrain_elevation_ft: 0,                       # +    default
-            c.ic_long_gc_deg: config.b_ic_long_gc_deg,          # 1.2  geodesic longitude [deg]
-            c.ic_lat_geod_deg: config.b_ic_lat_geod_deg,        # 1.3  geodesic latitude  [deg]
-            c.ic_psi_true_deg: config.b_ic_psi_true_deg,        # 5.   initial (true) heading [deg]   (0, 360)
-            c.ic_u_fps: config.b_ic_u_fps,                      # 2.1  body frame x-axis velocity [ft/s]  (-2200, 2200)
-            c.ic_v_fps: 0,                                      # 2.2  body frame y-axis velocity [ft/s]  (-2200, 2200)
-            c.ic_w_fps: 0,                                      # 2.3  body frame z-axis velocity [ft/s]  (-2200, 2200)
-            c.ic_p_rad_sec: 0,                                  # 3.1  roll rate  [rad/s]     (-2 * math.pi, 2 * math.pi)
-            c.ic_q_rad_sec: 0,                                  # 3.1  pitch rate [rad/s]     (-2 * math.pi, 2 * math.pi)
-            c.ic_r_rad_sec: 0,                                  # 3.1  yaw rate   [rad/s]     (-2 * math.pi, 2 * math.pi)
-            c.ic_roc_fpm: 0,                                    # 4.   initial rate of climb [ft/min]
-            c.fcs_throttle_cmd_norm: 0.,                        # 6.
-        }
-        self.red_init_conditions = {
-            c.ic_h_sl_ft: config.r_ic_h_sl_ft,                  # 1.1  altitude above mean sea level [ft]
-            c.ic_terrain_elevation_ft: 0,                       # +    default
-            c.ic_long_gc_deg: config.r_ic_long_gc_deg,          # 1.2  geodesic longitude [deg]
-            c.ic_lat_geod_deg: config.r_ic_lat_geod_deg,        # 1.3  geodesic latitude  [deg]
-            c.ic_psi_true_deg: config.r_ic_psi_true_deg,        # 5.   initial (true) heading [deg]   (0, 360)
-            c.ic_u_fps: config.r_ic_u_fps,                      # 2.1  body frame x-axis velocity [ft/s]  (-2200, 2200)
-            c.ic_v_fps: 0,                                      # 2.2  body frame y-axis velocity [ft/s]  (-2200, 2200)
-            c.ic_w_fps: 0,                                      # 2.3  body frame z-axis velocity [ft/s]  (-2200, 2200)
-            c.ic_p_rad_sec: 0,                                  # 3.1  roll rate  [rad/s]     (-2 * math.pi, 2 * math.pi)
-            c.ic_q_rad_sec: 0,                                  # 3.1  pitch rate [rad/s]     (-2 * math.pi, 2 * math.pi)
-            c.ic_r_rad_sec: 0,                                  # 3.1  yaw rate   [rad/s]     (-2 * math.pi, 2 * math.pi)
-            c.ic_roc_fpm: 0,                                    # 4.   initial rate of climb [ft/min]
-            c.fcs_throttle_cmd_norm: 0.,                        # 6.
-        }
+        self.init_condition = OrderedDict(
+            [(agent, {
+                c.ic_h_sl_ft: self.config.init_config[agent]['ic_h_sl_ft'],             # 1.1  altitude above mean sea level [ft]
+                c.ic_terrain_elevation_ft: 0,                                           # +    default
+                c.ic_long_gc_deg: self.config.init_config[agent]['ic_long_gc_deg'],     # 1.2  geodesic longitude [deg]
+                c.ic_lat_geod_deg: self.config.init_config[agent]['ic_lat_geod_deg'],   # 1.3  geodesic latitude  [deg]
+                c.ic_psi_true_deg: self.config.init_config[agent]['ic_psi_true_deg'],   # 5.   initial (true) heading [deg]   (0, 360)
+                c.ic_u_fps: self.config.init_config[agent]['ic_u_fps'],                 # 2.1  body frame x-axis velocity [ft/s]  (-2200, 2200)
+                c.ic_v_fps: 0,                                                          # 2.2  body frame y-axis velocity [ft/s]  (-2200, 2200)
+                c.ic_w_fps: 0,                                                          # 2.3  body frame z-axis velocity [ft/s]  (-2200, 2200)
+                c.ic_p_rad_sec: 0,                                                      # 3.1  roll rate  [rad/s]     (-2 * math.pi, 2 * math.pi)
+                c.ic_q_rad_sec: 0,                                                      # 3.2  pitch rate [rad/s]     (-2 * math.pi, 2 * math.pi)
+                c.ic_r_rad_sec: 0,                                                      # 3.3  yaw rate   [rad/s]     (-2 * math.pi, 2 * math.pi)
+                c.ic_roc_fpm: 0,                                                        # 4.   initial rate of climb [ft/min]
+                c.fcs_throttle_cmd_norm: 0.,                                            # 6.
+            }) for agent in self.config.init_config.keys()]
+        )
 
     def get_action_space(self):
         return act_space
@@ -167,11 +153,6 @@ class SelfPlayTask(Task):
                 flag_overload = True
         return flag_overload
 
-    def lonlat2dis(self, lon, lat, init_lon, init_lat):  # input degree
-        east = (np.deg2rad(lon) - np.deg2rad(init_lon)) * np.cos(np.deg2rad(init_lat)) * 6371 * 1.734  # meter
-        north = (np.deg2rad(lat) - np.deg2rad(init_lat)) * 6371 * 11.1319 / 11.11949266  # meter
-        return np.array([east, north]) * 1000
-
     def _obtain_fighter_observation_feature(self, sims):
         """
         blue_fighter: [pos_north_km, pos_east_km, pos_down_km, vel_north_mh, vel_east_mh, vel_down_mh]
@@ -182,12 +163,12 @@ class SelfPlayTask(Task):
         init_b_longitude, init_b_latitude = self.init_position_conditions[c.ic_long_gc_deg], self.init_position_conditions[c.ic_lat_geod_deg]
         b_cur_longitude = sims[0].get_property_value(c.position_long_gc_deg)
         b_cur_latitude = sims[0].get_property_value(c.position_lat_geod_deg)
-        b_cur_east, b_cur_north = self.lonlat2dis(b_cur_longitude, b_cur_latitude, init_b_longitude, init_b_latitude)
+        b_cur_east, b_cur_north = lonlat2dis(b_cur_longitude, b_cur_latitude, init_b_longitude, init_b_latitude)
         b_cur_altitude = sims[0].get_property_value(c.position_h_sl_ft) * 0.304
 
         r_cur_longitude = sims[1].get_property_value(c.position_long_gc_deg)
         r_cur_latitude = sims[1].get_property_value(c.position_lat_geod_deg)
-        r_cur_east, r_cur_north = self.lonlat2dis(r_cur_longitude, r_cur_latitude, init_b_longitude, init_b_latitude)
+        r_cur_east, r_cur_north = lonlat2dis(r_cur_longitude, r_cur_latitude, init_b_longitude, init_b_latitude)
         r_cur_altitude = sims[1].get_property_value(c.position_h_sl_ft) * 0.304
 
         bv_north_mh = sims[0].get_property_value(c.velocities_v_north_fps) * 0.304 / 340
@@ -236,8 +217,8 @@ class SelfPlayTask(Task):
 
     def _scoring_bloods_reward(self, blue_state, red_state):
         # [north: km, east: km, down: km, v_n: mh, v_e: mh, v_d: mh]
-        BA_b, AA_b, distance = self._get_orientation_score(ego_feature=blue_state, enemy_feature=red_state)
-        BA_r, AA_r, distance = self._get_orientation_score(ego_feature=red_state, enemy_feature=blue_state)
+        BA_b, AA_b, distance = get_AO_TA_R(blue_state, red_state)
+        BA_r, AA_r, distance = get_AO_TA_R(red_state, blue_state)
         delta_b_blood = self._update_bloods(BA_b, AA_b, distance, 'blue_fighter')
         delta_r_blood = self._update_bloods(BA_r, AA_r, distance, 'red_fighter')
         scoring_b_blood = -delta_r_blood / 1. * 0.
@@ -247,8 +228,8 @@ class SelfPlayTask(Task):
     def _scoring_orientation_reward(self, blue_state, red_state):
         # [north: km, east: km, down: km, v_n: mh, v_e: mh, v_d: mh]
         # orientaion reward --> [0, 1]
-        BA_b, AA_b, distance = self._get_orientation_score(ego_feature=blue_state, enemy_feature=red_state)
-        BA_r, AA_r, distance = self._get_orientation_score(ego_feature=red_state, enemy_feature=blue_state)
+        BA_b, AA_b, distance = get_AO_TA_R(blue_state, red_state)
+        BA_r, AA_r, distance = get_AO_TA_R(red_state, blue_state)
 
         score_enm_b_ori = min((np.arctanh(1. - max(2 * AA_b / np.pi, 1e-4))) / (2 * np.pi), 0.) + 0.5
         # score_ego_b_ori = (1. - np.tanh(9 * (BA_b - np.pi / 9))) / 3. + 1 / 3.
@@ -264,8 +245,8 @@ class SelfPlayTask(Task):
     def _scoring_orientation_reward_basic(self, blue_state, red_state):
         # [north: km, east: km, down: km, v_n: mh, v_e: mh, v_d: mh]
         # orientaion reward --> [0, 1]
-        BA_b, AA_b, distance = self._get_orientation_score(ego_feature=blue_state, enemy_feature=red_state)
-        BA_r, AA_r, distance = self._get_orientation_score(ego_feature=red_state, enemy_feature=blue_state)
+        BA_b, AA_b, distance = get_AO_TA_R(blue_state, red_state)
+        BA_r, AA_r, distance = get_AO_TA_R(red_state, blue_state)
 
         score_enm_b_ori = min((np.arctanh(1. - max(2 * AA_b / np.pi, 1e-4))) / (2 * np.pi), 0.) + 0.5
         score_ego_b_ori = (1. - np.tanh(9 * (BA_b - np.pi / 9))) / 3. + 1 / 3.
@@ -279,8 +260,8 @@ class SelfPlayTask(Task):
     def _scoring_orientation_reward_old(self, blue_state, red_state):
         # [north: km, east: km, down: km, v_n: mh, v_e: mh, v_d: mh]
         # orientaion reward --> [0, 1]
-        BA_b, AA_b, distance = self._get_orientation_score(ego_feature=blue_state, enemy_feature=red_state)
-        BA_r, AA_r, distance = self._get_orientation_score(ego_feature=red_state, enemy_feature=blue_state)
+        BA_b, AA_b, distance = get_AO_TA_R(blue_state, red_state)
+        BA_r, AA_r, distance = get_AO_TA_R(red_state, blue_state)
 
         score_enm_b_ori = (np.arctanh(1. - max(2 * AA_b / np.pi, 1e-4))) / (2 * np.pi) + 0.5
         score_ego_b_ori = (1. - np.tanh(2 * (BA_b - np.pi / 2))) / 2.
@@ -329,19 +310,3 @@ class SelfPlayTask(Task):
         elif rz - bz > KL:
             r_PLb = KL - (rz - bz)
         return b_Pv + b_PH + b_PLr, r_Pv + r_PH + r_PLb
-
-    def _get_orientation_score(self, ego_feature, enemy_feature):
-        # [north: km, east: km, down: km, v_n: mh, v_e: mh, v_d: mh]
-        ego_x, ego_y, ego_z, ego_vx, ego_vy, ego_vz = ego_feature
-        ego_v = np.linalg.norm([ego_vx, ego_vy, ego_vz])
-        enm_x, enm_y, enm_z, enm_vx, enm_vy, enm_vz = enemy_feature
-        enm_v = np.linalg.norm([enm_vx, enm_vy, enm_vz])
-        delta_x, delta_y, delta_z = enm_x - ego_x, enm_y - ego_y, enm_z - ego_z
-        R = np.linalg.norm([delta_x, delta_y, delta_z])
-
-        proj_dist = delta_x * ego_vx + delta_y * ego_vy + delta_z * ego_vz
-        ego_AO = np.arccos(np.clip(proj_dist / (R * ego_v + 1e-8), -1, 1))
-
-        proj_dist = delta_x * enm_vx + delta_y * enm_vy + delta_z * enm_vz
-        ego_TA = np.arccos(np.clip(proj_dist / (R * enm_v + 1e-8), -1, 1))
-        return ego_AO, ego_TA, R

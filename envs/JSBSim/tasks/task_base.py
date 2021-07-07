@@ -1,28 +1,25 @@
-from types import MethodType
+import os
 import numpy as np
 import gym
 from gym.spaces import Box, Discrete
+from abc import abstractmethod, ABCMeta
 from ..core.catalog import Catalog
+from ..utils.utils import parse_config, get_root_dir
 
 
-class Task:
+class BaseTask:
     """
+    Base Task class.
     A class to subclass in order to create a task with its own observation variables,
-    action variables, termination conditions and agent_reward function.
+    action variables, termination conditions and reward functions.
     """
+    __metaclass__ = ABCMeta
+    def __init__(self, config: str):
+        # parse config
+        self.config = parse_config(os.path.join(get_root_dir(), 'configs', config))
 
-    def __init__(self):
-        self.action_var = None
-        self.state_var = None
-        self.init_condition = None
-        self.output = None
-        self.jsbsim_freq = 60
-        self.agent_interaction_steps = 5
-        self.aircraft_name = "A320"
-
-        # set default output to state_var
-        if self.output is None:
-            self.output = self.state_var
+        self.init_variables()
+        self.init_conditions()
 
         # modify Catalog to have only the current task properties
         names_away = []
@@ -30,37 +27,33 @@ class Task:
             if not (
                 prop in self.action_var
                 or prop in self.state_var
-                or prop in self.init_condition
-                or prop in self.output
             ):
                 names_away.append(name)
         for name in names_away:
             Catalog.pop(name)
 
-    def get_reward(self, state, sim):
-        return 0
+        # set controlling frequency
+        self.jsbsim_freq = self.config.jsbsim_freq
+        self.agent_interaction_steps = self.config.agent_interaction_steps
 
-    def is_terminal(self, state, sim):
-        return False
+        self.reward_functions = []
+        self.termination_conditions = []
 
-    def get_observation_var(self):
-        return self.state_var
+    @abstractmethod
+    def init_variables(self):
+        self.action_var = None
+        self.state_var = None
 
-    def get_action_var(self):
-        return self.action_var
+    @abstractmethod
+    def init_conditions(self):
+        self.init_condition = None
 
-    def get_initial_conditions(self):
-        return self.init_condition
-
-    def get_output(self):
-        return self.output
-
+    @abstractmethod
     def get_observation_space(self):
         """
         Get the task's observation Space object
         :return : spaces.Tuple composed by spaces of each property.
         """
-
         space_tuple = ()
 
         for prop in self.state_var:
@@ -70,6 +63,7 @@ class Task:
                 space_tuple += (Discrete(prop.max - prop.min + 1),)
         return gym.spaces.Tuple(space_tuple)
 
+    @abstractmethod
     def get_action_space(self):
         """
         Get the task's action Space object
@@ -84,32 +78,47 @@ class Task:
                 space_tuple += (Discrete(prop.max - prop.min + 1),)
         return gym.spaces.Tuple(space_tuple)
 
+    def get_reward(self, env, agent_id, info={}):
+        """
+        Aggregate reward functions
+
+        Args:
+            env: environment instance
+            agent_id: current agent id
+            info: additional info
+
+        Returns:
+            (tuple):
+                reward(float): total reward of the current timestep
+                info(dict): additional info
+        """
+        reward = 0.0
+        for reward_function in self.reward_functions:
+            reward += reward_function.get_reward(self, env, agent_id)
+        return reward, info
+
+    def get_termination(self, env, agent_id, info={}):
+        """
+        Aggregate termination conditions
+
+        Args:
+            env: environment instance
+            agent_id: current agent id
+            info: additional info
+
+        Returns:
+            (tuple):
+                done(bool): whether the episode has terminated
+                info(dict): additional info
+        """
+        done = False
+        success = False
+        for condition in self.termination_conditions:
+            d, s = condition.get_termination(self, env, agent_id)
+            done = done or d
+            success = success or s
+        return done, info
+
+    @abstractmethod
     def render(self, sim, mode="human", **kwargs):
-        pass
-
-    def define_aircraft(self, aircraft_name="A320"):
-        self.aircraft_name = aircraft_name
-
-    def define_state(self, states=None):
-        self.state_var = states
-
-    def define_action(self, actions=None):
-        self.action_var = actions
-
-    def define_init_conditions(self, init_condition=None):
-        self.init_condition = init_condition
-
-    def define_output(self, output=None):
-        self.output = output
-
-    def define_jsbsim_freq(self, freq=60):
-        self.jsbsim_freq = freq
-
-    def define_agent_interaction_steps(self, steps=5):
-        self.agent_interaction_steps = steps
-
-    def define_reward(self, func):
-        self.get_reward = MethodType(func, self)
-
-    def define_is_terminal(self, func):
-        self.is_terminal = MethodType(func, self)
+        raise NotImplementedError

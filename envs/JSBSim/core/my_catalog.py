@@ -3,7 +3,7 @@ from gym.spaces import Discrete
 from .property import Property
 from .jsbsim_catalog import JsbsimCatalog
 from ..utils.taxi_utils import *
-from ..utils.utils import reduce_reflex_angle_deg
+from ..utils.utils import _in_range_deg
 from numpy.linalg import norm
 
 taxiPath = taxi_path()
@@ -25,7 +25,7 @@ class MyCatalog(Property, Enum):
         sim.set_property_value(MyCatalog.delta_altitude, value)
 
     def update_delta_heading(sim):
-        value = reduce_reflex_angle_deg(
+        value = _in_range_deg(
             sim.get_property_value(MyCatalog.target_heading_deg)
             - sim.get_property_value(JsbsimCatalog.attitude_psi_deg)
         )
@@ -121,7 +121,7 @@ class MyCatalog(Property, Enum):
             sim.set_property_value(MyCatalog["d" + str(i)], df[i - 1][1])
             sim.set_property_value(
                 MyCatalog["a" + str(i)],
-                reduce_reflex_angle_deg(df[i - 1][2] - sim.get_property_value(JsbsimCatalog.attitude_psi_deg)),
+                _in_range_deg(df[i - 1][2] - sim.get_property_value(JsbsimCatalog.attitude_psi_deg)),
             )
 
         sec = str(sim.get_property_value(JsbsimCatalog.simulation_sim_time_sec))

@@ -1,13 +1,13 @@
 import numpy as np
 from ..core.catalog import Catalog as c
 from collections import OrderedDict
+from .env_base import BaseEnv
 from ..core.simulation import Simulation
-from .env_base import JSBSimBaseEnv
 from ..tasks.self_play_task import act_space, SelfPlayTask
-from scipy import signal
+from ..utils.utils import lonlat2dis
 
 
-class JSBSimSelfPlayEnv(JSBSimBaseEnv):
+class JSBSimSelfPlayEnv(BaseEnv):
     """
     A class wrapping the JSBSim flight dynamics module (FDM) for simulating
     aircraft as an RL environment conforming to the OpenAI Gym Env
@@ -19,9 +19,9 @@ class JSBSimSelfPlayEnv(JSBSimBaseEnv):
     """
     metadata = {"render.modes": ["human", "csv"]}
 
-    def __init__(self):
+    def __init__(self, config='r_hyperparams.yaml'):
         self.sims = None
-        self.task = SelfPlayTask()
+        self.task = SelfPlayTask(config)
         self.max_episode_steps = self.task.max_episode_steps
         self.observation_space = self.task.get_observation_space()  # None
         self.action_space = self.task.get_action_space()  # None
@@ -39,15 +39,11 @@ class JSBSimSelfPlayEnv(JSBSimBaseEnv):
         self.task.pre_actions = None
         self.task.bloods = {'blue_fighter': 100, 'red_fighter': 100}
         self.close()
-        sim_blue = Simulation(aircraft_name=self.task.blue_aircraft_name,
-            init_conditions=self.task.blue_init_conditions,
+        self.sims = [Simulation(
+            aircraft_name=self.task.aircraft_names[agent],
+            init_conditions=self.task.init_condition[agent],
             jsbsim_freq=self.task.jsbsim_freq,
-            agent_interaction_steps=self.task.agent_interaction_steps)
-        sim_red = Simulation(aircraft_name=self.task.red_aircraft_name,
-            init_conditions=self.task.red_init_conditions,
-            jsbsim_freq=self.task.jsbsim_freq,
-            agent_interaction_steps=self.task.agent_interaction_steps)
-        self.sims = [sim_blue, sim_red]
+            agent_interaction_steps=self.task.agent_interaction_steps) for agent in self.task.agent_names]
         obs_b, obs_r = self.get_observation()
         blue_obs = OrderedDict({'ego_info': obs_b})
         red_obs = OrderedDict({'ego_info': obs_r})
@@ -141,7 +137,7 @@ class JSBSimSelfPlayEnv(JSBSimBaseEnv):
         # take actions
         for i in range(len(action)):
             if action is not None:
-                self.sims[i].set_property_values(self.task.get_action_var(), action[i])
+                self.sims[i].set_property_values(self.task.action_var, action[i])
             # run simulation
             self.sims[i].run()
 
@@ -152,8 +148,8 @@ class JSBSimSelfPlayEnv(JSBSimBaseEnv):
         :return: NamedTuple, the first state observation of the episode
 
         """
-        blue_obs_list = self.sims[0].get_property_values(self.task.get_observation_var())
-        red_obs_list = self.sims[1].get_property_values(self.task.get_observation_var())
+        blue_obs_list = self.sims[0].get_property_values(self.task.state_var)
+        red_obs_list = self.sims[1].get_property_values(self.task.state_var)
 
         blue_observation = self.normalize_observation(blue_obs_list, red_obs_list)
         red_observation = self.normalize_observation(red_obs_list, blue_obs_list)
@@ -172,8 +168,8 @@ class JSBSimSelfPlayEnv(JSBSimBaseEnv):
         observation = np.zeros(22)
         init_longitude = self.task.init_position_conditions[c.ic_long_gc_deg]
         init_latitude = self.task.init_position_conditions[c.ic_lat_geod_deg]
-        ego_cur_east, ego_cur_north = self.task.lonlat2dis(ego_obs_list[0], ego_obs_list[1], init_longitude, init_latitude)
-        enm_cur_east, enm_cur_north = self.task.lonlat2dis(enm_obs_list[0], enm_obs_list[1], init_longitude, init_latitude)
+        ego_cur_east, ego_cur_north = lonlat2dis(ego_obs_list[0], ego_obs_list[1], init_longitude, init_latitude)
+        enm_cur_east, enm_cur_north = lonlat2dis(enm_obs_list[0], enm_obs_list[1], init_longitude, init_latitude)
         observation[0] = ego_cur_north / 10000.
         observation[1] = ego_cur_east / 10000.
         observation[2] = ego_obs_list[2] * 0.304 / 5000

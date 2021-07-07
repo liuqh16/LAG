@@ -1,9 +1,10 @@
 import gym
 import numpy as np
 from ..core.simulation import Simulation
+from ..tasks.task_base import BaseTask
 
 
-class JSBSimBaseEnv(gym.Env):
+class BaseEnv(gym.Env):
     """
     A class wrapping the JSBSim flight dynamics module (FDM) for simulating
     aircraft as an RL environment conforming to the OpenAI Gym Env
@@ -15,9 +16,9 @@ class JSBSimBaseEnv(gym.Env):
     """
     metadata = {"render.modes": ["human", "csv"]}
 
-    def __init__(self, task):
+    def __init__(self, config):
         self.sim = None
-        self.task = task()
+        self.task = BaseTask()
         self.observation_space = self.task.get_observation_space()  # None
         self.action_space = self.task.get_action_space()  # None
 
