@@ -46,6 +46,7 @@ class BaseTask:
 
     @abstractmethod
     def init_conditions(self):
+        self.aircraft_name = None
         self.init_condition = None
 
     @abstractmethod
@@ -77,6 +78,12 @@ class BaseTask:
             elif prop.spaces is Discrete:
                 space_tuple += (Discrete(prop.max - prop.min + 1),)
         return gym.spaces.Tuple(space_tuple)
+
+    @abstractmethod
+    def reset_task(self):
+        """Task-specific reset
+        """
+        raise NotImplementedError
 
     def get_reward(self, env, agent_id, info={}):
         """

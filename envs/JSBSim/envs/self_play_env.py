@@ -22,72 +22,55 @@ class JSBSimSelfPlayEnv(BaseEnv):
     def __init__(self, config='r_hyperparams.yaml'):
         self.sims = None
         self.task = SelfPlayTask(config)
+        self.num_agents = 2
         self.max_episode_steps = self.task.max_episode_steps
         self.observation_space = self.task.get_observation_space()  # None
         self.action_space = self.task.get_action_space()  # None
 
+        self.current_step = 0
+        self.trajectory = []
         self.state = None
         self.pre_reward_obs = None
-        self.cur_step = 0
-        self.end_reason = {'blue_crash': False, 'red_crash': False}
-        self.trajectory = []
 
     def reset(self):
-        self.cur_step = 0
+        self.current_step = 0
         self.trajectory = []
-        self.end_reason = {'blue_crash': False, 'red_crash': False}
-        self.task.pre_actions = None
-        self.task.bloods = {'blue_fighter': 100, 'red_fighter': 100}
+        self.task.reset()
         self.close()
         self.sims = [Simulation(
-            aircraft_name=self.task.aircraft_names[agent],
+            aircraft_name=self.task.aircraft_name[agent],
             init_conditions=self.task.init_condition[agent],
             jsbsim_freq=self.task.jsbsim_freq,
             agent_interaction_steps=self.task.agent_interaction_steps) for agent in self.task.agent_names]
-        obs_b, obs_r = self.get_observation()
-        blue_obs = OrderedDict({'ego_info': obs_b})
-        red_obs = OrderedDict({'ego_info': obs_r})
+        next_observation = self.get_observation()
         self.pre_reward_obs = self.task.get_reward(self.state, self.sims)
         self.task.reward_for_smooth_action()
-        return OrderedDict({'blue_fighter': blue_obs, 'red_fighter': red_obs})
+        return next_observation
 
-    def step(self, action_dicts):
-        """
-
-        Run one timestep of the environment's dynamics. When end of
-
+    def step(self, action_dicts: dict):
+        """Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`
+        to reset this environment's state. Accepts an action and 
+        returns a tuple (observation, reward_visualize, done, info).
 
-        to reset this environment's state.
+        Args:
+            action (dict): the agents' action, with same length as action variables.
 
-        Accepts an action and returns a tuple (observation, reward_visualize, done, info).
-
-
-
-        :param action_dicts: np.array, the agent's action, with same length as action variables.
-
-        :return:
-
-            state: agent's observation of the current environment
-
-            reward_visualize: amount of reward_visualize returned after previous action
-
-            done: whether the episode has ended, in which case further step() calls are undefined
-
-            info: auxiliary information
-
+        Returns:
+            (tuple):
+                state: agent's observation of the current environment
+                reward_visualize: amount of reward_visualize returned after previous action
+                done: whether the episode has ended, in which case further step() calls are undefined
+                info: auxiliary information
         """
-        self.cur_step += 1
+        self.current_step += 1
         blue_action = self.process_actions(action_dicts, 'blue_fighter')
         red_action = self.process_actions(action_dicts, 'red_fighter')
         if blue_action is not None:
             if not len(blue_action) == len(self.action_space.spaces):
                 raise ValueError("mismatch between action and action space size")
         self.make_step([blue_action, red_action])
-        obs_b, obs_r = self.get_observation()
-        blue_obs = OrderedDict({'ego_info': obs_b})
-        red_obs = OrderedDict({'ego_info': obs_r})
-        next_observation = OrderedDict({'blue_fighter': blue_obs, 'red_fighter': red_obs})
+        next_observation = self.get_observation()
         reward = dict()
         cur_reward_obs_dicts = self.task.get_reward(self.state, self.sims)
         cur_reward_act_dicts = self.task.reward_for_smooth_action(action_dicts)
@@ -98,28 +81,30 @@ class JSBSimSelfPlayEnv(BaseEnv):
         reward['red_reward'] += cur_reward_r['barrier'] + cur_reward_r['blood'] + cur_reward_act_dicts['red_reward']['smooth_act']
         self.pre_reward_obs = cur_reward_obs_dicts
 
-        done = self.is_terminal()
-        sign = self._judge_terminal_condition(crash_done=done)
-        if self.cur_step >= self.max_episode_steps:
-            print('steps limits')
-            done = True
+        info = {}
+        done = False
+        for agent_id in range(self.num_agents):
+            agent_done, info = self.task.get_termination(self, agent_id, info)
+            info[f'{self.task.agent_names[agent_id]}_crash'] = agent_done
+            done = agent_done or done
+        sign = self._judge_terminal_condition(done, info)
         reward['blue_final_reward'] = sign * self.task.final_reward_scale
         reward['red_final_reward'] = -sign * self.task.final_reward_scale
 
-        return next_observation, reward, done, self.end_reason
+        return next_observation, reward, done, info
 
-    def _judge_terminal_condition(self, crash_done):
-        if crash_done is False:
+    def _judge_terminal_condition(self, done, info):
+        if not done:
             return 0.
         sign = 0.
-        if self.end_reason['blue_fighter_crash'] and self.end_reason['red_fighter_crash']:
+        if info['blue_fighter_crash'] and info['red_fighter_crash']:
             sign = 0.
-        elif self.end_reason['blue_fighter_crash'] and self.task.bloods['blue_fighter'] <= 0:
+        elif info['blue_fighter_crash'] and info['blue_fighter'] <= 0:
             sign = -1
-        elif self.end_reason['red_fighter_crash'] and self.task.bloods['red_fighter'] <= 0:
+        elif info['red_fighter_crash'] and info['red_fighter'] <= 0:
             sign = 1
-        self.end_reason['blue_win'] = (1. + sign) / 2.
-        self.end_reason['red_win'] = (1. - sign) / 2.
+        info['blue_win'] = (1. + sign) / 2.
+        info['red_win'] = (1. - sign) / 2.
         return sign
 
     def make_step(self, action=None):
@@ -145,7 +130,8 @@ class JSBSimSelfPlayEnv(BaseEnv):
         """
         get state observation from sim.
 
-        :return: NamedTuple, the first state observation of the episode
+        Returns:
+            (OrderedDict): the same format as self.observation_space
 
         """
         blue_obs_list = self.sims[0].get_property_values(self.task.state_var)
@@ -153,8 +139,9 @@ class JSBSimSelfPlayEnv(BaseEnv):
 
         blue_observation = self.normalize_observation(blue_obs_list, red_obs_list)
         red_observation = self.normalize_observation(red_obs_list, blue_obs_list)
-        # tuple([np.array([obs]) for obs in obs_list])
-        return blue_observation, red_observation
+        return OrderedDict({
+            'blue_fighter': OrderedDict({'ego_info': blue_observation}),
+            'red_fighter': OrderedDict({'ego_info': red_observation})})
 
     def process_actions(self, actions, fighter_type, lowpass=True):
         action = actions[fighter_type].astype(np.float)
@@ -194,38 +181,14 @@ class JSBSimSelfPlayEnv(BaseEnv):
         observation[21] = enm_obs_list[8] * 0.304 / 340
         return observation
 
-    def get_sim_time(self):
-        """ Gets the simulation time from sim, a float. """
-        return self.sims[0].get_sim_time()
-
-    def get_state(self):
-        pass
-
-    def _get_clipped_state(self):
-        pass
-
     def close(self):
-        """Cleans up this environment's objects
-        Environments automatically close() when garbage collected or when the
-        program exits.
+        """Cleans up this environment's objects.
+
+        Environments automatically close() when garbage collected or when the program exits.
         """
         if self.sims:
             for i in range(len(self.sims)):
                 self.sims[i].close()
-
-    def is_terminal(self):
-        """
-
-        Checks if the state is terminal.
-
-        :return: bool
-
-        """
-        is_not_contained = False                                # not self.observation_space.contains(self.state)
-        rets = self.task.is_terminal(self.state, self.sims)
-        self.end_reason['blue_fighter_crash'] = rets[0]
-        self.end_reason['red_fighter_crash'] = rets[1]
-        return is_not_contained or rets[0] or rets[1]
 
     def render(self, mode="human", **kwargs):
         """Renders the environment.

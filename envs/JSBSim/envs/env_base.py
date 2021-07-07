@@ -19,9 +19,10 @@ class BaseEnv(gym.Env):
     def __init__(self, config):
         self.sim = None
         self.task = BaseTask()
-        self.observation_space = self.task.get_observation_space()  # None
-        self.action_space = self.task.get_action_space()  # None
+        self.observation_space = self.task.get_observation_space()
+        self.action_space = self.task.get_action_space()
 
+        self.current_step = 0
         self.state = None
 
     def step(self, action=None):
@@ -40,6 +41,7 @@ class BaseEnv(gym.Env):
                 done: whether the episode has ended, in which case further step() calls are undefined
                 info: auxiliary information
         """
+        self.current_step += 1
         if action is not None:
             if not len(action) == len(self.action_space.spaces):
                 raise ValueError("mismatch between action and action space size")
@@ -47,9 +49,8 @@ class BaseEnv(gym.Env):
         self.state = self.make_step(action)
 
         reward, done, info = self.task.get_reward(self.state, self.sim), self.is_terminal(), {}
-        state = self.state if not done else self._get_clipped_state()  # returned state should be in observation_space
 
-        return state, reward, done, info
+        return self.state, reward, done, info
 
     def make_step(self, action=None):
         """Calculates new state.
@@ -62,7 +63,7 @@ class BaseEnv(gym.Env):
         """
         # take actions
         if action is not None:
-            self.sim.set_property_values(self.task.get_action_var(), action)
+            self.sim.set_property_values(self.task.action_var, action)
 
         # run simulation
         self.sim.run()
@@ -75,8 +76,8 @@ class BaseEnv(gym.Env):
         Args:
             init_conditions (np.array): the initial observation of the space.
         """
-        if self.sim:
-            self.sim.close()
+        self.current_step = 0
+        self.close()
 
         self.sim = Simulation(
             aircraft_name=self.task.aircraft_name,
@@ -95,22 +96,12 @@ class BaseEnv(gym.Env):
         Returns:
             (NamedTuple): the first state observation of the episode
         """
-        obs_list = self.sim.get_property_values(self.task.get_observation_var())
+        obs_list = self.sim.get_property_values(self.task.state_var)
         return tuple([np.array([obs]) for obs in obs_list])
 
     def get_sim_time(self):
         """ Gets the simulation time from sim, a float. """
         return self.sim.get_sim_time()
-
-    def get_state(self):
-        return self.sim.get_sim_state()
-
-    def _get_clipped_state(self):
-        clipped = [
-            np.clip(self.state[i], o.low, o.high) if self.task.state_var[i].clipped else self.state[i]
-            for i, o in enumerate(self.observation_space)
-        ]
-        return tuple(clipped)
 
     def close(self):
         """Cleans up this environment's objects
@@ -166,22 +157,3 @@ class BaseEnv(gym.Env):
               this won't be true if seed=None, for example.
         """
         return
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

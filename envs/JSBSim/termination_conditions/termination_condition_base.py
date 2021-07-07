@@ -14,10 +14,14 @@ class BaseTerminationCondition():
     @abstractmethod
     def get_termination(self, task, env, robot_id=0):
         """
-        Return whether the episode should terminate. Overwritten by subclasses.
+        Return whether the episode should terminate.
+        Overwritten by subclasses.
 
-        :param task: task instance
-        :param env: environment instance
-        :return: done, info
+        Args:
+            task: task instance
+            env: environment instance
+
+        Returns:
+            (tuple): (done, success)
         """
         raise NotImplementedError

@@ -7,6 +7,7 @@ from collections import OrderedDict
 from gym import spaces
 from .task_base import BaseTask
 from ..core.catalog import Catalog as c
+from ..termination_conditions import ExtremeState, LowAltitude, Overload, ShootDown, Timeout
 from ..utils.utils import lonlat2dis, get_AO_TA_R
 
 
@@ -39,10 +40,7 @@ class SelfPlayTask(BaseTask):
     def __init__(self, config: str):
         super(SelfPlayTask, self).__init__(config)
 
-        self.agent_names = self.config.init_config.keys()
-        self.aircraft_names = OrderedDict(
-           [(agent, self.config.init_config[agent]['aircraft_name']) for agent in self.agent_names]
-        )
+        self.agent_names = list(self.config.init_config.keys())
 
         self.max_episode_steps = self.config.max_episode_steps
         self.reward_scale = self.config.reward_scale
@@ -52,6 +50,14 @@ class SelfPlayTask(BaseTask):
         self.target_dist = self.config.target_dist
         self.KL = self.config.KL
         self.Kv = self.config.Kv
+
+        self.termination_conditions = [
+            Timeout(self.config),
+            ExtremeState(self.config),
+            Overload(self.config),
+            LowAltitude(self.config),
+            ShootDown(self.config),
+        ]
 
         self.bloods = {'blue_fighter': 100, 'red_fighter': 100}
         self.all_type_rewards = {'blue_fighter': None, 'red_fighter': None}
@@ -90,8 +96,8 @@ class SelfPlayTask(BaseTask):
 
     def init_conditions(self):
         self.init_position_conditions = {
-            c.ic_long_gc_deg: 120.,  # 1.1  geodesic longitude [deg]
-            c.ic_lat_geod_deg: 60.,  # 1.2  geodesic latitude  [deg]
+            c.ic_long_gc_deg: 120.,     # 1.1  geodesic longitude [deg]
+            c.ic_lat_geod_deg: 60.,     # 1.2  geodesic latitude  [deg]
         }
         self.init_condition = OrderedDict(
             [(agent, {
@@ -110,6 +116,9 @@ class SelfPlayTask(BaseTask):
                 c.fcs_throttle_cmd_norm: 0.,                                            # 6.
             }) for agent in self.config.init_config.keys()]
         )
+        self.aircraft_name = OrderedDict(
+           [(agent, self.config.init_config[agent]['aircraft_name']) for agent in self.config.init_config.keys()]
+        )
 
     def get_action_space(self):
         return act_space
@@ -117,41 +126,9 @@ class SelfPlayTask(BaseTask):
     def get_observation_space(self):
         return obs_space
 
-    def is_terminal(self, state, sims):
-        # 1. End up the simulation if the aircraft is on an extreme state
-        fighter_type = ['blue_fighter', 'red_fighter']
-        terminal_flag = []
-        for i, sim in enumerate(sims):
-            if bool(sim.get_property_value(c.detect_extreme_state)):
-                print(f'the {fighter_type[i]} is on an extreme state')
-                terminal_flag.append(True)
-            # 2. End up the simulation if acceleration are too high
-            elif self._judge_overload(sim):
-                print(f'the {fighter_type[i]} acceleration are too high')
-                terminal_flag.append(True)
-            # 3. End up the simulation if altitude are too low
-            elif sim.get_property_value(c.position_h_sl_ft) <= 2500 * (1 / 0.3048):
-                print(f'the {fighter_type[i]} altitude are too low')
-                terminal_flag.append(True)
-            elif self.bloods[fighter_type[i]] <= 0:
-                print(f"the {fighter_type[i]} has been shot")
-                terminal_flag.append(True)
-            else:
-                terminal_flag.append(False)
-        return terminal_flag
-
-    def _judge_overload(self, sim):
-        acceleration_limit_x = 10.0  # "g"s
-        acceleration_limit_y = 10.0  # "g"s
-        acceleration_limit_z = 10.0  # "g"s
-        flag_overload = False
-        if sim.get_property_value(c.simulation_sim_time_sec) > 10:
-            if (math.fabs(sim.get_property_value(c.accelerations_n_pilot_x_norm)) > acceleration_limit_x
-                or math.fabs(sim.get_property_value(c.accelerations_n_pilot_y_norm)) > acceleration_limit_y
-                or math.fabs(sim.get_property_value(c.accelerations_n_pilot_z_norm) + 1) > acceleration_limit_z
-            ):
-                flag_overload = True
-        return flag_overload
+    def reset(self):
+        self.bloods = {'blue_fighter': 100, 'red_fighter': 100}
+        self.pre_actions = None
 
     def _obtain_fighter_observation_feature(self, sims):
         """

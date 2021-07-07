@@ -15,4 +15,5 @@ while True:
     reward_red += reward['red_reward']
     print(reward_blue, reward_red)
     if done:
+        print(env_info)
         break
