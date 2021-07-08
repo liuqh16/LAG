@@ -23,7 +23,7 @@ class JSBSimSelfPlayEnv(BaseEnv):
         self.sims = None
         self.task = SelfPlayTask(config)
         self.num_agents = 2
-        self.max_episode_steps = self.task.max_episode_steps
+        self.max_steps = self.task.max_steps
         self.observation_space = self.task.get_observation_space()  # None
         self.action_space = self.task.get_action_space()  # None
 

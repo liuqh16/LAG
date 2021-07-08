@@ -3,7 +3,7 @@ jsbsim_freq: 60
 agent_interaction_steps: 5
 
 # termination config
-max_episode_steps: 1500
+max_steps: 1500
 altitude_limit: 2500
 acceleration_limit_x: 10.0
 acceleration_limit_y: 10.0

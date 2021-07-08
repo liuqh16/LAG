@@ -42,7 +42,7 @@ class SelfPlayTask(BaseTask):
 
         self.agent_names = list(self.config.init_config.keys())
 
-        self.max_episode_steps = self.config.max_episode_steps
+        self.max_steps = self.config.max_steps
         self.reward_scale = self.config.reward_scale
         self.final_reward_scale = self.config.final_reward_scale
         self.danger_altitude = self.config.danger_altitude

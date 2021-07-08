@@ -9,7 +9,7 @@ class Timeout(BaseTerminationCondition):
 
     def __init__(self, config):
         super(Timeout, self).__init__(config)
-        self.max_step = getattr(self.config, 'max_episode_steps', 500)
+        self.max_steps = getattr(self.config, 'max_steps', 500)
 
     def get_termination(self, task, env, robot_id=0):
         """
@@ -23,7 +23,7 @@ class Timeout(BaseTerminationCondition):
         Returns:
             (tuple): (done, success)
         """
-        done = env.current_step >= self.max_step
+        done = env.current_step >= self.max_steps
         if done:
             print("INFO: Step limits!")
         success = False

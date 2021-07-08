@@ -2,18 +2,17 @@ import os
 import numpy as np
 import gym
 from gym.spaces import Box, Discrete
-from abc import abstractmethod, ABCMeta
+from abc import ABC, abstractmethod
 from ..core.catalog import Catalog
 from ..utils.utils import parse_config, get_root_dir
 
 
-class BaseTask:
+class BaseTask(ABC):
     """
     Base Task class.
     A class to subclass in order to create a task with its own observation variables,
     action variables, termination conditions and reward functions.
     """
-    __metaclass__ = ABCMeta
     def __init__(self, config: str):
         # parse config
         self.config = parse_config(os.path.join(get_root_dir(), 'configs', config))
@@ -80,7 +79,7 @@ class BaseTask:
         return gym.spaces.Tuple(space_tuple)
 
     @abstractmethod
-    def reset_task(self):
+    def reset(self):
         """Task-specific reset
         """
         raise NotImplementedError
@@ -125,7 +124,3 @@ class BaseTask:
             done = done or d
             success = success or s
         return done, info
-
-    @abstractmethod
-    def render(self, sim, mode="human", **kwargs):
-        raise NotImplementedError
