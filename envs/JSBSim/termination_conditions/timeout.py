@@ -11,7 +11,7 @@ class Timeout(BaseTerminationCondition):
         super(Timeout, self).__init__(config)
         self.max_steps = getattr(self.config, 'max_steps', 500)
 
-    def get_termination(self, task, env, robot_id=0):
+    def get_termination(self, task, env, agent_id=0):
         """
         Return whether the episode should terminate.
         Terminate if max_step steps have passed
@@ -25,6 +25,6 @@ class Timeout(BaseTerminationCondition):
         """
         done = env.current_step >= self.max_steps
         if done:
-            print("INFO: Step limits!")
+            print(f"INFO: [{task.agent_names[agent_id]}] step limits!")
         success = False
         return done, success

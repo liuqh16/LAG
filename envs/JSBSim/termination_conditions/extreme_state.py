@@ -25,6 +25,6 @@ class ExtremeState(BaseTerminationCondition):
         """
         done = bool(env.sims[agent_id].get_property_value(c.detect_extreme_state))
         if done:
-            print(f'INFO: the {task.agent_names[agent_id]} is on an extreme state!')
+            print(f'INFO: [{task.agent_names[agent_id]}] is on an extreme state!')
         success = False
         return done, success
