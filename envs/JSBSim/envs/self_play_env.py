@@ -40,6 +40,7 @@ class JSBSimSelfPlayEnv(BaseEnv):
 
         self.current_step = 0
         self.actions = OrderedDict([(agent, np.zeros(len(self.task.action_var))) for agent in self.agent_names])
+        # (north, east, down, vn, ve, vd)
         self.features = OrderedDict([(agent, np.zeros(len(self.task.feature_var))) for agent in self.agent_names])
 
     def reset(self):
@@ -148,7 +149,8 @@ class JSBSimSelfPlayEnv(BaseEnv):
             # unit: degree -> m
             east, north = lonlat2dis(lon, lat, self.init_longitude, self.init_latitude)
             # unit: (km, km, km, mh, mh, mh)
-            self.features[agent_name][0:3] = np.array([east, north, alt * 0.304]) / 1000
+            # (north, east, down, vn, ve, vd)
+            self.features[agent_name][0:3] = np.array([north, east, alt * 0.304]) / 1000
             self.features[agent_name][3:6] = np.array([vn, ve, vd]) * 0.304 / 340
         return next_observation
 

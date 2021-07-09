@@ -10,14 +10,14 @@ class SmoothActionReward(BaseRewardFunction):
     NOTE:
     - env must implement `self.features` property
     """
-    def __init__(self, config, is_potential=False):
-        super().__init__(config, is_potential)
+    def __init__(self, config, is_potential=False, render=False):
+        super().__init__(config, is_potential, render)
         self.reward_scale = getattr(self.config, 'smooth_action_reward_scale', 1.0)
         self.pre_actions = None
 
         self.reward_item_names = [self.__class__.__name__]
 
-    def get_reward(self, task, env, agent_id=0):
+    def get_reward(self, task, env, agent_id):
         """
         Reward is the sum of all the punishments.
 

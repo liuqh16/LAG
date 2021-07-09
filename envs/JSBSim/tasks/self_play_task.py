@@ -42,11 +42,11 @@ class SelfPlayTask(BaseTask):
         super().__init__(config)
 
         self.reward_functions = [
-            AltitudeReward(self.config, is_potential=False),
-            AttackReward(self.config, is_potential=False),
-            PostureReward(self.config, is_potential=True),
-            RelativeAltitudeReward(self.config, is_potential=False),
-            SmoothActionReward(self.config, is_potential=False),
+            AltitudeReward(self.config, is_potential=False, render=True),
+            AttackReward(self.config, is_potential=False, render=True),
+            PostureReward(self.config, is_potential=True, render=True),
+            RelativeAltitudeReward(self.config, is_potential=False, render=True),
+            SmoothActionReward(self.config, is_potential=False, render=True),
         ]
 
         self.termination_conditions = [
@@ -92,8 +92,8 @@ class SelfPlayTask(BaseTask):
             c.attitude_heading_true_rad,
         ]
         self.feature_var = [
-            c.position_long_gc_deg,
             c.position_lat_geod_deg,
+            c.position_long_gc_deg,
             c.position_h_sl_ft,
             c.velocities_v_north_fps,
             c.velocities_v_east_fps,
@@ -123,16 +123,3 @@ class SelfPlayTask(BaseTask):
 
     def get_termination(self, env, agent_id, info={}):
         return super().get_termination(env, agent_id, info)
-
-    def reward_for_smooth_action(self, action_dicts=None):
-        if self.pre_actions is None:
-            self.pre_actions = {"red_fighter": np.array([20., 18.6, 20., 0.]),
-                                'blue_fighter': np.array([20., 18.6, 20., 0.])}
-            return
-        cur_blue_action, pre_blue_action = action_dicts['blue_fighter'], self.pre_actions['blue_fighter']
-        cur_red_action, pre_red_action = action_dicts['red_fighter'], self.pre_actions['red_fighter']
-        delta_blue_action = np.abs(cur_blue_action - pre_blue_action)
-        delta_red_action = np.abs(cur_red_action - pre_red_action)
-        delta_blue_action = np.mean(delta_blue_action * (delta_blue_action > 10)) * 0.001
-        delta_red_action = np.mean(delta_red_action * (delta_red_action > 10)) * 0.001
-        return {'blue_reward': {'smooth_act': -delta_blue_action}, 'red_reward': {'smooth_act': -delta_red_action}}

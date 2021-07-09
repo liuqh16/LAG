@@ -12,8 +12,8 @@ class AltitudeReward(BaseRewardFunction):
     NOTE:
     - env must implement `self.features` property
     """
-    def __init__(self, config, is_potential=False):
-        super().__init__(config, is_potential)
+    def __init__(self, config, is_potential=False, render=False):
+        super().__init__(config, is_potential, render)
         self.reward_scale = getattr(self.config, 'altitude_reward_scale', 1.0)
         self.safe_altitude = getattr(self.config, 'safe_altitude', 4.0)         # km
         self.danger_altitude = getattr(self.config, 'danger_altitude', 3.5)     # km
@@ -21,7 +21,7 @@ class AltitudeReward(BaseRewardFunction):
 
         self.reward_item_names = [self.__class__.__name__ + item for item in ['', '_Pv', '_PH']]
 
-    def get_reward(self, task, env, agent_id=0):
+    def get_reward(self, task, env, agent_id):
         """
         Reward is the sum of all the punishments.
 

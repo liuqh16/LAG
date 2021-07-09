@@ -13,11 +13,12 @@ class BaseRewardFunction(ABC):
         self.is_potential = is_potential
         self.render = render
         # inner variables
-        self.pre_reward = 0.0
+        self.agent_names = list(self.config.init_config.keys())
+        self.pre_rewards = dict([(agent, 0.0) for agent in self.agent_names])
         self.reward_trajectory = []  # type: list[tuple[float]]
         self.reward_item_names = [self.__class__.__name__]
 
-    def reset(self, task, env, agent_id=0):
+    def reset(self, task, env):
         """Perform reward function-specific reset after episode reset.
         Overwritten by subclasses.
 
@@ -26,12 +27,13 @@ class BaseRewardFunction(ABC):
             env: environment instance
         """
         if self.is_potential:
-            self.pre_reward = self.get_reward(task, env, agent_id)
+            for agent_id, agent_name in enumerate(self.agent_names):
+                self.pre_rewards[agent_name] = self.get_reward(task, env, agent_id)
         if self.render:
             self.reward_trajectory = []
 
     @abstractmethod
-    def get_reward(self, task, env, agent_id=0):
+    def get_reward(self, task, env, agent_id):
         """Compute the reward at the current timestep.
         Overwritten by subclasses.
 
@@ -44,13 +46,21 @@ class BaseRewardFunction(ABC):
         """
         raise NotImplementedError
 
-    def _process(self, new_reward, render_items=None):
+    def _process(self, new_reward, agent_id=None, render_items=None):
+        """Process reward and inner variables.
+
+        Args:
+            new_reward (float)
+            agent_id (int, optional): Must set if `is_potential=True`. Defaults to None.
+            render_items (tuple, optional): Must set if `len(reward_item_names)>1`. Defaults to None.
+
+        Returns:
+            [type]: [description]
+        """
+        reward = new_reward * self.reward_scale
         if self.is_potential:
-            reward_diff = new_reward - self.pre_reward
-            self.pre_reward = new_reward
-            reward = reward_diff * self.reward_scale
-        else:
-            reward = new_reward * self.reward_scale
+            agent_name = self.agent_names[agent_id]
+            reward, self.pre_rewards[agent_name] = reward - self.pre_rewards[agent_name], reward
         if self.render:
             if render_items is None:
                 self.reward_trajectory.append(reward)
