@@ -18,7 +18,6 @@ class BaseTask(ABC):
         self.config = parse_config(os.path.join(get_root_dir(), 'configs', config))
 
         self.init_variables()
-        self.init_conditions()
 
         # modify Catalog to have only the current task properties
         names_away = []
@@ -31,10 +30,6 @@ class BaseTask(ABC):
         for name in names_away:
             Catalog.pop(name)
 
-        # set controlling frequency
-        self.jsbsim_freq = self.config.jsbsim_freq
-        self.agent_interaction_steps = self.config.agent_interaction_steps
-
         self.reward_functions = []
         self.termination_conditions = []
 
@@ -42,11 +37,6 @@ class BaseTask(ABC):
     def init_variables(self):
         self.action_var = None
         self.state_var = None
-
-    @abstractmethod
-    def init_conditions(self):
-        self.aircraft_name = None
-        self.init_condition = None
 
     @abstractmethod
     def get_observation_space(self):
@@ -78,11 +68,14 @@ class BaseTask(ABC):
                 space_tuple += (Discrete(prop.max - prop.min + 1),)
         return gym.spaces.Tuple(space_tuple)
 
-    @abstractmethod
-    def reset(self):
+    def reset(self, env):
         """Task-specific reset
+
+        Args:
+            env: environment instance
         """
-        raise NotImplementedError
+        for reward_function in self.reward_functions:
+            reward_function.reset(self, env)
 
     def get_reward(self, env, agent_id, info={}):
         """
@@ -120,7 +113,9 @@ class BaseTask(ABC):
         done = False
         success = False
         for condition in self.termination_conditions:
-            d, s = condition.get_termination(self, env, agent_id)
+            d, s, info = condition.get_termination(self, env, agent_id, info)
             done = done or d
             success = success or s
+            if done:
+                break
         return done, info

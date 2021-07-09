@@ -24,6 +24,7 @@ class BaseEnv(gym.Env):
 
         self.current_step = 0
         self.state = None
+        self.action = None
 
     def step(self, action=None):
         """Run one timestep of the environment's dynamics. When end of
@@ -42,6 +43,7 @@ class BaseEnv(gym.Env):
                 info: auxiliary information
         """
         self.current_step += 1
+        self.action = action
         if action is not None:
             if not len(action) == len(self.action_space.spaces):
                 raise ValueError("mismatch between action and action space size")

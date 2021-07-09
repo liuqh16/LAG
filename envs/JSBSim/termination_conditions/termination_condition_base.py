@@ -11,7 +11,7 @@ class BaseTerminationCondition(ABC):
         self.config = config
 
     @abstractmethod
-    def get_termination(self, task, env, agent_id=0):
+    def get_termination(self, task, env, agent_id=0, info={}):
         """
         Return whether the episode should terminate.
         Overwritten by subclasses.
@@ -21,6 +21,6 @@ class BaseTerminationCondition(ABC):
             env: environment instance
 
         Returns:
-            (tuple): (done, success)
+            (tuple): (done, success, info)
         """
         raise NotImplementedError

@@ -1,12 +1,8 @@
 """
 A simplified version from OpenAI Baselines code to work with gym.env parallelization.
 """
-import os
-import sys
-import pdb
 import numpy as np
 from abc import ABC, abstractmethod
-import multiprocessing as mp
 from multiprocessing import Process, Pipe
 from multiprocessing.connection import Connection
 from utils.utils import tile_images
@@ -187,7 +183,7 @@ class DummyVecEnv(VecEnv):
     def __init__(self, env_fns):
         self.envs = [fn() for fn in env_fns]
         env = self.envs[0]
-        super(DummyVecEnv, self).__init__(len(self.envs), env.observation_space, env.action_space)
+        super().__init__(len(self.envs), env.observation_space, env.action_space)
         self.actions = None
 
     def step_async(self, actions):
@@ -204,7 +200,6 @@ class DummyVecEnv(VecEnv):
                 if np.all(done):
                     obs[i] = self.envs[i].reset()
             else:
-                pdb.set_trace()
                 raise NotImplementedError("Unexpected type of done!")
         self.actions = None
         return obs, rews, dones, infos
@@ -251,7 +246,7 @@ class SubprocVecEnv(VecEnv):
             remote.close()
         self.remotes[0].send(('get_spaces', None))
         observation_space, action_space = self.remotes[0].recv()
-        super(SubprocVecEnv, self).__init__(nenvs, observation_space, action_space)
+        super().__init__(nenvs, observation_space, action_space)
 
     def step_async(self, actions):
         self._assert_not_closed()

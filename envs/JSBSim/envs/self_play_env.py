@@ -1,7 +1,7 @@
 import numpy as np
-from ..core.catalog import Catalog as c
 from collections import OrderedDict
 from .env_base import BaseEnv
+from ..core.catalog import Catalog as c
 from ..core.simulation import Simulation
 from ..tasks.self_play_task import act_space, SelfPlayTask
 from ..utils.utils import lonlat2dis
@@ -22,39 +22,73 @@ class JSBSimSelfPlayEnv(BaseEnv):
     def __init__(self, config='r_hyperparams.yaml'):
         self.sims = None
         self.task = SelfPlayTask(config)
-        self.num_agents = 2
-        self.max_steps = self.task.max_steps
-        self.observation_space = self.task.get_observation_space()  # None
-        self.action_space = self.task.get_action_space()  # None
+        self.config = self.task.config
+        self.observation_space = self.task.get_observation_space()
+        self.action_space = self.task.get_action_space()
+
+        # nickname of each agent
+        self.agent_names = list(self.config.init_config.keys())
+        # aircraft model of each agent
+        self.aircraft_name = OrderedDict(
+           [(agent, self.config.init_config[agent]['aircraft_name']) for agent in self.config.init_config.keys()]
+        )
+        self.num_agents = len(self.agent_names)
+        self.max_steps = self.config.max_steps
+        # set controlling frequency
+        self.jsbsim_freq = self.config.jsbsim_freq
+        self.agent_interaction_steps = self.config.agent_interaction_steps
 
         self.current_step = 0
-        self.trajectory = []
-        self.state = None
-        self.pre_reward_obs = None
+        self.actions = OrderedDict([(agent, np.zeros(len(self.task.action_var))) for agent in self.agent_names])
+        self.features = OrderedDict([(agent, np.zeros(len(self.task.feature_var))) for agent in self.agent_names])
 
     def reset(self):
         self.current_step = 0
-        self.trajectory = []
-        self.task.reset()
+        # Default action is straight forward
+        self.actions = OrderedDict([(agent, np.array([20., 18.6, 20., 0.])) for agent in self.agent_names])
         self.close()
-        self.sims = [Simulation(
-            aircraft_name=self.task.aircraft_name[agent],
-            init_conditions=self.task.init_condition[agent],
-            jsbsim_freq=self.task.jsbsim_freq,
-            agent_interaction_steps=self.task.agent_interaction_steps) for agent in self.task.agent_names]
+        self.reset_conditions()
+        # recreate simulation
+        self.sims = OrderedDict([(agent, Simulation(
+            aircraft_name=self.aircraft_name[agent],
+            init_conditions=self.init_condition[agent],
+            jsbsim_freq=self.jsbsim_freq,
+            agent_interaction_steps=self.agent_interaction_steps)) for agent in self.agent_names])
         next_observation = self.get_observation()
-        self.pre_reward_obs = self.task.get_reward(self.state, self.sims)
-        self.task.reward_for_smooth_action()
+        self.task.reset(self)
         return next_observation
 
-    def step(self, action_dicts: dict):
+    def reset_conditions(self):
+        # TODO: randomization
+        # Origin point of Combat Field [geodesic longitude&latitude (deg)]
+        self.init_longitude, self.init_latitude = 120.0, 60.0
+        # Initial setting of each agent
+        self.init_condition = OrderedDict(
+            [(agent, {
+                c.ic_h_sl_ft: self.config.init_config[agent]['ic_h_sl_ft'],             # 1.1  altitude above mean sea level [ft]
+                c.ic_terrain_elevation_ft: 0,                                           # +    default
+                c.ic_long_gc_deg: self.config.init_config[agent]['ic_long_gc_deg'],     # 1.2  geodesic longitude [deg]
+                c.ic_lat_geod_deg: self.config.init_config[agent]['ic_lat_geod_deg'],   # 1.3  geodesic latitude  [deg]
+                c.ic_psi_true_deg: self.config.init_config[agent]['ic_psi_true_deg'],   # 5.   initial (true) heading [deg]   (0, 360)
+                c.ic_u_fps: self.config.init_config[agent]['ic_u_fps'],                 # 2.1  body frame x-axis velocity [ft/s]  (-2200, 2200)
+                c.ic_v_fps: 0,                                                          # 2.2  body frame y-axis velocity [ft/s]  (-2200, 2200)
+                c.ic_w_fps: 0,                                                          # 2.3  body frame z-axis velocity [ft/s]  (-2200, 2200)
+                c.ic_p_rad_sec: 0,                                                      # 3.1  roll rate  [rad/s]     (-2 * math.pi, 2 * math.pi)
+                c.ic_q_rad_sec: 0,                                                      # 3.2  pitch rate [rad/s]     (-2 * math.pi, 2 * math.pi)
+                c.ic_r_rad_sec: 0,                                                      # 3.3  yaw rate   [rad/s]     (-2 * math.pi, 2 * math.pi)
+                c.ic_roc_fpm: 0,                                                        # 4.   initial rate of climb [ft/min]
+                c.fcs_throttle_cmd_norm: 0.,                                            # 6.
+            }) for agent in self.config.init_config.keys()]
+        )
+
+    def step(self, action: dict):
         """Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`
         to reset this environment's state. Accepts an action and 
         returns a tuple (observation, reward_visualize, done, info).
 
         Args:
-            action (dict): the agents' action, with same length as action variables.
+            action (dict{str: np.array}): the agents' action, with same length as action variables.
 
         Returns:
             (tuple):
@@ -64,67 +98,33 @@ class JSBSimSelfPlayEnv(BaseEnv):
                 info: auxiliary information
         """
         self.current_step += 1
-        blue_action = self.process_actions(action_dicts, 'blue_fighter')
-        red_action = self.process_actions(action_dicts, 'red_fighter')
-        if blue_action is not None:
-            if not len(blue_action) == len(self.action_space.spaces):
-                raise ValueError("mismatch between action and action space size")
-        self.make_step([blue_action, red_action])
-        next_observation = self.get_observation()
-        reward = dict()
-        cur_reward_obs_dicts = self.task.get_reward(self.state, self.sims)
-        cur_reward_act_dicts = self.task.reward_for_smooth_action(action_dicts)
-        cur_reward_b, cur_reward_r = cur_reward_obs_dicts['blue_reward'], cur_reward_obs_dicts['red_reward']
-        reward['blue_reward'] = (cur_reward_b['ori_range'] - self.pre_reward_obs['blue_reward']['ori_range']) * self.task.reward_scale
-        reward['blue_reward'] += cur_reward_b['barrier'] + cur_reward_b['blood'] + cur_reward_act_dicts['blue_reward']['smooth_act']
-        reward['red_reward'] = (cur_reward_r['ori_range'] - self.pre_reward_obs['red_reward']['ori_range']) * self.task.reward_scale
-        reward['red_reward'] += cur_reward_r['barrier'] + cur_reward_r['blood'] + cur_reward_act_dicts['red_reward']['smooth_act']
-        self.pre_reward_obs = cur_reward_obs_dicts
-
         info = {}
+        self.actions = self.process_actions(action)
+        self.make_step(self.actions)
+        next_observation = self.get_observation()
+        reward = OrderedDict()
+        for agent_id, agent_name in enumerate(self.agent_names):
+            reward[agent_name], info = self.task.get_reward(self, agent_id, info)
         done = False
         for agent_id in range(self.num_agents):
             agent_done, info = self.task.get_termination(self, agent_id, info)
-            info[f'{self.task.agent_names[agent_id]}_crash'] = agent_done
+            info[f'{self.agent_names[agent_id]}_done'] = agent_done
             done = agent_done or done
-        sign = self._judge_terminal_condition(done, info)
-        reward['blue_final_reward'] = sign * self.task.final_reward_scale
-        reward['red_final_reward'] = -sign * self.task.final_reward_scale
 
         return next_observation, reward, done, info
 
-    def _judge_terminal_condition(self, done, info):
-        if not done:
-            return 0.
-        sign = 0.
-        if info['blue_fighter_crash'] and info['red_fighter_crash']:
-            sign = 0.
-        elif info['blue_fighter_crash'] and info['blue_fighter'] <= 0:
-            sign = -1
-        elif info['red_fighter_crash'] and info['red_fighter'] <= 0:
-            sign = 1
-        info['blue_win'] = (1. + sign) / 2.
-        info['red_win'] = (1. - sign) / 2.
-        return sign
-
-    def make_step(self, action=None):
+    def make_step(self, action: dict):
         """
-
         Calculates new state.
 
-
-        :param action: array of floats, the agent's last action
-
-        :return: observation: array, agent's observation of the environment state
-
-
+        Args:
+            action (dict{str: np.array}): the agents' action, with same length as action variables.
         """
-        # take actions
-        for i in range(len(action)):
-            if action is not None:
-                self.sims[i].set_property_values(self.task.action_var, action[i])
+        for agent_name in self.agent_names:
+            # take actions
+            self.sims[agent_name].set_property_values(self.task.action_var, action[agent_name])
             # run simulation
-            self.sims[i].run()
+            self.sims[agent_name].run()
 
     def get_observation(self):
         """
@@ -132,31 +132,31 @@ class JSBSimSelfPlayEnv(BaseEnv):
 
         Returns:
             (OrderedDict): the same format as self.observation_space
-
         """
-        blue_obs_list = self.sims[0].get_property_values(self.task.state_var)
-        red_obs_list = self.sims[1].get_property_values(self.task.state_var)
+        # generate observation (gym.Env output)
+        all_obs_list = []
+        for agent_name in self.agent_names:
+            all_obs_list.append(self.sims[agent_name].get_property_values(self.task.state_var))
+        next_observation = OrderedDict()
+        for (agent_id, agent_name) in enumerate(self.agent_names):
+            obs_norm = self.normalize_observation(all_obs_list[agent_id:] + all_obs_list[:agent_id])
+            next_observation[agent_name] = OrderedDict({'ego_info': obs_norm})
+        # generate feature (use in reward calculation)
+        for agent_name in self.agent_names:
+            # unit: (degree, degree, ft, fps, fps, fps)
+            lat, lon, alt, vn, ve, vd = self.sims[agent_name].get_property_values(self.task.feature_var)
+            # unit: degree -> m
+            east, north = lonlat2dis(lon, lat, self.init_longitude, self.init_latitude)
+            # unit: (km, km, km, mh, mh, mh)
+            self.features[agent_name][0:3] = np.array([east, north, alt * 0.304]) / 1000
+            self.features[agent_name][3:6] = np.array([vn, ve, vd]) * 0.304 / 340
+        return next_observation
 
-        blue_observation = self.normalize_observation(blue_obs_list, red_obs_list)
-        red_observation = self.normalize_observation(red_obs_list, blue_obs_list)
-        return OrderedDict({
-            'blue_fighter': OrderedDict({'ego_info': blue_observation}),
-            'red_fighter': OrderedDict({'ego_info': red_observation})})
-
-    def process_actions(self, actions, fighter_type, lowpass=True):
-        action = actions[fighter_type].astype(np.float)
-        action[0] = action[0] * 2. / (act_space['aileron'].n - 1.) - 1.
-        action[1] = action[1] * 2. / (act_space['elevator'].n - 1.) - 1.
-        action[2] = action[2] * 2. / (act_space['rudder'].n - 1.) - 1.
-        action[3] = action[3] * 0.5 / (act_space['throttle'].n - 1.) + 0.4
-        return action
-
-    def normalize_observation(self, ego_obs_list, enm_obs_list):
+    def normalize_observation(self, sorted_obs_list):
+        ego_obs_list, enm_obs_list = sorted_obs_list[0], sorted_obs_list[1]
         observation = np.zeros(22)
-        init_longitude = self.task.init_position_conditions[c.ic_long_gc_deg]
-        init_latitude = self.task.init_position_conditions[c.ic_lat_geod_deg]
-        ego_cur_east, ego_cur_north = lonlat2dis(ego_obs_list[0], ego_obs_list[1], init_longitude, init_latitude)
-        enm_cur_east, enm_cur_north = lonlat2dis(enm_obs_list[0], enm_obs_list[1], init_longitude, init_latitude)
+        ego_cur_east, ego_cur_north = lonlat2dis(ego_obs_list[0], ego_obs_list[1], self.init_longitude, self.init_latitude)
+        enm_cur_east, enm_cur_north = lonlat2dis(enm_obs_list[0], enm_obs_list[1], self.init_longitude, self.init_latitude)
         observation[0] = ego_cur_north / 10000.
         observation[1] = ego_cur_east / 10000.
         observation[2] = ego_obs_list[2] * 0.304 / 5000
@@ -181,14 +181,23 @@ class JSBSimSelfPlayEnv(BaseEnv):
         observation[21] = enm_obs_list[8] * 0.304 / 340
         return observation
 
+    def process_actions(self, action: dict):
+        for agent_name in self.agent_names:
+            action[agent_name] = np.array(action[agent_name], dtype=np.float32)
+            action[agent_name][0] = action[agent_name][0] * 2. / (act_space['aileron'].n - 1.) - 1.
+            action[agent_name][1] = action[agent_name][1] * 2. / (act_space['elevator'].n - 1.) - 1.
+            action[agent_name][2] = action[agent_name][2] * 2. / (act_space['rudder'].n - 1.) - 1.
+            action[agent_name][3] = action[agent_name][3] * 0.5 / (act_space['throttle'].n - 1.) + 0.4
+        return action
+
     def close(self):
         """Cleans up this environment's objects.
 
         Environments automatically close() when garbage collected or when the program exits.
         """
         if self.sims:
-            for i in range(len(self.sims)):
-                self.sims[i].close()
+            for agent_name in self.agent_names:
+                self.sims[agent_name].close()
 
     def render(self, mode="human", **kwargs):
         """Renders the environment.
@@ -209,7 +218,7 @@ class JSBSimSelfPlayEnv(BaseEnv):
               in implementations to use the functionality of this method.
         :param mode: str, the mode to render with
         """
-        blue_obs_list = self.sims[0].get_property_values(self.task.render_var)
-        red_obs_list = self.sims[1].get_property_values(self.task.render_var)
-        self.trajectory.append(np.hstack([np.asarray(blue_obs_list), np.asarray(red_obs_list)]))
-        return np.hstack([np.asarray(blue_obs_list), np.asarray(red_obs_list)])
+        obs_list = []
+        for agent_name in self.agent_names:
+            obs_list.append(np.array(self.sims[agent_name].get_property_values(self.task.render_var)))
+        return np.hstack(obs_list)

@@ -22,18 +22,19 @@ from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
 #         break
 
 
-def make_train_env():
-    return SubprocVecEnv([JSBSimSelfPlayEnv for _ in range(3)])
+def make_train_env(num_env):
+    return SubprocVecEnv([JSBSimSelfPlayEnv for _ in range(num_env)])
 
 if __name__ == '__main__':
-    envs = make_train_env()
+    num_env = 4
+    envs = make_train_env(num_env)
     envs.reset()
     n_rollout = 0
     while n_rollout < 20:
         n_rollout += 1
         while True:
             actions = {"red_fighter": np.array([20., 18.6, 20., 0.]), 'blue_fighter': np.array([20., 18.6, 20., 0.])}
-            next_obs, reward, done, env_info = envs.step([actions for _ in range(3)])
+            next_obs, reward, done, env_info = envs.step([actions for _ in range(num_env)])
             if np.all(done):
                 print(env_info)
                 break

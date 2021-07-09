@@ -30,10 +30,9 @@ init_config: {
 }
 
 # reward config
-reward_scale: 100.0
-final_reward_scale: 50.0
+posture_reward_scale: 100.0
 danger_altitude: 3.5
 safe_altitude: 4.0
 target_dist: 3.0
-KL: 1.0
+KH: 1.0
 Kv: 0.2

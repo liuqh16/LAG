@@ -9,10 +9,10 @@ class LowAltitude(BaseTerminationCondition):
     """
 
     def __init__(self, config):
-        super(LowAltitude, self).__init__(config)
+        super().__init__(config)
         self.altitude_limit = getattr(config, 'altitude_limit', 2500)  # unit: m
 
-    def get_termination(self, task, env, agent_id=0):
+    def get_termination(self, task, env, agent_id=0, info={}):
         """
         Return whether the episode should terminate.
         End up the simulation if altitude are too low.
@@ -22,10 +22,11 @@ class LowAltitude(BaseTerminationCondition):
             env: environment instance
 
         Returns:
-            (tuple): (done, success)
+            (tuple): (done, success, info)
         """
-        done = env.sims[agent_id].get_property_value(c.position_h_sl_ft) <= self.altitude_limit * (1 / 0.3048)
+        done = env.sims[env.agent_names[agent_id]].get_property_value(c.position_h_sl_ft) <= self.altitude_limit * (1 / 0.3048)
         if done:
             print(f'INFO: [{task.agent_names[agent_id]}] altitude is too low')
+            info[f'{env.agent_names[agent_id]}_end_reason'] = 1  # crash
         success = False
-        return done, success
+        return done, success, info

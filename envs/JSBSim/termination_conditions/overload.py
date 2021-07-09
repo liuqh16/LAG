@@ -10,12 +10,12 @@ class Overload(BaseTerminationCondition):
     """
 
     def __init__(self, config):
-        super(Overload, self).__init__(config)
+        super().__init__(config)
         self.acceleration_limit_x = getattr(config, 'acceleration_limit_x', 10.0)  # unit: g
         self.acceleration_limit_y = getattr(config, 'acceleration_limit_y', 10.0)  # unit: g
         self.acceleration_limit_z = getattr(config, 'acceleration_limit_z', 10.0)  # unit: g
 
-    def get_termination(self, task, env, agent_id=0):
+    def get_termination(self, task, env, agent_id=0, info={}):
         """
         Return whether the episode should terminate.
         End up the simulation if acceleration are too high.
@@ -25,13 +25,14 @@ class Overload(BaseTerminationCondition):
             env: environment instance
 
         Returns:
-            (tuple): (done, success)
+            (tuple): (done, success, info)
         """
-        done = self._judge_overload(env.sims[agent_id])
+        done = self._judge_overload(env.sims[env.agent_names[agent_id]])
         if done:
             print(f'INFO: [{task.agent_names[agent_id]}] acceleration is too high!')
+            info[f'{env.agent_names[agent_id]}_end_reason'] = 1  # crash
         success = False
-        return done, success
+        return done, success, info
 
     def _judge_overload(self, sim):
         flag_overload = False

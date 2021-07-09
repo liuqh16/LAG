@@ -9,9 +9,9 @@ class ExtremeState(BaseTerminationCondition):
     """
 
     def __init__(self, config):
-        super(ExtremeState, self).__init__(config)
+        super().__init__(config)
 
-    def get_termination(self, task, env, agent_id=0):
+    def get_termination(self, task, env, agent_id=0, info={}):
         """
         Return whether the episode should terminate.
         End up the simulation if the aircraft is on an extreme state.
@@ -21,10 +21,11 @@ class ExtremeState(BaseTerminationCondition):
             env: environment instance
 
         Returns:
-            (tuple): (done, success)
+            (tuple): (done, success, info)
         """
-        done = bool(env.sims[agent_id].get_property_value(c.detect_extreme_state))
+        done = bool(env.sims[env.agent_names[agent_id]].get_property_value(c.detect_extreme_state))
         if done:
-            print(f'INFO: [{task.agent_names[agent_id]}] is on an extreme state!')
+            print(f'INFO: [{env.agent_names[agent_id]}] is on an extreme state!')
+            info[f'{env.agent_names[agent_id]}_end_reason'] = 1  # crash
         success = False
-        return done, success
+        return done, success, info
