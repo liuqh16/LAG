@@ -12,8 +12,8 @@ class AltitudeReward(BaseRewardFunction):
     NOTE:
     - env must implement `self.features` property
     """
-    def __init__(self, config, is_potential=False, render=False):
-        super().__init__(config, is_potential, render)
+    def __init__(self, config):
+        super().__init__(config)
         self.reward_scale = getattr(self.config, 'altitude_reward_scale', 1.0)
         self.safe_altitude = getattr(self.config, 'safe_altitude', 4.0)         # km
         self.danger_altitude = getattr(self.config, 'danger_altitude', 3.5)     # km
@@ -32,7 +32,7 @@ class AltitudeReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        ego_feature = env.features[env.agent_names[agent_id]]
+        ego_feature = env.features[self.agent_names[agent_id]]
         ego_x, ego_y, ego_z, ego_vx, ego_vy, ego_vz = ego_feature
         Pv = 0.
         if ego_z <= self.safe_altitude:

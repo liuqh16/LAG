@@ -4,6 +4,7 @@ from .env_base import BaseEnv
 from ..core.catalog import Catalog
 from ..core.simulation import Simulation
 from ..tasks.selfplay_task import SelfPlayTask
+from ..tasks.selfplay_with_missle_task import SelfPlayWithMissileTask
 from ..utils.utils import lonlat2dis
 
 
@@ -14,7 +15,10 @@ class SelfPlayEnv(BaseEnv):
     metadata = {"render.modes": ["human", "csv"]}
 
     def __init__(self, config='selfplay_task.yaml'):
-        self.task = SelfPlayTask(config)
+        if 'missile' not in config:
+            self.task = SelfPlayTask(config)
+        else:
+            self.task = SelfPlayWithMissileTask(config)
         super().__init__(self.task, config)
 
     def init_variables(self):

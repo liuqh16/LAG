@@ -7,13 +7,14 @@ class BaseRewardFunction(ABC):
     Base RewardFunction class
     Reward-specific reset and get_reward methods are implemented in subclasses
     """
-    def __init__(self, config, is_potential=False, render=False):
+    def __init__(self, config):
         self.config = config
-        self.reward_scale = 1.0
-        self.is_potential = is_potential
-        self.render = render
         # inner variables
+        self.reward_scale = getattr(self.config, f'{self.__class__.__name__}_scale', 1.0)
+        self.is_potential = getattr(self.config, f'{self.__class__.__name__}_potential', False)
+        self.render = getattr(self.config, f'{self.__class__.__name__}_render', False)
         self.agent_names = list(self.config.init_config.keys())
+        self.num_agents = len(self.agent_names)
         self.pre_rewards = dict([(agent, 0.0) for agent in self.agent_names])
         self.reward_trajectory = []  # type: list[tuple[float]]
         self.reward_item_names = [self.__class__.__name__]

@@ -7,7 +7,7 @@ from collections import OrderedDict
 from gym import spaces
 from .task_base import BaseTask
 from ..core.catalog import Catalog as c
-from ..reward_functions import AltitudeReward, AttackReward, PostureReward, RelativeAltitudeReward, SmoothActionReward
+from ..reward_functions import AltitudeReward, PostureReward, RelativeAltitudeReward, SmoothActionReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, ShootDown, Timeout
 from ..utils.utils import lonlat2dis, get_AO_TA_R
 
@@ -42,11 +42,10 @@ class SelfPlayTask(BaseTask):
         super().__init__(config)
 
         self.reward_functions = [
-            AltitudeReward(self.config, is_potential=False, render=True),
-            # AttackReward(self.config, is_potential=False, render=True),
-            PostureReward(self.config, is_potential=True, render=True),
-            RelativeAltitudeReward(self.config, is_potential=False, render=True),
-            SmoothActionReward(self.config, is_potential=False, render=True),
+            AltitudeReward(self.config),
+            PostureReward(self.config),
+            RelativeAltitudeReward(self.config),
+            SmoothActionReward(self.config),
         ]
 
         self.termination_conditions = [

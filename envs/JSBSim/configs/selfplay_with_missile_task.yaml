@@ -30,6 +30,8 @@ init_config: {
 }
 
 # reward config
+MissileAttackReward_render: false
+
 PostureReward_scale: 100.0
 PostureReward_potential: true
 PostureReward_render: false

@@ -8,14 +8,11 @@ class SmoothActionReward(BaseRewardFunction):
     Punish if current fighter change action significantly. Typically negative.
 
     NOTE:
-    - env must implement `self.features` property
+    - env must implement `self.features` and `self.actions` property
     """
-    def __init__(self, config, is_potential=False, render=False):
-        super().__init__(config, is_potential, render)
-        self.reward_scale = getattr(self.config, 'smooth_action_reward_scale', 1.0)
+    def __init__(self, config):
+        super().__init__(config)
         self.pre_actions = None
-
-        self.reward_item_names = [self.__class__.__name__]
 
     def get_reward(self, task, env, agent_id):
         """
@@ -30,7 +27,7 @@ class SmoothActionReward(BaseRewardFunction):
         """
         if self.pre_actions is None:
             self.pre_actions = env.actions
-        ego_name = env.agent_names[agent_id]
+        ego_name = self.agent_names[agent_id]
         cur_action, pre_action = env.actions[ego_name], self.pre_actions[ego_name]
         delta_action = np.abs(cur_action - pre_action)
         new_reward = -np.mean(delta_action * (delta_action > 10)) * 0.001

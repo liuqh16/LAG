@@ -13,11 +13,10 @@ class PostureReward(BaseRewardFunction):
     - Only support one-to-one environments.
     - env must implement `self.features` property
     """
-    def __init__(self, config, is_potential=False, render=False):
-        super().__init__(config, is_potential, render)
+    def __init__(self, config):
+        super().__init__(config)
         assert len(self.config.init_config.keys()) == 2, \
-            "OrientationReward only support one-to-one environments but current env has more than 2 agents!"
-        self.reward_scale = getattr(self.config, 'posture_reward_scale', 1.0)
+            "PostureReward only support one-to-one environments but current env has more than 2 agents!"
         self.orientation_version = getattr(self.config, 'orientation_version', 'v2')
         self.range_version = getattr(self.config, 'range_version', 'v1')
         self.target_dist = getattr(self.config, 'target_dist', 3.0)
@@ -37,7 +36,7 @@ class PostureReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        ego_name, enm_name = env.agent_names[agent_id], env.agent_names[(agent_id + 1) % env.num_agents]
+        ego_name, enm_name = self.agent_names[agent_id], self.agent_names[(agent_id + 1) % self.num_agents]
         ego_feature, enm_feature = env.features[ego_name], env.features[enm_name]
         AO, TA, R = get_AO_TA_R(ego_feature, enm_feature)
         orientation_reward = self.orientation_fn(AO, TA)
