@@ -10,7 +10,7 @@ class BaseEnv(gym.Env):
     aircraft as an RL environment conforming to the OpenAI Gym Env
     interface.
 
-    An JsbSimEnv is instantiated with a Task that implements a specific
+    An BaseEnv is instantiated with a Task that implements a specific
     aircraft control task with its own specific observation/action space and
     variables and agent_reward calculation.
     """

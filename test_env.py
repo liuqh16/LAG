@@ -1,10 +1,10 @@
-from envs.JSBSim.envs.self_play_env import JSBSimSelfPlayEnv
+from envs.JSBSim.envs.selfplay_env import SelfPlayEnv
 import numpy as np
 import pdb
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
 
 
-env = JSBSimSelfPlayEnv()
+env = SelfPlayEnv()
 # aileron  elevator  rudder  throttle
 env.reset()
 cur_step = -1
@@ -22,7 +22,7 @@ while True:
 
 
 # def make_train_env(num_env):
-#     return SubprocVecEnv([JSBSimSelfPlayEnv for _ in range(num_env)])
+#     return SubprocVecEnv([SelfPlayEnv for _ in range(num_env)])
 
 # if __name__ == '__main__':
 #     num_env = 4

@@ -3,23 +3,17 @@ from collections import OrderedDict
 from .env_base import BaseEnv
 from ..core.catalog import Catalog as c
 from ..core.simulation import Simulation
-from ..tasks.self_play_task import act_space, SelfPlayTask
+from ..tasks.selfplay_task import SelfPlayTask
 from ..utils.utils import lonlat2dis
 
 
-class JSBSimSelfPlayEnv(BaseEnv):
+class SelfPlayEnv(BaseEnv):
     """
-    A class wrapping the JSBSim flight dynamics module (FDM) for simulating
-    aircraft as an RL environment conforming to the OpenAI Gym Env
-    interface.
-
-    An JsbSimEnv is instantiated with a Task that implements a specific
-    aircraft control task with its own specific observation/action space and
-    variables and agent_reward calculation.
+    SelfPlayEnv is an one-to-one competitive environment.
     """
     metadata = {"render.modes": ["human", "csv"]}
 
-    def __init__(self, config='r_hyperparams.yaml'):
+    def __init__(self, config='selfplay_task.yaml'):
         self.sims = None
         self.task = SelfPlayTask(config)
         self.config = self.task.config
@@ -186,10 +180,10 @@ class JSBSimSelfPlayEnv(BaseEnv):
     def process_actions(self, action: dict):
         for agent_name in self.agent_names:
             action[agent_name] = np.array(action[agent_name], dtype=np.float32)
-            action[agent_name][0] = action[agent_name][0] * 2. / (act_space['aileron'].n - 1.) - 1.
-            action[agent_name][1] = action[agent_name][1] * 2. / (act_space['elevator'].n - 1.) - 1.
-            action[agent_name][2] = action[agent_name][2] * 2. / (act_space['rudder'].n - 1.) - 1.
-            action[agent_name][3] = action[agent_name][3] * 0.5 / (act_space['throttle'].n - 1.) + 0.4
+            action[agent_name][0] = action[agent_name][0] * 2. / (self.action_space['aileron'].n - 1.) - 1.
+            action[agent_name][1] = action[agent_name][1] * 2. / (self.action_space['elevator'].n - 1.) - 1.
+            action[agent_name][2] = action[agent_name][2] * 2. / (self.action_space['rudder'].n - 1.) - 1.
+            action[agent_name][3] = action[agent_name][3] * 0.5 / (self.action_space['throttle'].n - 1.) + 0.4
         return action
 
     def close(self):
