@@ -1,5 +1,6 @@
 import gym
 import numpy as np
+from collections import OrderedDict
 from ..core.simulation import Simulation
 from ..tasks.task_base import BaseTask
 
@@ -16,15 +17,61 @@ class BaseEnv(gym.Env):
     """
     metadata = {"render.modes": ["human", "csv"]}
 
-    def __init__(self, config):
-        self.sim = None
-        self.task = BaseTask()
+    def __init__(self, task, config):
+        assert isinstance(task, BaseTask), "TypeError: must give a instance of BaseTask"
+        self.task = task
+        self.config = self.task.config
+
+        # env config
+        self.max_steps = getattr(self.config, 'max_steps', 100)
         self.observation_space = self.task.get_observation_space()
         self.action_space = self.task.get_action_space()
 
+        # agent config
+        assert isinstance(getattr(self.config, 'init_config', None), dict) \
+            and isinstance(list(self.config.init_config.values())[0], dict), \
+            "Unexpected config error!"
+        self.agent_names = list(self.config.init_config.keys())
+        self.num_agents = len(self.agent_names)
+
+        # simulation config
+        self.jsbsim_freq = self.config.jsbsim_freq
+        self.agent_interaction_steps = self.config.agent_interaction_steps
+        self.aircraft_names = OrderedDict(  # aircraft model (Default: f16)
+           [(agent, self.config.init_config[agent].get('aircraft_name', 'f16')) for agent in self.agent_names]
+        )
+
+        # custom config
+        self.init_variables()
+
+    def init_variables(self):
         self.current_step = 0
+        self.sims = OrderedDict([(agent, None) for agent in self.agent_names])
+        self.init_longitude, self.init_latitude = 0.0, 0.0
+        self.init_conditions = OrderedDict([(agent, None) for agent in self.agent_names])
         self.state = None
-        self.action = None
+
+    def reset(self, init_conditions):
+        """Resets the state of the environment and returns an initial observation.
+
+        Args:
+            init_conditions (np.array): the initial observation of the space.
+        """
+        self.current_step = 0
+        self.close()
+
+        self.sims[0] = Simulation(
+            aircraft_name=self.aircraft_names[self.agent_names[0]],
+            init_conditions=self.init_conditions[self.agent_names[0]],
+            jsbsim_freq=self.jsbsim_freq,
+            agent_interaction_steps=self.agent_interaction_steps,
+            origin_lon=self.init_longitude,
+            origin_lat=self.init_latitude
+        )
+
+        self.state = self.get_observation()
+
+        return self.state
 
     def step(self, action=None):
         """Run one timestep of the environment's dynamics. When end of
@@ -43,14 +90,15 @@ class BaseEnv(gym.Env):
                 info: auxiliary information
         """
         self.current_step += 1
-        self.action = action
+        info = {}
         if action is not None:
             if not len(action) == len(self.action_space.spaces):
                 raise ValueError("mismatch between action and action space size")
 
         self.state = self.make_step(action)
 
-        reward, done, info = self.task.get_reward(self.state, self.sim), self.is_terminal(), {}
+        reward, info = self.task.get_reward(self, 0, info)
+        done, info = self.task.get_termination(self, 0, info)
 
         return self.state, reward, done, info
 
@@ -65,32 +113,12 @@ class BaseEnv(gym.Env):
         """
         # take actions
         if action is not None:
-            self.sim.set_property_values(self.task.action_var, action)
+            self.sims[0].set_property_values(self.task.action_var, action)
 
         # run simulation
-        self.sim.run()
+        self.sims[0].run()
 
         return self.get_observation()
-
-    def reset(self, init_conditions):
-        """Resets the state of the environment and returns an initial observation.
-
-        Args:
-            init_conditions (np.array): the initial observation of the space.
-        """
-        self.current_step = 0
-        self.close()
-
-        self.sim = Simulation(
-            aircraft_name=self.task.aircraft_name,
-            init_conditions=init_conditions,
-            jsbsim_freq=self.task.jsbsim_freq,
-            agent_interaction_steps=self.task.agent_interaction_steps,
-        )
-
-        self.state = self.get_observation()
-
-        return self.state
 
     def get_observation(self):
         """get state observation from sim.
@@ -98,30 +126,20 @@ class BaseEnv(gym.Env):
         Returns:
             (NamedTuple): the first state observation of the episode
         """
-        obs_list = self.sim.get_property_values(self.task.state_var)
+        obs_list = self.sims[0].get_property_values(self.task.state_var)
         return tuple([np.array([obs]) for obs in obs_list])
 
     def get_sim_time(self):
         """ Gets the simulation time from sim, a float. """
-        return self.sim.get_sim_time()
+        return self.sims[0].get_sim_time()
 
     def close(self):
         """Cleans up this environment's objects
         Environments automatically close() when garbage collected or when the
         program exits.
         """
-        if self.sim:
-            self.sim.close()
-
-    def is_terminal(self):
-        """Checks if the state is terminal.
-
-        Returns:
-            (bool)
-        """
-        is_not_contained = not self.observation_space.contains(self.state)
-
-        return is_not_contained or self.task.is_terminal(self.state, self.sim)
+        if self.sims[0]:
+            self.sims[0].close()
 
     def render(self, mode="human", **kwargs):
         """Renders the environment.
@@ -142,7 +160,7 @@ class BaseEnv(gym.Env):
               in implementations to use the functionality of this method.
         :param mode: str, the mode to render with
         """
-        return self.task.render(self.sim, mode=mode, **kwargs)
+        pass
 
     def seed(self, seed=None):
         """

@@ -1,7 +1,7 @@
 import numpy as np
 from collections import OrderedDict
 from .env_base import BaseEnv
-from ..core.catalog import Catalog as c
+from ..core.catalog import Catalog
 from ..core.simulation import Simulation
 from ..tasks.selfplay_task import SelfPlayTask
 from ..utils.utils import lonlat2dis
@@ -14,25 +14,14 @@ class SelfPlayEnv(BaseEnv):
     metadata = {"render.modes": ["human", "csv"]}
 
     def __init__(self, config='selfplay_task.yaml'):
-        self.sims = None
         self.task = SelfPlayTask(config)
-        self.config = self.task.config
-        self.observation_space = self.task.get_observation_space()
-        self.action_space = self.task.get_action_space()
+        super().__init__(self.task, config)
 
-        # nickname of each agent
-        self.agent_names = list(self.config.init_config.keys())
-        # aircraft model of each agent
-        self.aircraft_name = OrderedDict(
-           [(agent, self.config.init_config[agent]['aircraft_name']) for agent in self.config.init_config.keys()]
-        )
-        self.num_agents = len(self.agent_names)
-        self.max_steps = self.config.max_steps
-        # set controlling frequency
-        self.jsbsim_freq = self.config.jsbsim_freq
-        self.agent_interaction_steps = self.config.agent_interaction_steps
-
+    def init_variables(self):
         self.current_step = 0
+        self.sims = OrderedDict([(agent, None) for agent in self.agent_names])
+        self.init_longitude, self.init_latitude = 0.0, 0.0
+        self.init_conditions = OrderedDict([(agent, None) for agent in self.agent_names])
         self.actions = OrderedDict([(agent, np.zeros(len(self.task.action_var))) for agent in self.agent_names])
         # (north, east, down, vn, ve, vd)
         self.features = OrderedDict([(agent, np.zeros(len(self.task.feature_var))) for agent in self.agent_names])
@@ -45,8 +34,8 @@ class SelfPlayEnv(BaseEnv):
         self.reset_conditions()
         # recreate simulation
         self.sims = OrderedDict([(agent, Simulation(
-            aircraft_name=self.aircraft_name[agent],
-            init_conditions=self.init_condition[agent],
+            aircraft_name=self.aircraft_names[agent],
+            init_conditions=self.init_conditions[agent],
             jsbsim_freq=self.jsbsim_freq,
             agent_interaction_steps=self.agent_interaction_steps)) for agent in self.agent_names])
         next_observation = self.get_observation()
@@ -58,22 +47,22 @@ class SelfPlayEnv(BaseEnv):
         # Origin point of Combat Field [geodesic longitude&latitude (deg)]
         self.init_longitude, self.init_latitude = 120.0, 60.0
         # Initial setting of each agent
-        self.init_condition = OrderedDict(
+        self.init_conditions = OrderedDict(
             [(agent, {
-                c.ic_h_sl_ft: self.config.init_config[agent]['ic_h_sl_ft'],             # 1.1  altitude above mean sea level [ft]
-                c.ic_terrain_elevation_ft: 0,                                           # +    default
-                c.ic_long_gc_deg: self.config.init_config[agent]['ic_long_gc_deg'],     # 1.2  geodesic longitude [deg]
-                c.ic_lat_geod_deg: self.config.init_config[agent]['ic_lat_geod_deg'],   # 1.3  geodesic latitude  [deg]
-                c.ic_psi_true_deg: self.config.init_config[agent]['ic_psi_true_deg'],   # 5.   initial (true) heading [deg]   (0, 360)
-                c.ic_u_fps: self.config.init_config[agent]['ic_u_fps'],                 # 2.1  body frame x-axis velocity [ft/s]  (-2200, 2200)
-                c.ic_v_fps: 0,                                                          # 2.2  body frame y-axis velocity [ft/s]  (-2200, 2200)
-                c.ic_w_fps: 0,                                                          # 2.3  body frame z-axis velocity [ft/s]  (-2200, 2200)
-                c.ic_p_rad_sec: 0,                                                      # 3.1  roll rate  [rad/s]     (-2 * math.pi, 2 * math.pi)
-                c.ic_q_rad_sec: 0,                                                      # 3.2  pitch rate [rad/s]     (-2 * math.pi, 2 * math.pi)
-                c.ic_r_rad_sec: 0,                                                      # 3.3  yaw rate   [rad/s]     (-2 * math.pi, 2 * math.pi)
-                c.ic_roc_fpm: 0,                                                        # 4.   initial rate of climb [ft/min]
-                c.fcs_throttle_cmd_norm: 0.,                                            # 6.
-            }) for agent in self.config.init_config.keys()]
+                Catalog.ic_h_sl_ft: self.config.init_config[agent]['ic_h_sl_ft'],             # 1.1  altitude above mean sea level [ft]
+                Catalog.ic_terrain_elevation_ft: 0,                                           # +    default
+                Catalog.ic_long_gc_deg: self.config.init_config[agent]['ic_long_gc_deg'],     # 1.2  geodesic longitude [deg]
+                Catalog.ic_lat_geod_deg: self.config.init_config[agent]['ic_lat_geod_deg'],   # 1.3  geodesic latitude  [deg]
+                Catalog.ic_psi_true_deg: self.config.init_config[agent]['ic_psi_true_deg'],   # 5.   initial (true) heading [deg]   (0, 360)
+                Catalog.ic_u_fps: self.config.init_config[agent]['ic_u_fps'],                 # 2.1  body frame x-axis velocity [ft/s]  (-2200, 2200)
+                Catalog.ic_v_fps: 0,                                                          # 2.2  body frame y-axis velocity [ft/s]  (-2200, 2200)
+                Catalog.ic_w_fps: 0,                                                          # 2.3  body frame z-axis velocity [ft/s]  (-2200, 2200)
+                Catalog.ic_p_rad_sec: 0,                                                      # 3.1  roll rate  [rad/s]     (-2 * math.pi, 2 * math.pi)
+                Catalog.ic_q_rad_sec: 0,                                                      # 3.2  pitch rate [rad/s]     (-2 * math.pi, 2 * math.pi)
+                Catalog.ic_r_rad_sec: 0,                                                      # 3.3  yaw rate   [rad/s]     (-2 * math.pi, 2 * math.pi)
+                Catalog.ic_roc_fpm: 0,                                                        # 4.   initial rate of climb [ft/min]
+                Catalog.fcs_throttle_cmd_norm: 0.,                                            # 6.
+            }) for agent in self.agent_names]
         )
 
     def step(self, action: dict):
@@ -143,7 +132,6 @@ class SelfPlayEnv(BaseEnv):
             # unit: degree -> m
             east, north = lonlat2dis(lon, lat, self.init_longitude, self.init_latitude)
             # unit: (km, km, km, mh, mh, mh)
-            # (north, east, down, vn, ve, vd)
             self.features[agent_name][0:3] = np.array([north, east, alt * 0.304]) / 1000
             self.features[agent_name][3:6] = np.array([vn, ve, vd]) * 0.304 / 340
         return next_observation
@@ -191,8 +179,8 @@ class SelfPlayEnv(BaseEnv):
 
         Environments automatically close() when garbage collected or when the program exits.
         """
-        if self.sims:
-            for agent_name in self.agent_names:
+        for agent_name in self.agent_names:
+            if self.sims[agent_name]:
                 self.sims[agent_name].close()
 
     def render(self, mode="human", **kwargs):

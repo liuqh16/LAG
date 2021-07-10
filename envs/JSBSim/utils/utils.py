@@ -66,7 +66,7 @@ def get_AO_TA_R(ego_feature, enemy_feature):
     return ego_AO, ego_TA, R
 
 
-def _in_range_deg(angle):
+def in_range_deg(angle):
     """ Given an angle in degrees, normalises in (-180, 180] """
     angle = angle % 360
     if angle > 180:
@@ -80,6 +80,15 @@ def _in_range_rad(angle):
     if angle > np.pi:
         angle -= 2 * np.pi
     return angle
+
+
+def unit_converse(x, left: str, right: str):
+    if left == 'ft' and right == 'm':
+        return x * 0.3048
+    elif left == 'm' and right == 'ft':
+        return x * 3.2808
+    else:
+        raise NotImplementedError
 
 
 def shortest_ac_dist(x, y, x1, y1, x2, y2):

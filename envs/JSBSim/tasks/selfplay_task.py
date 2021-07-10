@@ -43,7 +43,7 @@ class SelfPlayTask(BaseTask):
 
         self.reward_functions = [
             AltitudeReward(self.config, is_potential=False, render=True),
-            AttackReward(self.config, is_potential=False, render=True),
+            # AttackReward(self.config, is_potential=False, render=True),
             PostureReward(self.config, is_potential=True, render=True),
             RelativeAltitudeReward(self.config, is_potential=False, render=True),
             SmoothActionReward(self.config, is_potential=False, render=True),

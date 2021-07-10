@@ -24,14 +24,11 @@ class Simulation:
         self.jsbsim_exec = jsbsim.FGFDMExec(path.join(get_root_dir(), 'data'))
         self.jsbsim_exec.set_debug_level(0)  # requests JSBSim not to output any messages whatsoever
         self.jsbsim_exec.load_model(aircraft_name)
-        # collect all jsbsim properties in Catalog
+        # collect all jsbsim properties in Catalog (use Catalog.pop to remove useless props)
         Catalog.add_jsbsim_props(self.jsbsim_exec.query_property_catalog(""))
-        # set jsbsim integration time step
         dt = 1 / jsbsim_freq
         self.jsbsim_exec.set_dt(dt)
-
         self.agent_interaction_steps = agent_interaction_steps
-
         self.initialise(init_conditions)
 
     def initialise(self, init_conditions):
@@ -180,36 +177,3 @@ class Simulation:
 
     def get_sim_state(self):
         return {prop: self.get_property_value(prop) for prop in Catalog.values()}
-
-    def state_to_ic(self, state):
-        init_conditions = {}
-
-        state_to_ic = {
-            Catalog.position_lat_gc_deg: Catalog.ic_lat_gc_deg,
-            Catalog.position_long_gc_deg: Catalog.ic_long_gc_deg,
-            Catalog.position_h_sl_ft: Catalog.ic_h_sl_ft,
-            Catalog.position_h_agl_ft: Catalog.ic_h_agl_ft,
-            Catalog.position_terrain_elevation_asl_ft: Catalog.ic_terrain_elevation_ft,
-            Catalog.attitude_psi_deg: Catalog.ic_psi_true_deg,
-            Catalog.attitude_theta_deg: Catalog.ic_theta_deg,
-            Catalog.attitude_phi_deg: Catalog.ic_phi_deg,
-            Catalog.velocities_u_fps: Catalog.ic_u_fps,
-            Catalog.velocities_v_fps: Catalog.ic_v_fps,
-            Catalog.velocities_w_fps: Catalog.ic_w_fps,
-            Catalog.velocities_p_rad_sec: Catalog.ic_p_rad_sec,
-            Catalog.velocities_q_rad_sec: Catalog.ic_q_rad_sec,
-            Catalog.velocities_r_rad_sec: Catalog.ic_r_rad_sec,
-        }
-
-        for prop, value in state.items():
-            if not re.match(r"^ic/", prop.name_jsbsim):
-                if prop in state_to_ic:
-                    init_conditions[state_to_ic[prop]] = value
-                elif "RW" in prop.access:
-                    init_conditions[prop] = value
-        return init_conditions
-
-    def set_sim_state(self, state):
-        init_conditions = self.state_to_ic(state)
-        self.jsbsim_exec.reset_to_initial_conditions(0)
-        self.initialise(init_conditions)

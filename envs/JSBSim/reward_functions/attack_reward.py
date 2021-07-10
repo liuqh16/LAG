@@ -6,7 +6,7 @@ from ..utils.utils import get_AO_TA_R
 class AttackReward(BaseRewardFunction):
     """
     AttackReward
-    Use airborne weapons to attack the enemy fighter, gain reward if enemy's blood decreases.
+    Use airborne weapon(aircraft artillery) to attack the enemy fighter, gain reward if enemy's blood decreases.
 
     NOTE:
     - Only support one-to-one environments.

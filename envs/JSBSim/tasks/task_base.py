@@ -13,23 +13,10 @@ class BaseTask(ABC):
     A class to subclass in order to create a task with its own observation variables,
     action variables, termination conditions and reward functions.
     """
-    def __init__(self, config: str):
+    def __init__(self, config):
         # parse config
         self.config = parse_config(os.path.join(get_root_dir(), 'configs', config))
-
         self.init_variables()
-
-        # modify Catalog to have only the current task properties
-        names_away = []
-        for name, prop in Catalog.items():
-            if not (
-                prop in self.action_var
-                or prop in self.state_var
-            ):
-                names_away.append(name)
-        for name in names_away:
-            Catalog.pop(name)
-
         self.reward_functions = []
         self.termination_conditions = []
 
