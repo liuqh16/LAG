@@ -1,23 +1,24 @@
 from collections import namedtuple
-import re
+import numpy as np
 from os import path
 import jsbsim
 from .catalog import Catalog
 from .property import Property, CustomProperty
-from ..utils.utils import get_root_dir
+from ..utils.utils import get_root_dir, lonlat2dis
 
 
 class Simulation:
     """A class which wraps an instance of JSBSim and manages communication with it.
     """
 
-    def __init__(self, aircraft_name="f15", init_conditions=None, jsbsim_freq=60, agent_interaction_steps=5):
+    def __init__(self, aircraft_name="f15", init_conditions=None, origin_point=(120.0, 60.0), jsbsim_freq=60, agent_interaction_steps=5):
         """Constructor. Creates an instance of JSBSim, loads an aircraft and sets initial conditions.
 
         Args:
             aircraft_name (str, optional): name of aircraft to be loaded. Defaults to "f15".
                 JSBSim looks for file './data/aircraft_name/aircraft_name.xml' from root dir.
             init_conditions (dict, optional): dict mapping properties to their initial values. Defaults to None, causing a default set of initial props to be used.
+            origin_point (tuple): origin point (latitude, longitude) of the global Combat Field.
             jsbsim_freq (int, optional): JSBSim integration frequency. Defaults to 60.
             agent_interaction_steps (int, optional): simulation steps before the agent interact. Defaults to 5.
         """
@@ -27,9 +28,16 @@ class Simulation:
         # collect all jsbsim properties in Catalog (use Catalog.pop to remove useless props)
         Catalog.add_jsbsim_props(self.jsbsim_exec.query_property_catalog(""))
         dt = 1 / jsbsim_freq
+        self.origin_lon, self.origin_lat = origin_point
         self.jsbsim_exec.set_dt(dt)
         self.agent_interaction_steps = agent_interaction_steps
         self.initialise(init_conditions)
+
+        # properties
+        self._position = np.zeros(3)
+        self._pose = np.zeros(3)
+        self._velocity = np.zeros(3)
+        self._update_properties()
 
     def initialise(self, init_conditions):
         self.set_initial_conditions(init_conditions)
@@ -85,7 +93,38 @@ class Simulation:
             result = self.jsbsim_exec.run()
             if not result:
                 raise RuntimeError("JSBSim failed.")
+        self._update_properties()
+
         return result
+
+    def _update_properties(self):
+        # update properties
+        lat, lon = self.get_property_values([
+            Catalog.position_lat_geod_deg,
+            Catalog.position_long_gc_deg,
+        ])
+        # unit: (m, m, m)
+        self._position[1], self._position[0] = lonlat2dis(lon, lat, self.origin_lon, self.origin_lat)
+        self._position[2] = self.get_property_value(Catalog.position_h_sl_ft) * 0.304
+        # unit: (m/s, m/s, m/s)
+        self._velocity[:] = self.get_property_values([
+            Catalog.velocities_v_north_fps,
+            Catalog.velocities_v_east_fps,
+            Catalog.velocities_v_down_fps,
+        ])
+        self._velocity *= 0.304
+
+    def get_position(self):
+        """(north, east, down), unit: m"""
+        return self._position
+
+    def get_pose(self):
+        raise NotImplementedError
+        return self._pose
+
+    def get_velocity(self):
+        """(v_north, v_east, v_down), unit: m/s"""
+        return self._velocity
 
     def get_sim_time(self):
         """ Gets the simulation time from JSBSim, a float. """

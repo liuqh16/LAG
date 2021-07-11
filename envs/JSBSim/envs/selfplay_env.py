@@ -27,8 +27,6 @@ class SelfPlayEnv(BaseEnv):
         self.init_longitude, self.init_latitude = 0.0, 0.0
         self.init_conditions = OrderedDict([(agent, None) for agent in self.agent_names])
         self.actions = OrderedDict([(agent, np.zeros(len(self.task.action_var))) for agent in self.agent_names])
-        # (north, east, down, vn, ve, vd)
-        self.features = OrderedDict([(agent, np.zeros(len(self.task.feature_var))) for agent in self.agent_names])
 
     def reset(self):
         self.current_step = 0
@@ -40,6 +38,7 @@ class SelfPlayEnv(BaseEnv):
         self.sims = OrderedDict([(agent, Simulation(
             aircraft_name=self.aircraft_names[agent],
             init_conditions=self.init_conditions[agent],
+            origin_point=(self.init_longitude, self.init_latitude),
             jsbsim_freq=self.jsbsim_freq,
             agent_interaction_steps=self.agent_interaction_steps)) for agent in self.agent_names])
         next_observation = self.get_observation()
@@ -129,15 +128,6 @@ class SelfPlayEnv(BaseEnv):
         for (agent_id, agent_name) in enumerate(self.agent_names):
             obs_norm = self.normalize_observation(all_obs_list[agent_id:] + all_obs_list[:agent_id])
             next_observation[agent_name] = OrderedDict({'ego_info': obs_norm})
-        # generate feature (use in reward calculation)
-        for agent_name in self.agent_names:
-            # unit: (degree, degree, ft, fps, fps, fps)
-            lat, lon, alt, vn, ve, vd = self.sims[agent_name].get_property_values(self.task.feature_var)
-            # unit: degree -> m
-            east, north = lonlat2dis(lon, lat, self.init_longitude, self.init_latitude)
-            # unit: (km, km, km, mh, mh, mh)
-            self.features[agent_name][0:3] = np.array([north, east, alt * 0.304]) / 1000
-            self.features[agent_name][3:6] = np.array([vn, ve, vd]) * 0.304 / 340
         return next_observation
 
     def normalize_observation(self, sorted_obs_list):

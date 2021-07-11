@@ -12,7 +12,6 @@ class MissileAttackReward(BaseRewardFunction):
 
     NOTE:
     - Only support one-to-one environments.
-    - env must implement `self.features` property
     - MissileAttackReward will block other reward functions, so must be placed on top!
     """
     def __init__(self, config):
@@ -40,11 +39,9 @@ class MissileAttackReward(BaseRewardFunction):
             (float): reward
         """
         ego_name, enm_name = self.agent_names[agent_id], self.agent_names[(agent_id + 1) % self.num_agents]
-        missile_info, target_info = env.features[ego_name], env.features[enm_name]
-        missile_info[0:3] *= 1000   # unit: m
-        missile_info[3:6] *= 340    # unit: m/s
-        target_info[0:3] *= 1000    # unit: m
-        target_info[3:6] *= 340     # unit: m/s
+        # feature: (north, east, down, vn, ve, vd) unit: m, m/s
+        missile_info = np.hstack([env.sims[ego_name].get_position(), env.sims[ego_name].get_velocity()])
+        target_info = np.hstack([env.sims[enm_name].get_position(), env.sims[enm_name].get_velocity()])
         missile_pos_vel, info = self.missile_models[ego_name].missile_step(missile_info, target_info)
         if info['mask_enm']:
             for reward_fn in task.reward_functions:

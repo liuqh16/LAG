@@ -90,14 +90,6 @@ class SelfPlayTask(BaseTask):
             c.attitude_pitch_rad,
             c.attitude_heading_true_rad,
         ]
-        self.feature_var = [
-            c.position_lat_geod_deg,
-            c.position_long_gc_deg,
-            c.position_h_sl_ft,
-            c.velocities_v_north_fps,
-            c.velocities_v_east_fps,
-            c.velocities_v_down_fps,
-        ]
 
     def get_action_space(self):
         return act_space

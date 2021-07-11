@@ -8,7 +8,7 @@ class SmoothActionReward(BaseRewardFunction):
     Punish if current fighter change action significantly. Typically negative.
 
     NOTE:
-    - env must implement `self.features` and `self.actions` property
+    - env must implement `self.actions` property to record current action.
     """
     def __init__(self, config):
         super().__init__(config)

@@ -1,6 +1,8 @@
 import numpy as np
+from numpy.core.numeric import array_equal
 from .reward_function_base import BaseRewardFunction
-from ..utils.utils import get_AO_TA_R
+from ..utils.utils import get_AO_TA_R, lonlat2dis
+from ..core.catalog import Catalog
 
 
 class PostureReward(BaseRewardFunction):
@@ -11,7 +13,6 @@ class PostureReward(BaseRewardFunction):
 
     NOTE:
     - Only support one-to-one environments.
-    - env must implement `self.features` property
     """
     def __init__(self, config):
         super().__init__(config)
@@ -37,7 +38,9 @@ class PostureReward(BaseRewardFunction):
             (float): reward
         """
         ego_name, enm_name = self.agent_names[agent_id], self.agent_names[(agent_id + 1) % self.num_agents]
-        ego_feature, enm_feature = env.features[ego_name], env.features[enm_name]
+        # feature: (north, east, down, vn, ve, vd) unit: km, mh
+        ego_feature = np.hstack([env.sims[ego_name].get_position() / 1000, env.sims[ego_name].get_velocity() / 340])
+        enm_feature = np.hstack([env.sims[enm_name].get_position() / 1000, env.sims[enm_name].get_velocity() / 340])
         AO, TA, R = get_AO_TA_R(ego_feature, enm_feature)
         orientation_reward = self.orientation_fn(AO, TA)
         range_reward = self.range_fn(R)

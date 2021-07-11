@@ -10,7 +10,6 @@ class ArtilleryAttackReward(BaseRewardFunction):
 
     NOTE:
     - Only support one-to-one environments.
-    - env must implement `self.features` property
     """
     def __init__(self, config):
         super().__init__(config)
@@ -29,7 +28,9 @@ class ArtilleryAttackReward(BaseRewardFunction):
             (float): reward
         """
         ego_name, enm_name = self.agent_names[agent_id], self.agent_names[(agent_id + 1) % self.num_agents]
-        ego_feature, enm_feature = env.features[ego_name], env.features[enm_name]
+        # feature: (north, east, down, vn, ve, vd) unit: km, mh
+        ego_feature = np.hstack([env.sims[ego_name].get_position() / 1000, env.sims[ego_name].get_velocity() / 340])
+        enm_feature = np.hstack([env.sims[enm_name].get_position() / 1000, env.sims[enm_name].get_velocity() / 340])
         enm_AO, enm_TA, R = get_AO_TA_R(enm_feature, ego_feature)
         delta_blood = 0
         if np.abs(np.rad2deg(enm_TA)) < 60 and np.abs(np.rad2deg(enm_AO)) < 30 and R <= 3:

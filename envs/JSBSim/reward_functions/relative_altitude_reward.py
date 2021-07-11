@@ -10,7 +10,6 @@ class RelativeAltitudeReward(BaseRewardFunction):
 
     NOTE:
     - Only support one-to-one environments.
-    - env must implement `self.features` property
     """
     def __init__(self, config):
         super().__init__(config)
@@ -30,8 +29,7 @@ class RelativeAltitudeReward(BaseRewardFunction):
             (float): reward
         """
         ego_name, enm_name = self.agent_names[agent_id], self.agent_names[(agent_id + 1) % self.num_agents]
-        ego_feature, enm_feature = env.features[ego_name], env.features[enm_name]
-        ego_x, ego_y, ego_z, ego_vx, ego_vy, ego_vz = ego_feature
-        enm_x, enm_y, enm_z, enm_vx, enm_vy, enm_vz = enm_feature
+        ego_z = env.sims[ego_name].get_position()[-1] / 1000    # unit: km
+        enm_z = env.sims[enm_name].get_position()[-1] / 1000    # unit: km
         new_reward = min(self.KH - np.abs(ego_z - enm_z), 0)
         return self._process(new_reward)

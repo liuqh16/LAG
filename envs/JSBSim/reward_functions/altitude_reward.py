@@ -8,9 +8,6 @@ class AltitudeReward(BaseRewardFunction):
     Punish if current fighter doesn't satisfy some constraints. Typically negative.
     - Punishment of velocity when lower than safe altitude   (range: [-1, 0])
     - Punishment of altitude when lower than danger altitude (range: [-1, 0])
-
-    NOTE:
-    - env must implement `self.features` property
     """
     def __init__(self, config):
         super().__init__(config)
@@ -32,8 +29,9 @@ class AltitudeReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        ego_feature = env.features[self.agent_names[agent_id]]
-        ego_x, ego_y, ego_z, ego_vx, ego_vy, ego_vz = ego_feature
+        ego_name = self.agent_names[agent_id]
+        ego_z = env.sims[ego_name].get_position()[-1] / 1000    # unit: km
+        ego_vz = env.sims[ego_name].get_velocity()[-1] / 340    # unit: mh
         Pv = 0.
         if ego_z <= self.safe_altitude:
             Pv = -np.clip(ego_vz / self.Kv * (self.safe_altitude - ego_z) / self.safe_altitude, 0., 1.)
