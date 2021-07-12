@@ -57,8 +57,6 @@ class SelfPlayTask(BaseTask):
         ]
 
         self.bloods = dict([(agent, 100) for agent in self.config.init_config.keys()])
-        self.all_type_rewards = {'blue_fighter': None, 'red_fighter': None}
-        self.pre_actions = None
 
     def init_variables(self):
         self.state_var = [
@@ -103,7 +101,6 @@ class SelfPlayTask(BaseTask):
         Must call it after `env.get_observation()`
         """
         self.bloods = dict([(agent, 100) for agent in env.agent_names])
-        self.pre_actions = None
         return super().reset(env)
 
     def get_reward(self, env, agent_id, info={}):

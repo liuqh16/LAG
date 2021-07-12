@@ -18,7 +18,7 @@ class Simulation:
             aircraft_name (str, optional): name of aircraft to be loaded. Defaults to "f15".
                 JSBSim looks for file './data/aircraft_name/aircraft_name.xml' from root dir.
             init_conditions (dict, optional): dict mapping properties to their initial values. Defaults to None, causing a default set of initial props to be used.
-            origin_point (tuple): origin point (latitude, longitude) of the global Combat Field.
+            origin_point (tuple): origin point (longitude, latitude) of the global Combat Field.
             jsbsim_freq (int, optional): JSBSim integration frequency. Defaults to 60.
             agent_interaction_steps (int, optional): simulation steps before the agent interact. Defaults to 5.
         """
