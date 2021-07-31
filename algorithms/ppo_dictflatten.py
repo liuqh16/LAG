@@ -1,59 +1,6 @@
 import gym
 import numpy as np
 from collections import OrderedDict
-from envs.collections_task.self_play_task import act_space, obs_space
-
-
-def get_obs_slice():
-    obs_slice = {}
-    offset = 0
-
-    # length = obs_space['blue_car']['laser_info'].shape[0]
-    # obs_slice['laser_shape'] = (offset, offset + length)
-    # offset += length
-
-    length = obs_space['blue_fighter']['ego_info'].shape[0]
-    obs_slice['ego_shape'] = (offset, offset + length)
-    offset += length
-
-    # length = obs_space['blue_car']['key_info'].shape[0]
-    # obs_slice['key_shape'] = (offset, offset + length)
-    # offset += length
-
-    return obs_slice
-
-
-obs_slice = get_obs_slice()
-
-
-def get_act_slice():
-    act_slice = {}
-    offset = 0
-
-    length = 1
-    act_slice['cmd_id'] = (offset, offset + length)
-    offset += length
-
-    length = 4
-    act_slice['cmd_param'] = (offset, offset + length)
-    offset += length
-
-    length = 1
-    act_slice['cmd_shoot'] = (offset, offset + length)
-    offset += length
-
-    length = 1
-    act_slice['cmd_target'] = (offset, offset + length)
-    offset += length
-
-    length = 1
-    act_slice['cmd_ew'] = (offset, offset + length)
-    offset += length
-
-    return act_slice
-
-
-act_slice = get_act_slice()
 
 
 class DictFlattener():

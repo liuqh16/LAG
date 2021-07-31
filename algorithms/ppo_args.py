@@ -7,7 +7,11 @@ import numpy as np
 
 
 class Config(object):
-    def __init__(self):
+    def __init__(self, env):
+        # make env instance
+        self.env = env  # type: gym.Env
+        self.observation_space = self.env.observation_space
+        self.action_space = self.env.action_space
         # Parallel Training
         self.num_agents = 5
         self.num_parallel_each_agent = 7
