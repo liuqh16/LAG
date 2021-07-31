@@ -3,7 +3,7 @@ import numpy as np
 import torch.nn as nn
 from collections import OrderedDict
 from envs.collections_task.self_play_task import act_space, obs_space
-from algos_multi.ppo_dictflatten import DictFlattener, obs_slice
+from .ppo_dictflatten import DictFlattener, obs_slice
 
 
 class ValueRnnMultiHead(nn.Module):

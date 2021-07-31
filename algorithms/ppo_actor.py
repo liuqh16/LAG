@@ -4,7 +4,7 @@ import torch.nn as nn
 from collections import OrderedDict
 from torch.distributions import Categorical
 from envs.collections_task.self_play_task import act_space, obs_space
-from algos_multi.ppo_dictflatten import DictFlattener, obs_slice
+from .ppo_dictflatten import DictFlattener, obs_slice
 
 
 class PolicyRnnMultiHead(nn.Module):

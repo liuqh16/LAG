@@ -8,7 +8,7 @@ import numpy as np
 
 class Config(object):
     def __init__(self):
-        # Self Play
+        # Parallel Training
         self.num_agents = 5
         self.num_parallel_each_agent = 7
         self.eval_num = 10

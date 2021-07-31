@@ -1,9 +1,5 @@
 import torch
-import gym
 import numpy as np
-# import envs
-# from envs.collections_task.self_play_task import SelfPlayTask
-# from envs.collections_env.self_play_env import JSBSimEnvSelfEnv
 
 
 class Config(object):

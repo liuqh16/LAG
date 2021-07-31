@@ -1,7 +1,7 @@
 import numpy as np
 from collections import deque
 from envs.collections_task.self_play_task import obs_space, act_space
-from algos_multi.ppo_dictflatten import DictFlattener
+from .ppo_dictflatten import DictFlattener
 
 
 class ReplayBuffer(object):

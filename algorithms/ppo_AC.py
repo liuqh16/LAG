@@ -1,8 +1,8 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from algos_multi.ppo_actor import PolicyRnnMultiHead
-from algos_multi.ppo_critic import ValueRnnMultiHead
+from .ppo_actor import PolicyRnnMultiHead
+from .ppo_critic import ValueRnnMultiHead
 
 
 class ActorCritic(nn.Module):

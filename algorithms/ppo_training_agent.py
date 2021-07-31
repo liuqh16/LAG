@@ -4,11 +4,9 @@ import torch.nn as nn
 import torch.optim as optim
 import traceback
 import copy
-import ray
-from algos_multi.ppo_AC import ActorCritic
+from .ppo_AC import ActorCritic
 
 
-# @ray.remote(num_cpus=1)
 class Trainer(object):
 
     def __init__(self, args):
