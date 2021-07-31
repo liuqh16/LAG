@@ -12,31 +12,6 @@ from ..termination_conditions import ExtremeState, LowAltitude, Overload, ShootD
 from ..utils.utils import lonlat2dis, get_AO_TA_R
 
 
-act_space = spaces.Dict(
-    OrderedDict({
-        "aileron": spaces.Discrete(41),
-        "elevator": spaces.Discrete(41),
-        'rudder': spaces.Discrete(41),
-        "throttle": spaces.Discrete(30),
-    }))
-
-
-obs_space = spaces.Dict(
-    OrderedDict({
-        'blue_fighter':
-            spaces.Dict(
-                OrderedDict({
-                    'ego_info': spaces.Box(low=-10, high=10., shape=(22,)),
-                })),
-        'red_fighter':
-            spaces.Dict(
-                OrderedDict({
-                    'ego_info': spaces.Box(low=-10, high=10., shape=(22, )),
-                }))
-    })
-)
-
-
 class SelfPlayWithMissileTask(BaseTask):
     def __init__(self, config: str):
         super().__init__(config)
@@ -91,10 +66,23 @@ class SelfPlayWithMissileTask(BaseTask):
         ]
 
     def get_action_space(self):
+        act_space = spaces.Dict(
+            OrderedDict({
+                "aileron": spaces.Discrete(41),
+                "elevator": spaces.Discrete(41),
+                'rudder': spaces.Discrete(41),
+                "throttle": spaces.Discrete(30),
+            }))
         return act_space
 
     def get_observation_space(self):
-        return obs_space
+        space = OrderedDict()
+        for fighter_name in list(self.config.init_config.keys()):
+            space[fighter_name] = spaces.Dict(
+                OrderedDict({
+                    'ego_info': spaces.Box(low=-10, high=10., shape=(22,)),
+                }))
+        return spaces.Dict(space)
 
     def reset(self, env):
         """Task-specific reset, include reward function reset.
