@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 from collections import OrderedDict
-from envs.collections_task.self_play_task import act_space, obs_space
+from envs.JSBSim.tasks.selfplay_task import act_space, obs_space
 from .ppo_dictflatten import DictFlattener, obs_slice
 
 

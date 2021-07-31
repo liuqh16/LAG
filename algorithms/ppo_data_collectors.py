@@ -5,7 +5,6 @@ from .ppo_AC import ActorCritic
 from .ppo_replaybuffer import ReplayBuffer
 import time
 import random
-from ..envs.JSBSim.envs.self_play_env import JSBSimEnvSelfEnv
 
 
 class SelfPlayDataCollector(object):
@@ -14,7 +13,6 @@ class SelfPlayDataCollector(object):
         self.buffer = ReplayBuffer(args)
         self.ego_policy, self.enm_policy = ActorCritic(args).to(args.device), ActorCritic(args).to(args.device)
         self.red_flag = True
-        self.my_final_reward = None
         # record enemy's observation used to make decision.
         self.enm_history_info = None
         self.cumulative_reward = 0
@@ -49,7 +47,6 @@ class SelfPlayDataCollector(object):
         obs = self.env.reset()
         enm_policy_gru, enm_pre_act_dict = self.enm_policy.get_init_hidden_state()
         self.enm_history_info = [enm_policy_gru, enm_pre_act_dict]
-        self.my_final_reward = None
         return self._parse_obs(obs)
 
     def _choose_red_blue(self):
@@ -69,8 +66,7 @@ class SelfPlayDataCollector(object):
         actions = self._make_action(ego_cur_act_array, enm_cur_act_array)
         next_obs, rewards, done, env_info = self.env.step(actions)
         my_next_obs = self._parse_obs(next_obs)
-        my_rewards = rewards['red_reward' if self.red_flag else 'blue_reward']
-        self.my_final_reward = rewards['red_final_reward' if self.red_flag else 'blue_final_reward']
+        my_rewards = rewards['red_fighter' if self.red_flag else 'blue_fighter']
 
         return my_next_obs, my_rewards, done, env_info
 
@@ -107,10 +103,9 @@ class SelfPlayDataCollector(object):
                     # ego_cumulative_reward += np.sum(reward_scales * ego_rewards)
                     ego_cumulative_reward += ego_rewards
                     # TODO: easy for checking
-                    ego_weighted_reward = ego_rewards + reward_scales * self.my_final_reward
                     self.buffer.add_sample(ego_pre_act_dict, ego_cur_obs['blue_fighter'], ego_cur_gru_h,
                                            ego_cur_act_dict, ego_log_pi, ego_old_value,
-                                           ego_weighted_reward, done)
+                                           ego_rewards, done)
                     ego_pre_act_dict, ego_cur_gru_h = ego_cur_act_dict, ego_next_gru_h
                     ego_cur_obs = ego_next_obs
 
@@ -137,7 +132,8 @@ class SelfPlayDataCollector(object):
         return status_code, self.buffer
 
     def evaluate_with_baseline(self, ego_net_params, enm_net_params, eval_num=1):
-        start_time = time.time()
+        print('#####################################################################################')
+        print('\nStart evaluating...')
         rewards = 0
         self.ego_policy.load_state_dict(ego_net_params['model_state_dict'])
         self.enm_policy.load_state_dict(enm_net_params['model_state_dict'])
@@ -169,14 +165,12 @@ class SelfPlayDataCollector(object):
                         # score = env_info['red_win' if self.red_flag else 'blue_win']
                         # eval_scores.append(score)
                         break
-                    if rollout_step >= self.env.max_episode_steps:
-                        break
             except:
                 traceback.print_exc()
 
-            np.save('kong_zhan', np.asarray(self.env.trajectory))
         rewards = rewards / eval_num
-        print(rewards)
+        print(f"Average episode_reward = {rewards}")
+        print('#####################################################################################')
         return rewards
 
     def evaluate_data(self, ego_net_params, enm_net_params, ego_elo, enm_elo, eval_num, agent_id, elo_k=16.):
@@ -209,8 +203,6 @@ class SelfPlayDataCollector(object):
                         score = env_info['red_win' if self.red_flag else 'blue_win']
                         eval_scores.append(score)
                         break
-                    if rollout_step >= self.env.max_episode_steps:
-                        break
             except:
                 traceback.print_exc()
 
@@ -223,24 +215,3 @@ class SelfPlayDataCollector(object):
         print(f"Evaluate done, time elapsed {time_elapsed} | agent: {agent_id}: elo_gain: {elo_gain}, {eval_scores}")
         status_code = 0 if eval_scores else 1
         return status_code, elo_gain
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -21,16 +21,16 @@ class ActorCritic(nn.Module):
     def get_weight(self):
         return {k: v.cpu() for k, v in self.state_dict().items()}
 
-    def save_model(self, optimizer_state_dict=None, epoch_t=None, args=None):
+    def save_model(self, rootpath='.', optimizer_state_dict=None, epoch_t=None, args=None):
         state_dict = {
             'model_state_dict': self.get_weight(),
             'optimizer_state_dict': optimizer_state_dict,
         }
         if epoch_t is not None:
-            torch.save(state_dict, f"./models/{args.version}/agent{self.agent_idx}_history{epoch_t}.pt")
-            torch.save(state_dict, f"./models/{args.version}/agent{self.agent_idx}_latest.pt")
+            torch.save(state_dict, f"{rootpath}/models/agent{self.agent_idx}_history{epoch_t}.pt")
+            torch.save(state_dict, f"{rootpath}/models/agent{self.agent_idx}_latest.pt")
         else:
-            torch.save(state_dict, f"./models/{args.version}/agent{self.agent_idx}_latest.pt")
+            torch.save(state_dict, f"{rootpath}/models/agent{self.agent_idx}_latest.pt")
 
     @torch.no_grad()
     def get_action(self, pre_act_np, cur_obs_np, cur_gru_hidden_np):

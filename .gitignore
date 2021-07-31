@@ -1,3 +1,8 @@
+# ignore files
+test.py
+deprecated
+results
+
 # vscode config
 .vscode
 

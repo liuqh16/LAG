@@ -1,9 +1,11 @@
 import torch
 import numpy as np
+import gym
 
 
 class Config(object):
-    def __init__(self):
+    def __init__(self, env):
+        self.env = env  # type: gym.Env
         # Self Play
         self.num_agents = 1
         self.num_parallel_each_agent = 1

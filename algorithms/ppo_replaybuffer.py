@@ -1,6 +1,6 @@
 import numpy as np
 from collections import deque
-from envs.collections_task.self_play_task import obs_space, act_space
+from envs.JSBSim.tasks.selfplay_task import obs_space, act_space
 from .ppo_dictflatten import DictFlattener
 
 

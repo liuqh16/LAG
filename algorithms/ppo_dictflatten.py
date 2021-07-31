@@ -1,7 +1,7 @@
 import gym
 import numpy as np
 from collections import OrderedDict
-from envs.collections_task.self_play_task import act_space, obs_space
+from envs.JSBSim.tasks.selfplay_task import act_space, obs_space
 
 
 def get_obs_slice():
