@@ -42,11 +42,11 @@ class SelfPlayWithMissileTask(BaseTask):
         super().__init__(config)
 
         self.reward_functions = [
-            MissileAttackReward(self.config, is_potential=False, render=True),
-            AltitudeReward(self.config, is_potential=False, render=True),
-            PostureReward(self.config, is_potential=True, render=True),
-            RelativeAltitudeReward(self.config, is_potential=False, render=True),
-            SmoothActionReward(self.config, is_potential=False, render=True),
+            MissileAttackReward(self.config),
+            AltitudeReward(self.config),
+            PostureReward(self.config),
+            RelativeAltitudeReward(self.config),
+            SmoothActionReward(self.config),
         ]
 
         self.termination_conditions = [
