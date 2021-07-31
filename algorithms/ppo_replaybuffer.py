@@ -1,14 +1,13 @@
 import numpy as np
 from collections import deque
-from envs.collections_task.self_play_task import obs_space, act_space
 from .ppo_dictflatten import DictFlattener
 
 
 class ReplayBuffer(object):
     def __init__(self, args):
         self.args = args
-        self.obs_flatten = DictFlattener(obs_space['blue_fighter'])
-        self.act_flatten = DictFlattener(act_space)
+        self.obs_flatten = DictFlattener(args.observation_space['blue_fighter'])
+        self.act_flatten = DictFlattener(args.action_space)
         self.buffer_size, self.seq_len = self.args.buffer_config['buffer_size'], self.args.buffer_config['seq_len']
         self.buffer = deque(maxlen=self.buffer_size)
         self.rollout_last_value = None

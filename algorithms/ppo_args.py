@@ -12,15 +12,16 @@ class Config(object):
         self.env = env  # type: gym.Env
         self.observation_space = self.env.observation_space
         self.action_space = self.env.action_space
+
         # Parallel Training
-        self.num_agents = 5
-        self.num_parallel_each_agent = 7
+        self.num_agents = 1
+        self.num_parallel_each_agent = 1
         self.eval_num = 10
 
+        # Population-based Training
         self.thresholds = 16.
         self.top_k = 4
         self.initial_elo = 1000.
-        # Population-based Training
         self.reward_hyper = [1.]
         self.ppo_hyper = [1., 1.]
         self.perturb_prob_hyper = 0.2

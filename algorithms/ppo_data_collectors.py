@@ -4,8 +4,6 @@ import traceback
 from .ppo_AC import ActorCritic
 from .ppo_replaybuffer import ReplayBuffer
 import time
-import random
-from ..envs.JSBSim.envs.self_play_env import JSBSimEnvSelfEnv
 
 
 class SelfPlayDataCollector(object):
