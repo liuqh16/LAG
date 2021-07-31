@@ -66,12 +66,11 @@ class SelfPlayDataCollector(object):
 
         return my_next_obs, my_rewards, done, env_info
 
-    def collect_data(self, ego_net_params, enm_net_params, hyper_params, agent_id=None):
+    def collect_data(self, ego_net_params, enm_net_params, hyper_params=None, agent_id=None):
         print(f'agent: {agent_id} starts to collect data')
         start_time = time.time()
         self.buffer.clear()
-        rollout_step, flag_rollout_abort = 0, False
-        total_reward, total_episode = 0, 0
+        rollout_step, flag_rollout_abort, total_episode = 0, False, 0
         pooling_rewards = []
         try:
             self.enm_policy.load_state_dict(enm_net_params)
@@ -95,8 +94,7 @@ class SelfPlayDataCollector(object):
                         self.buffer.rollout_last_value = ego_next_value
                         flag_rollout_abort = True
                         break
-                    reward_scales = hyper_params['reward_hyper'][0]
-                    # ego_cumulative_reward += np.sum(reward_scales * ego_rewards)
+                    # reward_scales = hyper_params['reward_hyper'][0]
                     ego_cumulative_reward += ego_rewards
                     # TODO: easy for checking
                     self.buffer.add_sample(ego_pre_act_dict, ego_cur_obs['blue_fighter'], ego_cur_gru_h,
@@ -127,47 +125,54 @@ class SelfPlayDataCollector(object):
         # self.cumulative_reward = np.asarray(pooling_rewards).mean()
         return status_code, self.buffer
 
-    def evaluate_with_baseline(self, ego_net_params, enm_net_params, eval_num=1):
-        print('#####################################################################################')
-        print('\nStart evaluating...')
-        rewards = 0
-        self.ego_policy.load_state_dict(ego_net_params['model_state_dict'])
-        self.enm_policy.load_state_dict(enm_net_params['model_state_dict'])
-
-        for _ in range(eval_num):
-            self._choose_red_blue()
-            try:
-                rollout_step = 0
+    def collect_data_for_show(self, ego_net_params, enm_net_params):
+        self.buffer.clear()
+        rollout_step, flag_rollout_abort, total_episode = 0, False, 0
+        trajectory_list = []
+        try:
+            self.ego_policy.load_state_dict(ego_net_params)
+            self.ego_policy.load_state_dict(ego_net_params)
+            while not flag_rollout_abort:
+                self._choose_red_blue()
                 ego_cur_obs = self.reset()
-                self.rewards_list = []
+                trajectory_list.append(self.env.render())
+                total_episode += 1
+                ego_cumulative_reward = 0
                 ego_cur_gru_h, ego_pre_act_dict = self.ego_policy.get_init_hidden_state()
                 while True:
-                    self.env.render()
                     res = self.ego_policy.get_action_value(ego_pre_act_dict, ego_cur_obs, ego_cur_gru_h)
                     ego_cur_act_dict, ego_log_pi, ego_next_gru_h, ego_old_value = res
                     ego_cur_act_array = self.ego_policy.policy.act_flatten(ego_cur_act_dict)
                     try:
                         ego_next_obs, ego_rewards, done, env_info = self.step(ego_cur_act_array)
+                        trajectory_list.append(self.env.render())
                         rollout_step += 1
-                        rewards += ego_rewards
-                        self.rewards_list.append(ego_rewards)
                     except:
                         traceback.print_exc()
+                        ego_next_value, _ = self.ego_policy.get_value(ego_pre_act_dict, ego_cur_obs, ego_cur_gru_h)
+                        self.buffer.rollout_last_value = ego_next_value
+                        flag_rollout_abort = True
                         break
+                    ego_cumulative_reward += ego_rewards
                     ego_pre_act_dict, ego_cur_gru_h = ego_cur_act_dict, ego_next_gru_h
                     ego_cur_obs = ego_next_obs
-
-                    if done:
-                        # score = env_info['red_win' if self.red_flag else 'blue_win']
-                        # eval_scores.append(score)
+                    if rollout_step >= self.buffer.buffer_size:
+                        ego_next_value, _ = self.ego_policy.get_value(ego_pre_act_dict, ego_cur_obs, ego_cur_gru_h)
+                        self.buffer.rollout_last_value = ego_next_value
+                        flag_rollout_abort = True
+                    if done or flag_rollout_abort:
+                        if done:
+                            flag_rollout_abort = True
+                            print(f"Ego({'red' if self.red_flag else 'blue'}) accumulate reward = {ego_cumulative_reward:.2f}")
                         break
-            except:
-                traceback.print_exc()
-
-        rewards = rewards / eval_num
-        print(f"Average episode_reward = {rewards}")
-        print('#####################################################################################')
-        return rewards
+        except:
+            traceback.print_exc()
+            if rollout_step > 0:
+                ego_next_value, _ = self.ego_policy.get_value(ego_pre_act_dict, ego_cur_obs, ego_cur_gru_h)
+                self.buffer.rollout_last_value = ego_next_value
+            else:
+                self.buffer.rollout_last_value = 0.
+        return np.asarray(trajectory_list)
 
     def evaluate_data(self, ego_net_params, enm_net_params, ego_elo, enm_elo, eval_num, agent_id, elo_k=16.):
         start_time = time.time()
@@ -211,3 +216,45 @@ class SelfPlayDataCollector(object):
         print(f"Evaluate done, time elapsed {time_elapsed} | agent: {agent_id}: elo_gain: {elo_gain}, {eval_scores}")
         status_code = 0 if eval_scores else 1
         return status_code, elo_gain
+
+    def evaluate_with_baseline(self, ego_net_params, enm_net_params, eval_num=1):
+        print('#####################################################################################')
+        print('\nStart evaluating...')
+        rewards = 0
+        self.ego_policy.load_state_dict(ego_net_params['model_state_dict'])
+        self.enm_policy.load_state_dict(enm_net_params['model_state_dict'])
+
+        for _ in range(eval_num):
+            self._choose_red_blue()
+            try:
+                rollout_step = 0
+                ego_cur_obs = self.reset()
+                self.rewards_list = []
+                ego_cur_gru_h, ego_pre_act_dict = self.ego_policy.get_init_hidden_state()
+                while True:
+                    self.env.render()
+                    res = self.ego_policy.get_action_value(ego_pre_act_dict, ego_cur_obs, ego_cur_gru_h)
+                    ego_cur_act_dict, ego_log_pi, ego_next_gru_h, ego_old_value = res
+                    ego_cur_act_array = self.ego_policy.policy.act_flatten(ego_cur_act_dict)
+                    try:
+                        ego_next_obs, ego_rewards, done, env_info = self.step(ego_cur_act_array)
+                        rollout_step += 1
+                        rewards += ego_rewards
+                        self.rewards_list.append(ego_rewards)
+                    except:
+                        traceback.print_exc()
+                        break
+                    ego_pre_act_dict, ego_cur_gru_h = ego_cur_act_dict, ego_next_gru_h
+                    ego_cur_obs = ego_next_obs
+
+                    if done:
+                        # score = env_info['red_win' if self.red_flag else 'blue_win']
+                        # eval_scores.append(score)
+                        break
+            except:
+                traceback.print_exc()
+
+        rewards = rewards / eval_num
+        print(f"Average episode_reward = {rewards}")
+        print('#####################################################################################')
+        return rewards

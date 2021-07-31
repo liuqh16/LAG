@@ -5,7 +5,6 @@ from algorithms.ppo_AC import ActorCritic
 from algorithms.ppo_args_baseline import Config
 import torch
 import os
-import time
 import argparse
 import signal
 import random

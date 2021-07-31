@@ -35,5 +35,3 @@ class ReplayBuffer(object):
         cur_obs, pre_act, cur_act = self.obs_flatten(cur_obs), self.act_flatten(pre_act), self.act_flatten(cur_act)
         self.buffer.append([pre_act, cur_obs, pre_gru_h, cur_act, old_log_pi, pred_old_value, [np.clip(cur_reward, -20., 20.)],
                             [done]])
-
-
