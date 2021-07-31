@@ -42,13 +42,3 @@ class Config(object):
         self.entropy_weight = 1e-3
         self.tx_c = 3.
         self.buffer_config = {'buffer_size': 7200, 'seq_len': 8, 'batch_size': 512}
-
-
-
-
-
-
-
-
-
-

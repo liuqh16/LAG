@@ -4,7 +4,6 @@ import traceback
 from .ppo_AC import ActorCritic
 from .ppo_replaybuffer import ReplayBuffer
 import time
-import random
 
 
 class SelfPlayDataCollector(object):
@@ -50,9 +49,6 @@ class SelfPlayDataCollector(object):
         return self._parse_obs(obs)
 
     def _choose_red_blue(self):
-        if self.flag_use_baseline:
-            self.red_flag = True
-            return
         if self.red_flag:
             self.red_flag = False
         else:

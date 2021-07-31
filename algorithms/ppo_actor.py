@@ -14,6 +14,7 @@ class PolicyRnnMultiHead(nn.Module):
         self.obs_flatten = DictFlattener(obs_space)
         self.act_flatten = DictFlattener(act_space)
         self._create_network()
+        self.to(args.device)
 
     def _create_network(self, ):
         # 1. pre-process source observations.

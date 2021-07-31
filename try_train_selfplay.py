@@ -19,7 +19,7 @@ def main():
     parser.add_argument("--env", default="JSBSim")
     parser.add_argument("--task", default="selfplay")
     parser.add_argument("--version", default='v0')
-    parser.add_argument("--gpu_id", default=None)
+    parser.add_argument("--gpu-id", default=None, type=int)
     parser.add_argument("--seed", default=1, type=int)
     args = parser.parse_args()
 
@@ -34,6 +34,10 @@ def main():
         os.makedirs(f'{rootpath}/models')
 
     args_ppo = Config(env=SelfPlayEnv())
+    if args.gpu_id is None:
+        args_ppo.device = torch.device('cpu')
+    else:
+        args_ppo.device = torch.device(f'cuda:{args.gpu_id}')
     hyper_params = dict()
     hyper_params['reward_hyper'] = [0.]
     hyper_params['ppo_hyper'] = [1., 1.]
