@@ -3,7 +3,7 @@ import numpy as np
 import torch.nn as nn
 from collections import OrderedDict
 from torch.distributions import Categorical
-from utils.flatten_utils import DictFlattener
+from .ppo_dictflatten import DictFlattener
 
 
 class PolicyRnnMultiHead(nn.Module):
@@ -19,6 +19,7 @@ class PolicyRnnMultiHead(nn.Module):
         self.obs_slice = {}
         self.ego_name = None
         self._create_network()
+        self.to(args.device)
 
     def _create_network(self):
         # 1. pre-process source observations.

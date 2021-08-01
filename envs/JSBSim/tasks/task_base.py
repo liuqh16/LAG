@@ -3,7 +3,6 @@ import numpy as np
 import gym
 from gym.spaces import Box, Discrete
 from abc import ABC, abstractmethod
-from ..core.catalog import Catalog
 from ..utils.utils import parse_config, get_root_dir
 
 

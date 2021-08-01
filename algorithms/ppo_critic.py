@@ -18,6 +18,7 @@ class ValueRnnMultiHead(nn.Module):
         self.obs_slice = {}
         self.ego_name = None
         self._create_network()
+        self.to(args.device)
 
     def _create_network(self):
         # 1. pre-process source observations.

@@ -81,7 +81,7 @@ class Trainer(object):
                 print("NaN occured after training, reverting changes")
                 self.load_state_dict(agent_params)
                 break
-        print('++++++++'*9)
+        print('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
         return self.get_state_dict()
 
     def _do_ppo_training(self, pre_act_batch, cur_obs_batch, cur_gru_h_batch, cur_act_batch, old_log_pis_batch, old_values_batch,
@@ -177,7 +177,7 @@ class Trainer(object):
         return b_states
 
     def _split_episodes(self, data_class):
-        trajectories = np.asarray(data_class.buffer)
+        trajectories = np.asarray(data_class.buffer, dtype=object)
         # -------------------------------------------------------------------------------------------------------------
         pre_actions = np.asarray(trajectories[:, 0].tolist(), dtype=np.float)        # 0. [total_steps, cur_act_shape]
         pre_act_shape = pre_actions.shape[1:]
