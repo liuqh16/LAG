@@ -10,13 +10,13 @@ NOTE:
 1. Download Tacview
 2. Run several episodes and save the trajectories
 3. Open the application, start listening
-4. Call the `data_replay_multi` as shown in __main__
+4. Call the `data_replay` as shown in __main__
 Custom config:
 - PORT, default=21567
 - password, default='f16sim'
 '''
 
-class view:
+class TacviewClient:
     def __init__(self):
         HOST = ''
         PORT = 21567
@@ -53,25 +53,29 @@ class view:
         self.socket.send(bytes('0,ReferenceTime='+reference_time+'\n', 'utf-8'))
 
 
-    def send(self, time, state_in, my_id='3000102', name='F16'):
+    def send(self, time, state_in, my_id='3000102', name='F16', color='Blue'):
         """
-        time: second, max precision: 0.001s (recommend 0.01s/frame)
-        lon/lat: degree, max precision: 0.0000001 degree
-        alt: meter, max precision: 0.01m
-        roll/pitch/yaw: degree, max precision: 0.1 degree
-        roll: left roll = negative
-        pitch: up head = positive
-        yaw: north=0, left(anti-clockwise) = negative
+        Args:
+            time(float): second, max precision: 0.001s (recommend 0.01s/frame)
+            state_in(list): [lon, lat, alt, roll, pitch, yaw]
+                lon/lat: degree, max precision: 0.0000001 degree
+                alt: meter, max precision: 0.01m
+                roll/pitch/yaw: degree, max precision: 0.1 degree
+            color(str): 'Red' or 'Blue', distinguish different sides
+        NOTE:
+            roll: left roll = negative
+            pitch: up head = positive
+            yaw: north=0, left(anti-clockwise) = negative
         """
         state_in = np.resize(state_in,(6,))
-        [lon, lat, alt, roll, pitch, yaw]=state_in
+        [lon, lat, alt, roll, pitch, yaw] = state_in
 
         # send relative time
         self.socket.send(bytes('#' + str(time) + '\n', 'utf-8'))
 
         # send flight state
         send_str = my_id + ',T=' + str(lon) + '|' + str(lat) + '|' + str(alt) + '|' \
-                                 + str(roll) +'|' + str(pitch) +'|' + str(yaw) + ',Name=' + str(name) + '\n'
+                                 + str(roll) +'|' + str(pitch) +'|' + str(yaw) + ',Name=' + str(name) + ',Color=' + str(color) + '\n'
         self.socket.send(bytes(send_str, 'utf-8'))
 
     def close(self):
@@ -79,14 +83,19 @@ class view:
         self.server_socket.close()
 
 
-def show_tacview(display, sim_time, state, my_id='3000001', name='F16', color='Blue'):
-    display.send(sim_time,
-                 [state[0], state[1], state[2] / 3.2808399, state[3] * 180 / np.pi, state[4] * 180 / np.pi,
-                  state[5] * 180 / np.pi], my_id, name, color)
+def show_tacview(display: TacviewClient, sim_time, state, my_id='3000001', name='F16', color='Blue'):
+    display.send(time=sim_time,
+                 state_in=[state[0],                    # lon, unit: degree
+                           state[1],                    # lat, unit: degree
+                           state[2] / 3.2808399,        # alt, unit: feet => meter
+                           state[3] * 180 / np.pi,      # roll, unit: rad => degree
+                           state[4] * 180 / np.pi,      # yaw, unit: rad => degree
+                           state[5] * 180 / np.pi],     # pitch, unit: rad => degree
+                 my_id=my_id, name=name, color=color)
 
 
 def data_replay(data):
-    display = view()
+    display = TacviewClient()
     display.init_tcp()
     for time_step in range(len(data)):
         time.sleep(0.07)
