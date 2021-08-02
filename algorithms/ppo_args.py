@@ -13,7 +13,6 @@ class Config(object):
         self.thresholds = 16.
         self.top_k = 4
         self.initial_elo = 1000.
-        self.reward_hyper = [1.]
         self.ppo_hyper = [1., 1.]
         self.perturb_prob_hyper = 0.2
         self.mutate_prob_hyper = 0.8
@@ -37,4 +36,4 @@ class Config(object):
         self.max_grad_norm = 2.
         self.entropy_weight = 1e-3
         self.tx_c = 3.
-        self.buffer_config = {'buffer_size': 2000, 'seq_len': 8, 'batch_size': 512}
+        self.buffer_config = {'buffer_size': 3000, 'seq_len': 8, 'batch_size': 512}
