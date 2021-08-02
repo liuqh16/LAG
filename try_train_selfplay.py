@@ -1,8 +1,9 @@
 from envs.JSBSim.envs.selfplay_env import SelfPlayEnv
+from envs.env_wrappers import DummyVecEnv
 from algorithms.ppo_data_collectors import SelfPlayDataCollector
 from algorithms.ppo_training_agent import Trainer
 from algorithms.ppo_AC import ActorCritic
-from algorithms.ppo_args_baseline import Config
+from algorithms.ppo_args import Config
 import torch
 import os
 import argparse
@@ -10,6 +11,8 @@ import signal
 import random
 import numpy as np
 
+def make_train_env(num_env):
+    return DummyVecEnv([SelfPlayEnv for _ in range(num_env)])
 
 def main():
     signal.signal(signal.SIGINT, exit)

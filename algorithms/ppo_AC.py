@@ -1,3 +1,4 @@
+import pdb
 import numpy as np
 import torch
 import torch.nn as nn
@@ -33,50 +34,92 @@ class ActorCritic(nn.Module):
             torch.save(state_dict, f"{rootpath}/models/agent{self.agent_idx}_latest.pt")
 
     @torch.no_grad()
-    def get_action(self, pre_act_np, cur_obs_np, cur_gru_hidden_np):
+    def get_action(self, pre_act_np, cur_obs_np, pre_gru_hidden_np):
+        """
+        Args:
+            pre_act_np:             np.array[obs_space], len=num_envs
+            cur_obs_np:             np.array[act_space], len=num_envs
+            pre_gru_hidden_np:      np.array, shape=[num_layers, num_envs, N]
+                If `self.args.flag_eval=True`, N = policy_hidden_size;
+                Else, N = policy_hidden_size + value_hidden_size
+
+        Returns:
+            act_np:                 np.array[act_space], len=num_envs
+            log_probs_np:           np.array, shape=[num_envs, act_dims]
+            policy_cur_hidden_np:   np.array, shape=[num_layers, num_envs, policy_hidden_size]
+        """
         if self.args.flag_eval:
-            cur_policy_gru_np = cur_gru_hidden_np
+            pre_gru_hidden_np = pre_gru_hidden_np
         else:
-            cur_policy_gru_np = cur_gru_hidden_np[:, :self.num_policy_gru_hidden]
-        return self.policy.get_action(pre_act_np, cur_obs_np, cur_policy_gru_np)
+            pre_gru_hidden_np = pre_gru_hidden_np[:, :, :self.num_policy_gru_hidden]
+        return self.policy.get_action(pre_act_np, cur_obs_np, pre_gru_hidden_np)
 
     @torch.no_grad()
-    def get_action_value(self, pre_act_np, cur_obs_np, cur_gru_hidden_np):
-        cur_action, old_log_prob, next_policy_gru_hidden_np = self.get_action(pre_act_np, cur_obs_np, cur_gru_hidden_np)
-        value, next_value_gru_hidden_np = self.get_value(pre_act_np, cur_obs_np, cur_gru_hidden_np)
+    def get_action_value(self, pre_act_np, cur_obs_np, pre_gru_hidden_np):
+        """
+        Args:
+            pre_act_np:             np.array[obs_space], len=num_envs
+            cur_obs_np:             np.array[act_space], len=num_envs
+            pre_gru_hidden_np:      np.array, shape=[num_layers, num_envs, policy_hidden_size + value_hidden_size]
+
+        Returns:
+            act_np:                 np.array[act_space], len=num_envs
+            old_log_prob_np:        np.array, shape=[num_envs, act_dims]
+            next_gru_hidden_np:     np.array, shape=[num_layers, num_envs, policy_hidden_size + value_hidden_size]
+            value_np:               np.array, shape=[num_envs, ]
+        """
+        act_np, old_log_prob_np, next_policy_gru_hidden_np = self.get_action(pre_act_np, cur_obs_np, pre_gru_hidden_np)
+        value_np, next_value_gru_hidden_np = self.get_value(pre_act_np, cur_obs_np, pre_gru_hidden_np)
         next_gru_hidden_np = np.concatenate([next_policy_gru_hidden_np, next_value_gru_hidden_np], axis=-1)
-        return cur_action, old_log_prob, next_gru_hidden_np, value
+        return act_np, old_log_prob_np, next_gru_hidden_np, value_np
 
-    def get_value(self, pre_act_np, cur_obs_np, cur_gru_hidden_np):
-        cur_value_gru_np = cur_gru_hidden_np[:, self.num_policy_gru_hidden:]
-        return self.value.get_value(pre_act_np, cur_obs_np, cur_value_gru_np)
+    def get_value(self, pre_act_np, cur_obs_np, pre_gru_hidden_np):
+        """
+        Args:
+            pre_act_np:             np.array[obs_space], len=num_envs
+            cur_obs_np:             np.array[act_space], len=num_envs
+            pre_gru_hidden_np:      np.array, shape=[num_layers, num_envs, policy_hidden_size + value_hidden_size]
 
-    def get_init_hidden_state(self, flag_eval=False):
-        policy_gru, pre_act = self.policy.get_init_hidden_states()
+        Returns:
+            value_np:               np.array, shape=[num_envs, ]
+            value_cur_hidden_np:    np.array, shape=[num_layers, num_envs, value_hidden_size]
+        """
+        pre_gru_hidden_np = pre_gru_hidden_np[:, :, self.num_policy_gru_hidden:]
+        return self.value.get_value(pre_act_np, cur_obs_np, pre_gru_hidden_np)
+
+    def get_init_hidden_state(self, flag_eval=False, num_env=1):
+        init_policy_gru_hidden_np, init_pre_act_np = self.policy.get_init_hidden_states(num_env)
         if flag_eval:
-            return policy_gru, pre_act
+            return init_policy_gru_hidden_np, init_pre_act_np
         else:
-            value_gru = self.value.get_init_hidden_states()
-            init_gru_hidden = np.concatenate([policy_gru, value_gru], axis=-1)
-            return init_gru_hidden, pre_act
+            init_value_gru_hidden_np = self.value.get_init_hidden_states(num_env)
+            init_gru_hidden_np = np.concatenate([init_policy_gru_hidden_np, init_value_gru_hidden_np], axis=-1)
+            return init_gru_hidden_np, init_pre_act_np
 
-    def bp_batch_new_log_pi(self, batch_pre_actions, batch_cur_observations, batch_cur_gru_hidden, batch_cur_actions):
+    def bp_batch_new_log_pi(self, batch_pre_actions, batch_cur_observations, batch_pre_gru_hidden, batch_cur_actions):
         """
-        batch_cur_observations:          tensor                 [batch_size, seq_len, obs_shape]
-        batch_cur_gru_hidden:            tensor                 [num_layers, batch_size, gru_hidden_size * 2]
-        batch_cur_actions:               tensor                 [batch_size, seq_len, cur_act_shape]
-        return:                          tensor                 [batch_size * seq_len, 2]
+        Args:
+            batch_pre_actions:              [batch_size, seq_len, act_dim]
+            batch_cur_observations:         [batch_size, seq_len, obs_dim]
+            batch_pre_gru_hidden:           [num_layers, batch_size, policy_hidden_size + value_hidden_size]
+            batch_cur_act:                  [batch_size, seq_len, act_dim]
+
+        Returns:
+            output_logs:                    [batch_size * seq_len, act_dim]
+            output_entropys:                [batch_size * seq_len, act_dim]
         """
-        cur_policy_gru_tensor = batch_cur_gru_hidden[:, :, :self.num_policy_gru_hidden]
-        return self.policy.bp_new_log_pi(batch_pre_actions, batch_cur_observations, cur_policy_gru_tensor, batch_cur_actions)
+        batch_pre_policy_gru_tensor = batch_pre_gru_hidden[:, :, :self.num_policy_gru_hidden]
+        return self.policy.bp_new_log_pi(batch_pre_actions, batch_cur_observations, batch_pre_policy_gru_tensor, batch_cur_actions)
 
     def bp_batch_values(self, batch_pre_actions, batch_cur_observations, batch_pre_gru_hidden):
         """
-        batch_cur_observations:          tensor                 [batch_size, seq_len, obs_shape]
-        batch_cur_gru_hidden:            tensor                 [num_layers, batch_size, gru_hidden_size * 2]
-        return:                          tensor                 [batch_size * seq_len, 1]
+        Args:
+            batch_pre_actions:              [batch_size, seq_len, act_dim]
+            batch_cur_observations:         [batch_size, seq_len, obs_dim]
+            batch_pre_gru_hidden:           [num_layers, batch_size, policy_hidden_size + value_hidden_size]
+
+        Returns:
+            cur_values:                     [batch_size, seq_len, 1]
         """
-        pre_value_gru_tensor = batch_pre_gru_hidden[:, :, self.num_policy_gru_hidden:]
-        return self.value.bp_new_value(batch_pre_actions, batch_cur_observations, pre_value_gru_tensor)
-
-
+        batch_pre_value_gru_tensor = batch_pre_gru_hidden[:, :, self.num_policy_gru_hidden:]
+        return self.value.bp_new_value(batch_pre_actions, batch_cur_observations, batch_pre_value_gru_tensor)

@@ -1,5 +1,7 @@
+import pdb
 import torch
 import numpy as np
+from gym import spaces
 import torch.nn as nn
 from collections import OrderedDict
 from torch.distributions import Categorical
@@ -10,29 +12,25 @@ class PolicyRnnMultiHead(nn.Module):
     def __init__(self, args):
         super(PolicyRnnMultiHead, self).__init__()
         self.args = args
-        self.obs_space = args.observation_space
-        self.act_space = args.action_space
+        # create ego observation & action space
+        all_observation_space = args.observation_space  # NOTE: contains ego&enm obs
+        ego_name = list(all_observation_space.spaces.keys())[0]
+
+        self.obs_space = all_observation_space[ego_name]
         self.obs_flatten = DictFlattener(self.obs_space)
+        self.obs_dim = self.obs_flatten.size
+
+        self.act_space = args.action_space
         self.act_flatten = DictFlattener(self.act_space)
-        self.obs_dim = self.obs_flatten.size // len(self.obs_space.spaces.items())
         self.act_dim = self.act_flatten.size
-        self.obs_slice = {}
-        self.ego_name = None
+        self.act_norm = max([space.n for space in self.act_space.spaces.values() if isinstance(space, spaces.Discrete)])
+
         self._create_network()
         self.to(args.device)
 
     def _create_network(self):
         # 1. pre-process source observations.
-        each_fighter_obs_tuple = list(self.obs_space.spaces.items())[0]  # ('blue_fighter', Dict(ego_info:Box(22,)))
-        self.ego_name = each_fighter_obs_tuple[0]
-        assert 'blue' in self.ego_name
-        offset = 0
-        for obs_type in list(each_fighter_obs_tuple[1].spaces.items()):
-            length = obs_type[1].shape[0]
-            offset += length
-        self.obs_slice[self.ego_name] = (0, offset)
-        self.ego_shape = each_fighter_obs_tuple[1].spaces['ego_info'].shape[0]
-        self.pre_ego_net = nn.Sequential(nn.Linear(self.ego_shape + self.act_dim, self.args.policy_ego[0]),
+        self.pre_ego_net = nn.Sequential(nn.Linear(self.obs_dim + self.act_dim, self.args.policy_ego[0]),
                                          nn.LayerNorm(self.args.policy_ego[0]),
                                          nn.ReLU(inplace=True),
                                          nn.Linear(self.args.policy_ego[0], self.args.policy_ego[1]),
@@ -41,83 +39,92 @@ class PolicyRnnMultiHead(nn.Module):
         self.rnn_net = nn.GRU(input_size=self.args.policy_ego[1],
                               num_layers=self.args.policy_gru_config['num_layers'],
                               hidden_size=self.args.policy_gru_config['hidden_size'], batch_first=True)
-        # self.rnn_ln = nn.LayerNorm(self.args.policy_gru_config['hidden_size'])
         # 3. Multi Head
         output_multi_head = {}
-        for act_channel, act_space in self.act_space.spaces.items():
-            single_output = nn.Sequential(
+        for act_name, act_space in self.act_space.spaces.items():
+            channel_output = nn.Sequential(
                 nn.Linear(self.args.policy_gru_config['hidden_size'], self.args.policy_act_mlp[0]),
-                nn.LayerNorm(self.args.policy_act_mlp[0]), nn.ReLU(inplace=True),
-                nn.Linear(self.args.policy_act_mlp[0], self.args.policy_act_mlp[1]), nn.ReLU(inplace=True),
+                nn.LayerNorm(self.args.policy_act_mlp[0]),
+                nn.ReLU(inplace=True),
+                nn.Linear(self.args.policy_act_mlp[0], self.args.policy_act_mlp[1]),
+                nn.ReLU(inplace=True),
                 nn.Linear(self.args.policy_act_mlp[1], act_space.n))
-            output_multi_head[act_channel] = single_output
-
+            output_multi_head[act_name] = channel_output
         self.output_multi_head = nn.ModuleDict(output_multi_head)
 
     def forward(self, cur_obs_ego, pi_pre_gru_h):
-        import pdb; pdb.set_trace()
-        # laser_tensor = self.pre_laser_net(cur_obs_laser)            # (batch, seq, laser_hidden_shape)
-        ego_tensor = self.pre_ego_net(cur_obs_ego)                    # (batch, seq, ego_hidden_shape)
-        # cur_gru_inputs = torch.cat([laser_tensor, ego_tensor], dim=-1)
+        ego_tensor = self.pre_ego_net(cur_obs_ego)
         gru_out, gru_hidden = self.rnn_net(ego_tensor.contiguous(), pi_pre_gru_h.contiguous())
-        # gru_out = self.rnn_ln(gru_out)                              # (batch, seq, gru_hidden_shape)
         output_dists = {}
-        for act_channel, act_space in self.act_space.spaces.items():
-            single_action_prob = torch.softmax(self.output_multi_head[act_channel](gru_out).reshape(-1, act_space.n), dim=-1)
-            single_action_dist = Categorical(single_action_prob)
-            output_dists[act_channel] = single_action_dist
-
+        for act_name, act_space in self.act_space.spaces.items():
+            channel_act_prob = torch.softmax(self.output_multi_head[act_name](gru_out).reshape(-1, act_space.n), dim=-1)
+            channel_act_dist = Categorical(channel_act_prob)
+            output_dists[act_name] = channel_act_dist
         return output_dists, gru_hidden
 
-    def get_action(self, pre_act_lists, cur_obs_dict_lists, pre_gru_hidden_np):
-        ego_nps = [cur_obs_dict[self.ego_name]['ego_info'] for cur_obs_dict in cur_obs_dict_lists]
-        num_env = len(ego_nps)
-        act_nps = [self.act_flatten(pre_act[self.ego_name]) / self.act_space['aileron'].n for pre_act in pre_act_lists]
-        ego_nps, act_nps = np.array(ego_nps), np.array(act_nps)
-        ego_np = np.concatenate([ego_nps, act_nps], axis=-1)
+    def get_action(self, pre_act_np, cur_obs_np, pre_gru_hidden_np):
+        """
+        Args:
+            pre_act_np:             np.array[obs_space], len=num_envs
+            cur_obs_np:             np.array[act_space], len=num_envs
+            pre_gru_hidden_np:      np.array, shape=[num_layers, num_envs, hidden_size]
 
-        cur_ego_tensor = torch.tensor(ego_np, dtype=torch.float, device=self.args.device).unsqueeze(1)
+        Returns:
+            act_np:                 np.array[act_space], len=num_envs
+            log_probs_np:           np.array, shape=[num_envs, act_dims]
+            policy_cur_hidden_np:   np.array, shape=[num_layers, num_envs, hidden_size]
+        """
+        ego_obs_nps = [self.obs_flatten(cur_obs) for cur_obs in cur_obs_np]
+        ego_act_nps = [self.act_flatten(pre_act) / self.act_norm for pre_act in pre_act_np]
+        ego_nps = np.concatenate([ego_obs_nps, ego_act_nps], axis=-1)
+
+        cur_ego_tensor = torch.tensor(ego_nps, dtype=torch.float, device=self.args.device).unsqueeze(1)
         pre_gru_hidden_tensor = torch.tensor(pre_gru_hidden_np, dtype=torch.float, device=self.args.device)
-        import pdb; pdb.set_trace()
+
         output_dists, gru_hidden = self.forward(cur_ego_tensor, pre_gru_hidden_tensor)
         actions, log_probs = [], []
-        for act_channel in self.act_space.spaces.keys():
-            single_dist = output_dists[act_channel]                                      # (batch, )
-            single_act = single_dist.sample() if not self.args.flag_eval else single_dist.logits.max(dim=-1)[1]
-            single_act_log_prob = single_dist.log_prob(single_act)                       # (batch, )
-            actions.append(single_act.unsqueeze(-1))
-            log_probs.append(single_act_log_prob.unsqueeze(-1))
-        actions, log_probs = torch.cat(actions, dim=-1), torch.cat(log_probs, dim=-1)    # (batch, self.act_dim)
-        action_for_envs = []
-        for i in range(num_env):
-            act_for_each_env = {}
-            for j, act_type in enumerate(self.act_space.spaces.items()):
-                act_for_each_env[act_type[0]] = actions[i, j].cpu().detach().numpy()
-            action_for_envs.append(OrderedDict(act_for_each_env))
-        return action_for_envs, log_probs.cpu().detach().numpy(), gru_hidden.detach().cpu().numpy()
+        for act_name in output_dists.keys():
+            channel_dist = output_dists[act_name]
+            channel_act = channel_dist.sample() if not self.args.flag_eval else channel_dist.logits.max(dim=-1)[1]
+            channel_act_log_prob = channel_dist.log_prob(channel_act)
+            actions.append(channel_act.unsqueeze(-1))                       # [num_envs, 1]
+            log_probs.append(channel_act_log_prob.unsqueeze(-1))            # [num_envs, 1]
 
-    def bp_new_log_pi(self, batch_pre_actions, batch_cur_obs, batch_pre_gru_hidden, batch_cur_actions, no_grad=False):
-        # batch_cur_gru_hidden:            tensor                 [num_layers, batch_size, gru_hidden_size]
+        actions_np = torch.cat(actions, dim=-1).cpu().detach().numpy()      # [num_envs, act_dim]
+        log_probs_np = torch.cat(log_probs, dim=-1).cpu().detach().numpy()  # [num_envs, act_dim]
+        policy_cur_hidden_np = gru_hidden.detach().cpu().numpy()            # [num_layers, num_envs, hidden_size]
+        act_np = np.asarray([self.act_flatten.inv(action) for action in actions_np], dtype=object)
+        return act_np, log_probs_np, policy_cur_hidden_np
+
+    def bp_new_log_pi(self, batch_pre_act, batch_cur_obs, batch_pre_gru_hidden, batch_cur_act, no_grad=False):
+        """
+        Args:
+            batch_pre_act:          [batch_size, seq_len, act_dim]
+            batch_cur_obs:          [batch_size, seq_len, obs_dim]
+            batch_pre_gru_hidden:   [num_layers, batch_size, hidden_size]
+            batch_cur_act:          [batch_size, seq_len, act_dim]
+
+        Returns:
+            output_logs:            [batch_size * seq_len, act_dim]
+            output_entropys:        [batch_size * seq_len, act_dim]
+        """
         with torch.set_grad_enabled(not no_grad):
-            ego_obs = batch_cur_obs[:, :, slice(*self.obs_slice[self.ego_name])]
-            ego_obs = torch.cat([ego_obs, batch_pre_actions / self.act_space['aileron'].n], dim=-1)
-            res = self.forward(ego_obs, batch_pre_gru_hidden)
-            output_dists, _ = res
+            ego_obs = torch.cat([batch_cur_obs, batch_pre_act / self.act_norm], dim=-1)
+            output_dists, _  = self.forward(ego_obs, batch_pre_gru_hidden)
             output_logs, output_entropys = [], []
-            for act_id, act_type in enumerate(self.act_space.spaces.items()):
-                single_act = batch_cur_actions[:, :, act_id].long().reshape(-1, 1)
-                log_prob = output_dists[act_type[0]].log_prob(single_act.squeeze(-1)).unsqueeze(-1)
+            for act_idx, act_name in enumerate(output_dists.keys()):
+                channel_act = batch_cur_act[:, :, act_idx].long().reshape(-1, 1)
+                log_prob = output_dists[act_name].log_prob(channel_act.squeeze(-1)).unsqueeze(-1)
                 output_logs.append(log_prob)
-                output_entropys.append(output_dists[act_type[0]].entropy().unsqueeze(-1))
+                output_entropys.append(output_dists[act_name].entropy().unsqueeze(-1))
             output_logs, output_entropys = torch.cat(output_logs, dim=-1), torch.cat(output_entropys, dim=-1)
         return output_logs, output_entropys
 
     def get_init_hidden_states(self, num_env=1):
-        cur_gru_hidden = np.zeros(
-            [self.args.policy_gru_config['num_layers'], num_env, self.args.policy_gru_config['hidden_size']],
-            dtype=np.float)
-        init_pre_act = [OrderedDict({'aileron': 20, 'elevator': 18, 'rudder': 20, 'throttle': 11}) for _ in range(num_env)]
-        return cur_gru_hidden, init_pre_act
+        init_gru_hidden_np = np.zeros([self.args.policy_gru_config['num_layers'],
+                                    num_env, self.args.policy_gru_config['hidden_size']], dtype=np.float)
+        init_pre_act_np = np.asarray([self.act_flatten.inv(np.zeros(self.act_dim)) for _ in range(num_env)], dtype=object)
+        return init_gru_hidden_np, init_pre_act_np
 
 
 if __name__ == '__main__':
@@ -130,18 +137,21 @@ if __name__ == '__main__':
     def make_train_env(num_env):
         return SubprocVecEnv([SelfPlayEnv for _ in range(num_env)])
 
-    num_env = 2
+    num_env = 3
     envs = make_train_env(num_env)
     args = Config(env=envs)
     actor = PolicyRnnMultiHead(args)
 
     obss = envs.reset()
-    actions = [{'red_fighter': args.action_space.sample(),
+    acts = [{'red_fighter': args.action_space.sample(),
                 'blue_fighter': args.action_space.sample()} for _ in range(num_env)]
-    initial_state = actor.get_init_hidden_states(num_env)
-    res = actor.get_action(actions, obss, initial_state[0])
-    print(res[0])
-    print(res[1])
+    ego_acts = [act['red_fighter'] for act in acts]
+    ego_obss = [obs['red_fighter'] for obs in obss]
+    init_hidden_states = actor.get_init_hidden_states(num_env)
+    next_actions, log_probs, next_hidden_states = actor.get_action(ego_acts, ego_obss, init_hidden_states[0])
+    print(next_actions)
+    print(log_probs)
+    print(next_hidden_states.shape)
 
     batch, seq = args.buffer_config['batch_size'], args.buffer_config['seq_len']
     obsdims, actdims = actor.obs_dim, actor.act_dim

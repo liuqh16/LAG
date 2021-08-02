@@ -1,9 +1,5 @@
-import torch
 import gym
-import numpy as np
-# import envs
-# from envs.collections_task.self_play_task import SelfPlayTask
-# from envs.collections_env.self_play_env import JSBSimEnvSelfEnv
+import torch
 
 
 class Config(object):
@@ -12,11 +8,6 @@ class Config(object):
         self.env = env  # type: gym.Env
         self.observation_space = self.env.observation_space
         self.action_space = self.env.action_space
-
-        # Parallel Training
-        self.num_agents = 1
-        self.num_parallel_each_agent = 1
-        self.eval_num = 10
 
         # Population-based Training
         self.thresholds = 16.
@@ -46,4 +37,4 @@ class Config(object):
         self.max_grad_norm = 2.
         self.entropy_weight = 1e-3
         self.tx_c = 3.
-        self.buffer_config = {'buffer_size': 7200, 'seq_len': 8, 'batch_size': 512}
+        self.buffer_config = {'buffer_size': 2000, 'seq_len': 8, 'batch_size': 512}
