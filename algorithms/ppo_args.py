@@ -36,4 +36,4 @@ class Config(object):
         self.max_grad_norm = 2.
         self.entropy_weight = 1e-3
         self.tx_c = 3.
-        self.buffer_config = {'buffer_size': 3000, 'seq_len': 8, 'batch_size': 512}
+        self.buffer_config = {'buffer_size': 2700, 'seq_len': 8, 'batch_size': 128}
