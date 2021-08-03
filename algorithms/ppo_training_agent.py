@@ -235,6 +235,7 @@ class Trainer(object):
                 # 7.  advantage
                 b_advantage = self._get_chunk_data(i, episode_start_idx, episode_len, advantages, (1,))
                 self.chunks_advantages.append(b_advantage)
+            episode_start_idx = episode_end_idx
 
     def split_episodes(self, buffer_data_lists):
         self.total_chunk_data.clear()
