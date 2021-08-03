@@ -1,10 +1,8 @@
 import os
 import numpy as np
-import gym
-from gym.spaces import Box, Discrete
+from gym import spaces
 from abc import ABC, abstractmethod
-from ..utils.utils import parse_config, get_root_dir
-
+from ..core.catalog import Catalog as c
 
 class BaseTask(ABC):
     """
@@ -13,46 +11,52 @@ class BaseTask(ABC):
     action variables, termination conditions and reward functions.
     """
     def __init__(self, config):
-        # parse config
-        self.config = parse_config(os.path.join(get_root_dir(), 'configs', config))
-        self.init_variables()
+        self.config = config
         self.reward_functions = []
         self.termination_conditions = []
+        self.load_variables()
+        self.load_observation_space()
+        self.load_action_space()
 
     @abstractmethod
-    def init_variables(self):
-        self.action_var = None
-        self.state_var = None
+    def load_variables(self):
+        self.state_var = [
+            c.position_long_gc_deg,
+            c.position_lat_geod_deg,
+            c.position_h_sl_ft,
+        ]
+        self.action_var = [
+            c.fcs_aileron_cmd_norm,
+            c.fcs_elevator_cmd_norm,
+            c.fcs_rudder_cmd_norm,
+            c.fcs_throttle_cmd_norm,
+        ]
 
     @abstractmethod
-    def get_observation_space(self):
+    def load_observation_space(self):
         """
-        Get the task's observation Space object
-        :return : spaces.Tuple composed by spaces of each property.
+        Load observation space
         """
         space_tuple = ()
-
         for prop in self.state_var:
-            if prop.spaces is Box:
-                space_tuple += (Box(low=np.array([prop.min]), high=np.array([prop.max]), dtype="float"),)
-            elif prop.spaces is Discrete:
-                space_tuple += (Discrete(prop.max - prop.min + 1),)
-        return gym.spaces.Tuple(space_tuple)
+            if prop.spaces is spaces.Box:
+                space_tuple += (spaces.Box(low=np.array([prop.min]), high=np.array([prop.max]), dtype="float"),)
+            elif prop.spaces is spaces.Discrete:
+                space_tuple += (spaces.Discrete(prop.max - prop.min + 1),)
+        self.observation_space = spaces.Tuple(space_tuple)
 
     @abstractmethod
-    def get_action_space(self):
+    def load_action_space(self):
         """
-        Get the task's action Space object
-        :return : spaces.Tuple composed by spaces of each property.
+        Load action space
         """
         space_tuple = ()
-
         for prop in self.action_var:
-            if prop.spaces is Box:
-                space_tuple += (Box(low=np.array([prop.min]), high=np.array([prop.max]), dtype="float"),)
-            elif prop.spaces is Discrete:
-                space_tuple += (Discrete(prop.max - prop.min + 1),)
-        return gym.spaces.Tuple(space_tuple)
+            if prop.spaces is spaces.Box:
+                space_tuple += (spaces.Box(low=np.array([prop.min]), high=np.array([prop.max]), dtype="float"),)
+            elif prop.spaces is spaces.Discrete:
+                space_tuple += (spaces.Discrete(prop.max - prop.min + 1),)
+        self.action_space = spaces.Tuple(space_tuple)
 
     def reset(self, env):
         """Task-specific reset

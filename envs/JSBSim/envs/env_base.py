@@ -1,8 +1,10 @@
 import gym
+from gym import spaces
 import numpy as np
 from collections import OrderedDict
 from ..core.simulation import Simulation
 from ..tasks.task_base import BaseTask
+from ..utils.utils import parse_config
 
 
 class BaseEnv(gym.Env):
@@ -17,34 +19,33 @@ class BaseEnv(gym.Env):
     """
     metadata = {"render.modes": ["human", "csv"]}
 
-    def __init__(self, task, config):
-        assert isinstance(task, BaseTask), "TypeError: must give a instance of BaseTask"
-        self.task = task
-        self.config = self.task.config
-
-        # env config
-        self.max_steps = getattr(self.config, 'max_steps', 100)
-        self.observation_space = self.task.get_observation_space()
-        self.action_space = self.task.get_action_space()
-
+    def __init__(self, config: str):
+        self.config = parse_config(config)
         # agent config
         assert isinstance(getattr(self.config, 'init_config', None), dict) \
             and isinstance(list(self.config.init_config.values())[0], dict), \
             "Unexpected config error!"
         self.agent_names = list(self.config.init_config.keys())
         self.num_agents = len(self.agent_names)
-
         # simulation config
+        self.max_steps = getattr(self.config, 'max_steps', 100)
         self.jsbsim_freq = self.config.jsbsim_freq
         self.agent_interaction_steps = self.config.agent_interaction_steps
         self.aircraft_names = OrderedDict(  # aircraft model (Default: f16)
            [(agent, self.config.init_config[agent].get('aircraft_name', 'f16')) for agent in self.agent_names]
         )
+        self.load()
+        self.observation_space = self.task.observation_space
+        self.action_space = self.task.action_space
 
-        # custom config
-        self.init_variables()
+    def load(self):
+        self.load_task()
+        self.load_variables()
 
-    def init_variables(self):
+    def load_task(self):
+        self.task = BaseTask(self.config)
+
+    def load_variables(self):
         self.current_step = 0
         self.sims = OrderedDict([(agent, None) for agent in self.agent_names])
         self.init_longitude, self.init_latitude = 0.0, 0.0

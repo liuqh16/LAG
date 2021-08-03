@@ -8,14 +8,15 @@ def parse_config(filename):
     """Parse JSBSim config file.
 
     Args:
-        config (str): relative path to config file
+        config (str): config file name
 
     Returns:
         (EnvConfig): a custom class which parsing dict into object.
     """
-    assert os.path.exists(filename), \
-        f'config path {filename} does not exist. Please pass in a string that represents the file path to the config yaml.'
-    with open(filename, 'r', encoding='utf-8') as f:
+    filepath = os.path.join(get_root_dir(), 'configs', f'{filename}.yaml')
+    assert os.path.exists(filepath), \
+        f'config path {filepath} does not exist. Please pass in a string that represents the file path to the config yaml.'
+    with open(filepath, 'r', encoding='utf-8') as f:
         config_data = yaml.load(f, Loader=yaml.FullLoader)
 
     return type('EnvConfig', (object,), config_data)

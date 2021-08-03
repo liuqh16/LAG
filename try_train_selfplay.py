@@ -11,15 +11,17 @@ import random
 import numpy as np
 
 from envs.JSBSim.envs.selfplay_env import SelfPlayEnv
-from envs.env_wrappers import DummyVecEnv, SubprocVecEnv
+from envs.env_wrappers import SubprocVecEnv
 from algorithms.ppo_data_collectors import SelfPlayDataCollector
 from algorithms.ppo_training_agent import Trainer
 from algorithms.ppo_AC import ActorCritic
 from algorithms.ppo_args import Config
 
 
-def make_train_env(num_env):
-    return SubprocVecEnv([SelfPlayEnv for _ in range(num_env)])
+def make_train_env(num_env, taskname):
+    def env_fn():
+        return SelfPlayEnv(config=taskname)
+    return SubprocVecEnv([env_fn for _ in range(num_env)])
 
 
 def main():
@@ -49,7 +51,7 @@ def main():
     if not os.path.exists(rootpath):
         os.makedirs(f'{rootpath}/models')
 
-    envs = make_train_env(args.num_env)
+    envs = make_train_env(args.num_env, f'{args.task}_task')
     args_ppo = Config(env=envs)
     if args.gpu_id is None:
         args_ppo.device = torch.device('cpu')

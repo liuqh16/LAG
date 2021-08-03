@@ -7,8 +7,8 @@ from utils.flatten_utils import DictFlattener
 
 
 def test_env():
-    # env = SelfPlayEnv(config='selfplay_task.yaml')
-    env = SelfPlayEnv(config='selfplay_with_missile_task.yaml')
+    env = SelfPlayEnv(config='selfplay_task')
+    # env = SelfPlayEnv(config='selfplay_with_missile_task')
     act_space = env.action_space
     act_flattener = DictFlattener(act_space)
 
@@ -34,11 +34,13 @@ def test_env():
 
 def test_parallel_env():
     
-    def make_train_env(num_env):
-        return SubprocVecEnv([SelfPlayEnv for _ in range(num_env)])
+    def make_train_env(num_env, taskname='selfplay_task'):
+        def env_fn():
+            return SelfPlayEnv(config=taskname)
+        return DummyVecEnv([env_fn for _ in range(num_env)])
 
     start_time = time.time()
-    num_env = 10
+    num_env = 2
     envs = make_train_env(num_env)
     act_space = envs.action_space
     act_flattener = DictFlattener(act_space)
@@ -60,5 +62,5 @@ def test_parallel_env():
     envs.close()
 
 
-test_env()
-# test_parallel_env()
+# test_env()
+test_parallel_env()
