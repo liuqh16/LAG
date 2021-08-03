@@ -43,7 +43,7 @@ def lonlat2dis(lon, lat, init_lon, init_lat):
     return np.array([east, north]) * 1000
 
 
-def get_AO_TA_R(ego_feature, enemy_feature):
+def get_AO_TA_R(ego_feature, enemy_feature, return_side=False):
     """Get AO & TA angles and relative distance between two agent.
 
     Args:
@@ -64,7 +64,12 @@ def get_AO_TA_R(ego_feature, enemy_feature):
 
     proj_dist = delta_x * enm_vx + delta_y * enm_vy + delta_z * enm_vz
     ego_TA = np.arccos(np.clip(proj_dist / (R * enm_v + 1e-8), -1, 1))
-    return ego_AO, ego_TA, R
+
+    if not return_side:
+        return ego_AO, ego_TA, R
+    else:
+        side_flag = np.sign(np.cross([ego_vx, ego_vy], [delta_x, delta_y]))
+        return ego_AO, ego_TA, R, side_flag
 
 
 def in_range_deg(angle):

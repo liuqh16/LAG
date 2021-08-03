@@ -1,7 +1,7 @@
-from envs.JSBSim.envs.selfplay_env import SelfPlayEnv
-import numpy as np
 import pdb
 import time
+import numpy as np
+from envs.JSBSim.envs.selfplay_env import SelfPlayEnv
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
 from utils.flatten_utils import DictFlattener
 

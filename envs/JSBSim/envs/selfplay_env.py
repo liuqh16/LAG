@@ -1,13 +1,10 @@
-import pdb
 import numpy as np
-from gym import spaces
 from collections import OrderedDict
 from .env_base import BaseEnv
 from ..core.catalog import Catalog
 from ..core.simulation import Simulation
 from ..tasks.selfplay_task import SelfPlayTask
 from ..tasks.selfplay_with_missle_task import SelfPlayWithMissileTask
-from ..utils.utils import lonlat2dis
 
 
 class SelfPlayEnv(BaseEnv):

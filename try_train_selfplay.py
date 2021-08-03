@@ -2,7 +2,6 @@
 Example: python3 try_train_selfplay.py --num-env=10 --num-train=2000 --num-eval=20 --gpu-id=0
 '''
 
-import pdb
 import torch
 import os
 import argparse
@@ -11,7 +10,7 @@ import random
 import numpy as np
 
 from envs.JSBSim.envs.selfplay_env import SelfPlayEnv
-from envs.env_wrappers import SubprocVecEnv
+from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
 from algorithms.ppo_data_collectors import SelfPlayDataCollector
 from algorithms.ppo_training_agent import Trainer
 from algorithms.ppo_AC import ActorCritic
