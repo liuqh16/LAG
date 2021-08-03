@@ -6,9 +6,14 @@ import random
 import numpy as np
 
 from algorithms.ppo_data_collectors import SelfPlayDataCollector
-from algorithms.ppo_args_baseline import Config
+from algorithms.ppo_args import Config
 from envs.JSBSim.envs.selfplay_env import SelfPlayEnv
 from envs.JSBSim.core.render_tacview import data_replay
+
+
+def make_test_env(taskname):
+    return SelfPlayEnv(config=taskname)
+
 
 def main():
     signal.signal(signal.SIGINT, exit)
@@ -31,7 +36,8 @@ def main():
     filepath = f'./results/{args.env}_{args.task}_{args.version}/models/agent{0}_history{args.iter}.pt'
     assert os.path.exists(filepath), 'ModelFile does not exist!'
 
-    args_ppo = Config(env=SelfPlayEnv())
+    envs = make_test_env(f'{args.task}_task')
+    args_ppo = Config(env=envs)
     if args.gpu_id is None:
         args_ppo.device = torch.device('cpu')
     else:
@@ -40,8 +46,8 @@ def main():
     hyper_params['reward_hyper'] = [1]
     hyper_params['ppo_hyper'] = [1., 1.]
     collector = SelfPlayDataCollector(args_ppo)
-    trajectory_data = collector.collect_data_for_show(ego_net_params=torch.load(filepath)['model_state_dict'],
-                                                      enm_net_params=torch.load(filepath)['model_state_dict'])
+    trajectory_data = collector.collect_data_once(ego_net_params=torch.load(filepath)['model_state_dict'],
+                                                  enm_net_params=torch.load(filepath)['model_state_dict'])
     # np.save(f'./results/{args.env}_{args.task}_{args.version}/render_data', trajectory_data)
     data_replay(trajectory_data)
 

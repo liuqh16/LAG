@@ -12,7 +12,7 @@ from .ppo_replaybuffer import ReplayBuffer
 class SelfPlayDataCollector(object):
     def __init__(self, args, flag_use_baseline=True):
         self.env = args.env
-        self.num_envs = self.env.num_envs  # type: int
+        self.num_envs = getattr(self.env, 'num_envs', 1)  # type: int
         self.buffers = [ReplayBuffer(args) for _ in range(self.num_envs)]
         self.ego_policy, self.enm_policy = ActorCritic(args).to(args.device), ActorCritic(args).to(args.device)
         self.red_flag = np.random.choice([True, False], size=self.num_envs)
@@ -148,50 +148,24 @@ class SelfPlayDataCollector(object):
         print('#####################################################################################')
         return average_rewards
 
-    def collect_data_for_show(self, ego_net_params, enm_net_params):
-        self.buffer.clear()
-        rollout_step, flag_rollout_abort, total_episode = 0, False, 0
-        trajectory_list = []
-        try:
-            self.ego_policy.load_state_dict(ego_net_params)
-            self.ego_policy.load_state_dict(ego_net_params)
-            while not flag_rollout_abort:
-                ego_cur_obs = self.reset()
-                trajectory_list.append(self.env.render())
-                total_episode += 1
-                ego_cumulative_reward = 0
-                ego_cur_gru_h, ego_pre_act = self.ego_policy.get_init_hidden_state()
-                while True:
-                    res = self.ego_policy.get_action_value(ego_pre_act, ego_cur_obs, ego_cur_gru_h)
-                    ego_cur_act_dict, ego_log_pi_np, ego_next_gru_np, ego_old_value_np = res
-                    ego_cur_act_array = self.ego_policy.policy.act_flatten(ego_cur_act_dict)
-                    try:
-                        ego_next_obs, ego_rewards, done, env_info = self.step(ego_cur_act_array)
-                        trajectory_list.append(self.env.render())
-                        rollout_step += 1
-                    except:
-                        traceback.print_exc()
-                        ego_next_value, _ = self.ego_policy.get_value(ego_pre_act, ego_cur_obs, ego_cur_gru_h)
-                        self.buffer.rollout_last_value = ego_next_value
-                        flag_rollout_abort = True
-                        break
-                    ego_cumulative_reward += ego_rewards
-                    ego_pre_act, ego_cur_gru_h = ego_cur_act_dict, ego_next_gru_np
-                    ego_cur_obs = ego_next_obs
-                    if rollout_step >= self.buffer.buffer_size:
-                        ego_next_value, _ = self.ego_policy.get_value(ego_pre_act, ego_cur_obs, ego_cur_gru_h)
-                        self.buffer.rollout_last_value = ego_next_value
-                        flag_rollout_abort = True
-                    if done or flag_rollout_abort:
-                        if done:
-                            flag_rollout_abort = True
-                            print(f"Ego({'red' if self.red_flag else 'blue'}) accumulate reward = {ego_cumulative_reward:.2f}")
-                        break
-        except:
-            traceback.print_exc()
-            if rollout_step > 0:
-                ego_next_value, _ = self.ego_policy.get_value(ego_pre_act, ego_cur_obs, ego_cur_gru_h)
-                self.buffer.rollout_last_value = ego_next_value
-            else:
-                self.buffer.rollout_last_value = 0.
+    def collect_data_once(self, ego_net_params, enm_net_params):
+        assert self.num_envs == 1
+        self.ego_policy.load_state_dict(ego_net_params)
+        trajectory_list, ego_cumulative_reward =[], 0
+        ego_cur_gru, ego_pre_act = self.ego_policy.get_init_hidden_state(num_env=1)
+        # start rendering
+        ego_cur_obs, _ = self._parse_obs(np.expand_dims(np.asarray(self.env.reset()), axis=0))
+        trajectory_list.append(self.env.render())
+        while True:
+            ego_cur_act, _, ego_next_gru = self.ego_policy.get_action(ego_pre_act, ego_cur_obs, ego_cur_gru)
+            acts = self._make_action(ego_cur_act, ego_cur_act.copy())
+            next_obs, reward, done, env_info = self.env.step(acts[0])
+            ego_next_obs, _ = self._parse_obs(np.expand_dims(np.asarray(next_obs), axis=0))
+            ego_reward, _ = self._parse_rewards(np.expand_dims(np.asarray(reward), axis=0))
+            trajectory_list.append(self.env.render())
+            ego_cumulative_reward += ego_reward[0]
+            ego_pre_act, ego_cur_gru, ego_cur_obs = ego_cur_act, ego_next_gru, ego_next_obs
+            if done:
+                break
+        print(f"Ego({'red' if self.red_flag else 'blue'}) accumulate reward = {ego_cumulative_reward:.2f}")
         return np.asarray(trajectory_list)
