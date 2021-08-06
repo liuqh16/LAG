@@ -27,7 +27,7 @@ init_config: {
     ic_h_sl_ft: 19685.03937007874,
     ic_lat_geod_deg: 60.05,
     ic_long_gc_deg: 120.0,
-    ic_psi_true_deg: 0.0,
+    ic_psi_true_deg: 180.0,
     ic_u_fps: 800.0,
   }
 }

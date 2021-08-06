@@ -30,9 +30,9 @@ def main():
     # env config
     parser.add_argument("--env", default="JSBSim")
     parser.add_argument("--task", default="selfplay")
-    parser.add_argument("--version", default='v0')
-    parser.add_argument("--num-env", default=5, type=int)
+    parser.add_argument("--exp", default='default')
     # train config
+    parser.add_argument("--num-parallel-env", default=5, type=int)
     parser.add_argument("--num-train", default=1000, type=int)
     parser.add_argument("--num-eval", default=10, type=int)
     parser.add_argument("--agent-id", default=0, type=int)
@@ -46,11 +46,11 @@ def main():
     torch.cuda.manual_seed_all(args.seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = True
-    rootpath = f'./results/{args.env}_{args.task}_{args.version}'
+    rootpath = f'./results/{args.env}_{args.task}/{args.exp}'
     if not os.path.exists(rootpath):
         os.makedirs(f'{rootpath}/models')
 
-    envs = make_train_env(args.num_env, f'{args.task}_task')
+    envs = make_train_env(args.num_parallel_env, f'{args.task}_task')
     args_ppo = Config(env=envs)
     if args.gpu_id is None:
         args_ppo.device = torch.device('cpu')
@@ -78,7 +78,7 @@ def main():
                                                    enm_net_params=torch.load(f"{rootpath}/models/agent{args.agent_id}_latest.pt"),
                                                    eval_num=args.num_eval)
         rewards_list.append(rewards)
-        np.save(f'{rootpath}/learning_reward_{args.version}', np.asarray(rewards_list))
+        np.save(f'{rootpath}/learning_reward', np.asarray(rewards_list))
 
 
 if __name__ == '__main__':
