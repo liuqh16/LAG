@@ -11,10 +11,9 @@ class AltitudeReward(BaseRewardFunction):
     """
     def __init__(self, config):
         super().__init__(config)
-        self.reward_scale = getattr(self.config, 'altitude_reward_scale', 1.0)
-        self.safe_altitude = getattr(self.config, 'safe_altitude', 4.0)         # km
-        self.danger_altitude = getattr(self.config, 'danger_altitude', 3.5)     # km
-        self.Kv = getattr(self.config, 'Kv', 0.2)     # mh
+        self.safe_altitude = getattr(self.config, f'{self.__class__.__name__}_safe_altitude', 4.0)         # km
+        self.danger_altitude = getattr(self.config, f'{self.__class__.__name__}_danger_altitude', 3.5)     # km
+        self.Kv = getattr(self.config, f'{self.__class__.__name__}_Kv', 0.2)     # mh
 
         self.reward_item_names = [self.__class__.__name__ + item for item in ['', '_Pv', '_PH']]
 

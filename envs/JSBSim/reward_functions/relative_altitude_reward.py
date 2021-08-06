@@ -15,7 +15,7 @@ class RelativeAltitudeReward(BaseRewardFunction):
         super().__init__(config)
         assert len(self.config.init_config.keys()) == 2, \
             "RelativeAltitudeReward only support one-to-one environments but current env has more than 2 agents!"
-        self.KH = getattr(self.config, 'KH', 1.0)     # km
+        self.KH = getattr(self.config, f'{self.__class__.__name__}_KH', 1.0)     # km
 
     def get_reward(self, task, env, agent_id):
         """

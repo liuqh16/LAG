@@ -1,5 +1,6 @@
 import numpy as np
 from numpy.core.numeric import array_equal
+from numpy.lib.arraypad import pad
 from .reward_function_base import BaseRewardFunction
 from ..utils.utils import get_AO_TA_R, lonlat2dis
 from ..core.catalog import Catalog
@@ -18,9 +19,9 @@ class PostureReward(BaseRewardFunction):
         super().__init__(config)
         assert len(self.config.init_config.keys()) == 2, \
             "PostureReward only support one-to-one environments but current env has more than 2 agents!"
-        self.orientation_version = getattr(self.config, 'orientation_version', 'v2')
-        self.range_version = getattr(self.config, 'range_version', 'v1')
-        self.target_dist = getattr(self.config, 'target_dist', 3.0)
+        self.orientation_version = getattr(self.config, f'{self.__class__.__name__}_orientation_version', 'v2')
+        self.range_version = getattr(self.config, f'{self.__class__.__name__}_range_version', 'v2')
+        self.target_dist = getattr(self.config, f'{self.__class__.__name__}_target_dist', 3.0)
 
         self.orientation_fn = self.get_orientation_function(self.orientation_version)
         self.range_fn = self.get_range_funtion(self.range_version)
@@ -64,6 +65,10 @@ class PostureReward(BaseRewardFunction):
         if version == 'v0':
             return lambda R: np.exp(-(R - self.target_dist) ** 2 * 0.004) / (1. + np.exp(-(R - self.target_dist + 2) * 2))
         elif version == 'v1':
-            return lambda R: np.clip(1.2 * np.min([np.exp(-(R - self.target_dist) * 0.21), 1]) / (1. + np.exp(-(R - self.target_dist + 1) * 0.8)), 0.3, 1)
+            return lambda R: np.clip(1.2 * np.min([np.exp(-(R - self.target_dist) * 0.21), 1]) / \
+                (1. + np.exp(-(R - self.target_dist + 1) * 0.8)), 0.3, 1)
+        elif version == 'v2':
+            return lambda R: max(np.clip(1.2 * np.min([np.exp(-(R - self.target_dist) * 0.21), 1]) / \
+                (1. + np.exp(-(R - self.target_dist + 1) * 0.8)), 0.3, 1), np.sign(7 - R))
         else:
             raise NotImplementedError(f"Unknown range function version: {version}")

@@ -35,15 +35,17 @@ init_config: {
 # reward config
 PostureReward_scale: 100.0
 PostureReward_potential: true
+PostureReward_orientation_version: v2
+PostureReward_range_version: v2
+PostureReward_target_dist: 3.0
 PostureReward_render: false
-target_dist: 3.0
 
+AltitudeReward_safe_altitude: 4.0
+AltitudeReward_danger_altitude: 3.5
+AltitudeReward_Kv: 0.2
 AltitudeReward_render: false
-safe_altitude: 4.0
-danger_altitude: 3.5
-Kv: 0.2
 
+RelativeAltitudeReward_KH: 1.0
 RelativeAltitudeReward_render: false
-KH: 1.0
 
 SmoothActionReward_render: false
