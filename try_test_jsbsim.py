@@ -36,7 +36,7 @@ def main():
     assert filepath is not None, "Must select a model to load!"
     assert os.path.exists(filepath), 'ModelFile does not exist!'
 
-    envs = make_test_env(f'{args.task}_task')
+    envs = make_test_env(f'{args.task}')
     args_ppo = Config(env=envs)
     args_ppo.device = torch.device('cpu')
     hyper_params = dict()

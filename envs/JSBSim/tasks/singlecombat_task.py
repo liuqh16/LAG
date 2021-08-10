@@ -4,7 +4,7 @@ from gym import spaces
 from torch import ones, pdist
 from .task_base import BaseTask
 from ..core.catalog import Catalog as c
-from ..reward_functions import AltitudeReward, PostureReward, RelativeAltitudeReward, SmoothActionReward
+from ..reward_functions import AltitudeReward, PostureReward, RelativeAltitudeReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, ShootDown, Timeout
 from ..utils.utils import lonlat2dis, get_AO_TA_R
 
@@ -17,7 +17,6 @@ class SingleCombatTask(BaseTask):
             AltitudeReward(self.config),
             PostureReward(self.config),
             RelativeAltitudeReward(self.config),
-            SmoothActionReward(self.config),
         ]
 
         self.termination_conditions = [
@@ -75,12 +74,14 @@ class SingleCombatTask(BaseTask):
         space_dict = OrderedDict({
                 "aileron": spaces.Discrete(41),
                 "elevator": spaces.Discrete(41),
-                'rudder': spaces.Discrete(41),
+                "rudder": spaces.Discrete(41),
                 "throttle": spaces.Discrete(30),
             })
         self.action_space = spaces.Dict(space_dict)
 
     def normalize_observation(self, env, sorted_all_obs_list: list):
+        """Convert ego&enm_obs_list into the format of observation_space
+        """
         ego_obs_list, enm_obs_list = sorted_all_obs_list[0], sorted_all_obs_list[1]
         # (0) extract feature: [north(km), east(km), down(km), v_n(mh), v_e(mh), v_d(mh)]
         ego_cur_east, ego_cur_north = lonlat2dis(ego_obs_list[0], ego_obs_list[1], env.init_longitude, env.init_latitude)
@@ -121,11 +122,10 @@ class SingleCombatTask(BaseTask):
         """Convert discrete action index into continuous value.
         """
         for agent_name in env.agent_names:
-            action[agent_name] = np.array(action[agent_name], dtype=np.float32)
-            action[agent_name][0] = action[agent_name][0] * 2. / (self.action_space['aileron'].n - 1.) - 1.
-            action[agent_name][1] = action[agent_name][1] * 2. / (self.action_space['elevator'].n - 1.) - 1.
-            action[agent_name][2] = action[agent_name][2] * 2. / (self.action_space['rudder'].n - 1.) - 1.
-            action[agent_name][3] = action[agent_name][3] * 0.5 / (self.action_space['throttle'].n - 1.) + 0.4
+            action[agent_name]['aileron'] = action[agent_name]['aileron'] * 2. / (self.action_space['aileron'].n - 1.) - 1.
+            action[agent_name]['elevator'] = action[agent_name]['elevator'] * 2. / (self.action_space['elevator'].n - 1.) - 1.
+            action[agent_name]['rudder'] = action[agent_name]['rudder'] * 2. / (self.action_space['rudder'].n - 1.) - 1.
+            action[agent_name]['throttle'] = action[agent_name]['throttle'] * 0.5 / (self.action_space['throttle'].n - 1.) + 0.4
         return action
 
     def reset(self, env):

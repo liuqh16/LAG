@@ -1,5 +1,5 @@
 # task config
-task: singlecombat_task
+task: singlecombat
 
 # simulation config
 jsbsim_freq: 60
@@ -16,7 +16,7 @@ acceleration_limit_z: 10.0
 init_config: {
   blue_fighter: {
     aircraft_name: f16,
-    ic_h_sl_ft: 19685.03937007874,
+    ic_h_sl_ft: 20000,
     ic_lat_geod_deg: 60.0,
     ic_long_gc_deg: 120.0,
     ic_psi_true_deg: 0.0,
@@ -24,7 +24,7 @@ init_config: {
   },
   red_fighter: {
     aircraft_name: f16,
-    ic_h_sl_ft: 19685.03937007874,
+    ic_h_sl_ft: 20000,
     ic_lat_geod_deg: 60.05,
     ic_long_gc_deg: 120.0,
     ic_psi_true_deg: 180.0,
@@ -38,14 +38,9 @@ PostureReward_potential: true
 PostureReward_orientation_version: v2
 PostureReward_range_version: v2
 PostureReward_target_dist: 3.0
-PostureReward_render: false
 
 AltitudeReward_safe_altitude: 4.0
 AltitudeReward_danger_altitude: 3.5
 AltitudeReward_Kv: 0.2
-AltitudeReward_render: false
 
 RelativeAltitudeReward_KH: 1.0
-RelativeAltitudeReward_render: false
-
-SmoothActionReward_render: false

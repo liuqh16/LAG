@@ -12,7 +12,6 @@ class BaseRewardFunction(ABC):
         # inner variables
         self.reward_scale = getattr(self.config, f'{self.__class__.__name__}_scale', 1.0)
         self.is_potential = getattr(self.config, f'{self.__class__.__name__}_potential', False)
-        self.render = getattr(self.config, f'{self.__class__.__name__}_render', False)
         self.agent_names = list(self.config.init_config.keys())
         self.num_agents = len(self.agent_names)
         self.pre_rewards = dict([(agent, 0.0) for agent in self.agent_names])
@@ -30,8 +29,7 @@ class BaseRewardFunction(ABC):
         if self.is_potential:
             for agent_id, agent_name in enumerate(self.agent_names):
                 self.pre_rewards[agent_name] = self.get_reward(task, env, agent_id)
-        if self.render:
-            self.reward_trajectory = []
+        self.reward_trajectory = []
 
     @abstractmethod
     def get_reward(self, task, env, agent_id):
@@ -62,11 +60,10 @@ class BaseRewardFunction(ABC):
         if self.is_potential:
             agent_name = self.agent_names[agent_id]
             reward, self.pre_rewards[agent_name] = reward - self.pre_rewards[agent_name], reward
-        if self.render:
-            if render_items is None:
-                self.reward_trajectory.append(reward)
-            else:
-                self.reward_trajectory.append((reward, *render_items))
+        if render_items is None:
+            self.reward_trajectory.append(reward)
+        else:
+            self.reward_trajectory.append((reward, *render_items))
         return reward
 
     def get_reward_trajectory(self):
@@ -75,7 +72,6 @@ class BaseRewardFunction(ABC):
         Returns:
             (dict): {reward_name(str): reward_trajectory(np.array)}
         """
-        assert self.render, "Must set self.render=True to track!"
         if len(self.reward_item_names) == 1:
             return {self.reward_item_names[0]: np.array(self.reward_trajectory)}
         else:

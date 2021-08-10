@@ -1,7 +1,3 @@
-'''
-Example: python3 try_train_selfplay.py --num-env=10 --num-train=2000 --num-eval=20 --gpu-id=0
-'''
-
 import torch
 import os
 import argparse
@@ -9,7 +5,7 @@ import signal
 import random
 import numpy as np
 
-from envs.JSBSim.envs.selfplay_env import SelfPlayEnv
+from envs.JSBSim.envs.singlecombat_env import SingleCombatEnv
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
 from algorithms.ppo_data_collectors import SelfPlayDataCollector
 from algorithms.ppo_training_agent import Trainer
@@ -19,7 +15,7 @@ from algorithms.ppo_args import Config
 
 def make_train_env(num_env, taskname):
     def env_fn():
-        return SelfPlayEnv(config=taskname)
+        return SingleCombatEnv(config=taskname)
     return SubprocVecEnv([env_fn for _ in range(num_env)])
 
 

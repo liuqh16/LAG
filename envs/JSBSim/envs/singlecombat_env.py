@@ -1,3 +1,4 @@
+import pdb
 import numpy as np
 from collections import OrderedDict
 from .env_base import BaseEnv
@@ -11,16 +12,14 @@ class SingleCombatEnv(BaseEnv):
     """
     SingleCombatEnv is an one-to-one competitive environment.
     """
-    metadata = {"render.modes": ["human", "csv"]}
-
     def __init__(self, config: str):
         super().__init__(config)
 
     def load_task(self):
-        taskname = getattr(self.config, 'task', 'singlecombat_task')
-        if taskname == 'singlecombat_task':
+        taskname = getattr(self.config, 'task', None)
+        if taskname == 'singlecombat':
             self.task = SingleCombatTask(self.config)
-        elif taskname == 'singlecombat_with_missile_task':
+        elif taskname == 'singlecombat_with_missile':
             self.task = SingleCombatWithMissileTask(self.config)
         else:
             raise NotImplementedError(f"Unknown taskname: {taskname}")
@@ -30,7 +29,6 @@ class SingleCombatEnv(BaseEnv):
         self.sims = OrderedDict([(agent, None) for agent in self.agent_names])
         self.init_longitude, self.init_latitude = 0.0, 0.0
         self.init_conditions = OrderedDict([(agent, None) for agent in self.agent_names])
-        self.actions = OrderedDict([(agent, np.zeros(len(self.task.action_var))) for agent in self.agent_names])
 
     def reset(self):
         self.current_step = 0
@@ -113,7 +111,7 @@ class SingleCombatEnv(BaseEnv):
         """
         for agent_name in self.agent_names:
             # take actions
-            self.sims[agent_name].set_property_values(self.task.action_var, action[agent_name])
+            self.sims[agent_name].set_property_values(self.task.action_var, list(action[agent_name].values()))
             # run simulation
             self.sims[agent_name].run()
 
@@ -143,25 +141,8 @@ class SingleCombatEnv(BaseEnv):
             if self.sims[agent_name]:
                 self.sims[agent_name].close()
 
-    def render(self, mode="human", **kwargs):
-        """Renders the environment.
-
-        The set of supported modes varies per environment. (And some
-
-        environments do not support rendering at all.) By convention,
-
-        if mode is:
-
-        - human: print on the terminal
-        - csv: output to cvs files
-
-        Note:
-
-            Make sure that your class's metadata 'render.modes' key includes
-              the list of supported modes. It's recommended to call super()
-              in implementations to use the functionality of this method.
-        :param mode: str, the mode to render with
-        """
+    def render(self):
+        # TODO: real time rendering
         obs_list = []
         for agent_name in self.agent_names:
             obs_list.append(np.array(self.sims[agent_name].get_property_values(self.task.render_var)))

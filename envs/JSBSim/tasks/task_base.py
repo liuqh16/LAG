@@ -109,3 +109,9 @@ class BaseTask(ABC):
             if done:
                 break
         return done, info
+
+    def get_reward_trajectory(self):
+        reward_trajectory_dict = {}
+        for reward_function in self.reward_functions:
+            reward_trajectory_dict.update(reward_function.get_reward_trajectory())
+        return reward_trajectory_dict

@@ -2,7 +2,7 @@
 env="JSBSim"
 task="singlecombat"
 exp="test"
-modelpath="results/JSBSim_singlecombat/VsBaseline_OriginReward/models/agent0_history900.pt"
+modelpath="results/JSBSim_selfplay_v0/models/agent0_history0.pt"
 seed=1
 
 echo "env is ${env}, task is ${scenario}, exp is ${exp}, seed is ${seed}"

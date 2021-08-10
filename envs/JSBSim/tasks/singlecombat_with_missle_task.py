@@ -3,7 +3,7 @@ from collections import OrderedDict
 from gym import spaces
 from .singlecombat_task import SingleCombatTask
 from ..core.catalog import Catalog as c
-from ..reward_functions import AltitudeReward, MissileAttackReward, PostureReward, RelativeAltitudeReward, SmoothActionReward
+from ..reward_functions import AltitudeReward, MissileAttackReward, PostureReward, RelativeAltitudeReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, ShootDown, Timeout
 
 
@@ -16,7 +16,6 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             AltitudeReward(self.config),
             PostureReward(self.config),
             RelativeAltitudeReward(self.config),
-            SmoothActionReward(self.config),
         ]
 
         self.termination_conditions = [

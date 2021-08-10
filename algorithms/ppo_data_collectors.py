@@ -1,4 +1,5 @@
 import time
+from collections import OrderedDict
 import numpy as np
 from .ppo_AC import ActorCritic
 from .ppo_replaybuffer import ReplayBuffer
@@ -35,10 +36,10 @@ class SelfPlayDataCollector(object):
         """
         acts = []
         for i in range(self.num_envs):
-            ego_cur_act_array = self.ego_policy.policy.act_flatten(ego_cur_act_list[i])
-            enm_cur_act_array = self.enm_policy.policy.act_flatten(enm_cur_act_list[i])
+            ego_cur_act_array = ego_cur_act_list[i]
+            enm_cur_act_array = enm_cur_act_list[i]
             if self.flag_use_baseline:
-                enm_cur_act_array = np.array([20., 18.6, 20., 0.])
+                enm_cur_act_array = OrderedDict({"aileron": 20, "elevator": 18.6, "rudder": 20,"throttle": 0})
             if self.red_flag[i]:
                 act = {'red_fighter': ego_cur_act_array, 'blue_fighter': enm_cur_act_array}
             else:
