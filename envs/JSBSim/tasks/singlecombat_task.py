@@ -20,14 +20,12 @@ class SingleCombatTask(BaseTask):
         ]
 
         self.termination_conditions = [
-            ShootDown(self.config),
             ExtremeState(self.config),
             Overload(self.config),
             LowAltitude(self.config),
             Timeout(self.config),
         ]
 
-        self.bloods = dict([(agent, 100) for agent in self.config.init_config.keys()])
         self.init_longitude, self.init_latitude = 0, 0
 
     def load_variables(self):
@@ -133,7 +131,6 @@ class SingleCombatTask(BaseTask):
 
         Must call it after `env.get_observation()`
         """
-        self.bloods = dict([(agent, 100) for agent in env.agent_names])
         return super().reset(env)
 
     def get_reward(self, env, agent_id, info={}):
