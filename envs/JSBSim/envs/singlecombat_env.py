@@ -3,13 +3,13 @@ from collections import OrderedDict
 from .env_base import BaseEnv
 from ..core.catalog import Catalog
 from ..core.simulation import Simulation
-from ..tasks.selfplay_task import SelfPlayTask
-from ..tasks.selfplay_with_missle_task import SelfPlayWithMissileTask
+from ..tasks.singlecombat_task import SingleCombatTask
+from ..tasks.singlecombat_with_missle_task import SingleCombatWithMissileTask
 
 
-class SelfPlayEnv(BaseEnv):
+class SingleCombatEnv(BaseEnv):
     """
-    SelfPlayEnv is an one-to-one competitive environment.
+    SingleCombatEnv is an one-to-one competitive environment.
     """
     metadata = {"render.modes": ["human", "csv"]}
 
@@ -17,11 +17,11 @@ class SelfPlayEnv(BaseEnv):
         super().__init__(config)
 
     def load_task(self):
-        taskname = getattr(self.config, 'task', 'selfplay_task')
-        if taskname == 'selfplay_task':
-            self.task = SelfPlayTask(self.config)
-        elif taskname == 'selfplay_with_missile_task':
-            self.task = SelfPlayWithMissileTask(self.config)
+        taskname = getattr(self.config, 'task', 'singlecombat_task')
+        if taskname == 'singlecombat_task':
+            self.task = SingleCombatTask(self.config)
+        elif taskname == 'singlecombat_with_missile_task':
+            self.task = SingleCombatWithMissileTask(self.config)
         else:
             raise NotImplementedError(f"Unknown taskname: {taskname}")
 

@@ -7,12 +7,12 @@ import numpy as np
 
 from algorithms.ppo_data_collectors import SelfPlayDataCollector
 from algorithms.ppo_args import Config
-from envs.JSBSim.envs.selfplay_env import SelfPlayEnv
+from envs.JSBSim.envs.singlecombat_env import SingleCombatEnv
 from envs.JSBSim.core.render_tacview import data_replay
 
 
 def make_test_env(taskname):
-    return SelfPlayEnv(config=taskname)
+    return SingleCombatEnv(config=taskname)
 
 
 def main():
@@ -20,7 +20,7 @@ def main():
     signal.signal(signal.SIGTERM, exit)
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", default="JSBSim")
-    parser.add_argument("--task", default="selfplay")
+    parser.add_argument("--task", default="singlecombat")
     parser.add_argument("--exp", default='test')
     parser.add_argument("--seed", default=1, type=int)
     parser.add_argument("--modelpath", default=None, type=str)

@@ -1,13 +1,13 @@
 import numpy as np
 from collections import OrderedDict
 from gym import spaces
-from .selfplay_task import SelfPlayTask
+from .singlecombat_task import SingleCombatTask
 from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, MissileAttackReward, PostureReward, RelativeAltitudeReward, SmoothActionReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, ShootDown, Timeout
 
 
-class SelfPlayWithMissileTask(SelfPlayTask):
+class SingleCombatWithMissileTask(SingleCombatTask):
     def __init__(self, config: str):
         super().__init__(config)
 

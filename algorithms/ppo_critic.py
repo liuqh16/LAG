@@ -97,10 +97,10 @@ if __name__ == '__main__':
     from algorithms.ppo_critic import ValueRnnMultiHead
     from algorithms.ppo_args import Config
     from envs.env_wrappers import SubprocVecEnv
-    from envs.JSBSim.envs.selfplay_env import SelfPlayEnv
+    from envs.JSBSim.envs.singlecombat_env import SingleCombatEnv
 
     def make_train_env(num_env):
-        return SubprocVecEnv([SelfPlayEnv for _ in range(num_env)])
+        return SubprocVecEnv([SingleCombatEnv for _ in range(num_env)])
 
     num_env = 3
     envs = make_train_env(num_env)

@@ -1,5 +1,5 @@
 # task config
-task: selfplay_task
+task: singlecombat_task
 
 # simulation config
 jsbsim_freq: 60
