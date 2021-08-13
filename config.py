@@ -75,24 +75,24 @@ def _get_replaybuffer_config(parser: argparse.ArgumentParser):
 def _get_network_config(parser: argparse.ArgumentParser):
     """
     Network parameters:
-        --hidden-size <int>
-            dimension of hidden layers for actor/critic networks
-        --hidden-layers <int>
-            number of layers for actor/critic networks
+        --hidden-size <str>
+            dimension of hidden layers for mlp pre-process networks
+        --act-hidden-size <int>
+            dimension of hidden layers for actlayer
         --activation-id
             choose 0 to use Tanh, 1 to use ReLU, 2 to use LeakyReLU, 3 to use ELU
         --use-feature-normalization
-            by default False, otherwise apply LayerNorm to normalize inputs.
+            by default False, otherwise apply LayerNorm to normalize feature extraction inputs.
     """
     group = parser.add_argument_group("Network parameters")
-    group.add_argument("--hidden-size", type=int, default=128,
-                        help="Dimension of hidden layers for actor/critic networks (default 128)")
-    group.add_argument("--hidden-layers", type=int, default=2,
-                        help="Number of layers for actor/critic networks (default 2)")
+    group.add_argument("--hidden-size", type=str, default='128 128',
+                        help="Dimension of hidden layers for mlp pre-process networks (default '128 128')")
+    group.add_argument("--act-hidden-size", type=str, default='128 128',
+                        help="Dimension of hidden layers for actlayer (default '128 128')")
     group.add_argument("--activation-id", type=int, default=1,
                         help="Choose 0 to use Tanh, 1 to use ReLU, 2 to use LeakyReLU, 3 to use ELU (default 1)")
     group.add_argument("--use-feature-normalization", action='store_true', default=False,
-                        help="Whether to apply LayerNorm to the inputs")
+                        help="Whether to apply LayerNorm to the feature extraction inputs")
     return parser
 
 

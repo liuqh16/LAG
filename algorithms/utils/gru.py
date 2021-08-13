@@ -7,6 +7,7 @@ import torch.nn.functional as F
 class GRULayer(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers):
         super(GRULayer, self).__init__()
+        self._hidden_size = hidden_size
         self._num_layers = num_layers
 
         self.gru = nn.GRU(input_size=input_size,
@@ -31,6 +32,10 @@ class GRULayer(nn.Module):
             hxs = hxs.transpose(0, 1)   # [L, N, hidden_size] => [N, L, hidden_size]
         x = self.norm(x)
         return x, hxs
+
+    @property
+    def output_size(self):
+        return self._hidden_size
 
 
 if __name__ == "__main__":

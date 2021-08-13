@@ -1,0 +1,66 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from .flatten import build_flattener
+
+
+class MLPLayer(nn.Module):
+    def __init__(self, input_dim, hidden_size, activation_id):
+        super(MLPLayer, self).__init__()
+        self._size = [input_dim] + list(map(int, hidden_size.split(' ')))
+        self._hidden_layers = len(self._size) - 1
+        active_func = [nn.Tanh(), nn.ReLU(), nn.LeakyReLU(), nn.ELU()][activation_id]
+
+        fc_h = []
+        for j in range(len(self._size) - 1):
+            fc_h += [
+                nn.Linear(self._size[j], self._size[j + 1]), active_func, nn.LayerNorm(self._size[j + 1])
+            ]
+        self.fc = nn.Sequential(*fc_h)
+
+    def forward(self, x):
+        x = self.fc(x)
+        return x
+
+    @property
+    def output_size(self):
+        return self._size[-1]
+
+
+# Feature extraction module
+class MLPBase(nn.Module):
+    def __init__(self, args, obs_space):
+        super(MLPBase, self).__init__()
+        self._hidden_size = args.hidden_size
+        self._activation_id = args.activation_id
+        self._use_feature_normalization = args.use_feature_normalization
+
+        self.obs_flattener = build_flattener(obs_space)
+        input_dim = self.obs_flattener.size
+        if self._use_feature_normalization:
+            self.feature_norm = nn.LayerNorm(input_dim)
+        self.mlp = MLPLayer(input_dim, self._hidden_size, self._activation_id)
+
+    def forward(self, x):
+        if self._use_feature_normalization:
+            x = self.feature_norm(x)
+        x = self.mlp(x)
+        return x
+
+    @property
+    def output_size(self):
+        return self.mlp.output_size
+
+
+if __name__ == "__main__":
+    print("\n---------test MLPLayer---------\n")
+    input_dim = 5
+    print("One layer MLP")
+    mlplayer = MLPLayer(input_dim, '10', 1)
+    print(mlplayer)
+    print("Two same layer MLP")
+    mlplayer = MLPLayer(input_dim, '10 10', 1)
+    print(mlplayer)
+    print("Two different layer MLP")
+    mlplayer = MLPLayer(input_dim, '10 5', 1)
+    print(mlplayer)

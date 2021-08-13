@@ -2,14 +2,21 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import gym.spaces
+from .mlp import MLPLayer
 from .distributions import Categorical, DiagGaussian
 
 
-class ActLayer(nn.Module):
-    def __init__(self, act_space, input_dim):
-        super(ActLayer, self).__init__()
+class ACTLayer(nn.Module):
+    def __init__(self, act_space, input_dim, hidden_size, activation_id):
+        super(ACTLayer, self).__init__()
         self._continuous_action = False
         self._multidiscrete_action = False
+        self._mlp_actlayer = False
+
+        if len(hidden_size) > 0:
+            self._mlp_actlayer = True
+            self.mlp = MLPLayer(input_dim, hidden_size, activation_id)
+            input_dim = self.mlp.output_size
 
         if isinstance(act_space, gym.spaces.Discrete):
             action_dim = act_space.n
@@ -29,6 +36,8 @@ class ActLayer(nn.Module):
             raise NotImplementedError("Mix action space!")
     
     def forward(self, x, deterministic=False):
+        if self._mlp_actlayer:
+            x = self.mlp(x)
         if self._multidiscrete_action:
             actions = []
             action_log_probs = []
@@ -51,6 +60,8 @@ class ActLayer(nn.Module):
         return actions, action_log_probs
 
     def evaluate_actions(self, x, action):
+        if self._mlp_actlayer:
+            x = self.mlp(x)
         if self._multidiscrete_action:
             action = torch.transpose(action, 0, 1)
             action_log_probs = []
@@ -72,6 +83,8 @@ class ActLayer(nn.Module):
         return action_log_probs, dist_entropy
 
     def get_probs(self, x):
+        if self._mlp_actlayer:
+            x = self.mlp(x)
         if self._multidiscrete_action:
             action_probs = []
             for action_out in self.action_outs:
@@ -91,7 +104,7 @@ if __name__ == "__main__":
     input_dim = 5
     print("\n---------test Discrete action space---------\n")
     act_space = gym.spaces.Discrete(3)
-    actlayer = ActLayer(act_space, input_dim)
+    actlayer = ACTLayer(act_space, input_dim, 0, 0, 0)
     # print(actlayer)
     print("ONE")
     x = torch.rand(input_dim)
@@ -109,7 +122,7 @@ if __name__ == "__main__":
 
     print("\n---------test MultiDiscrete action space---------\n")
     act_space = gym.spaces.MultiDiscrete([3, 2])
-    actlayer = ActLayer(act_space, input_dim)
+    actlayer = ACTLayer(act_space, input_dim, 0, 0, 0)
     # print(actlayer)
     print("ONE")
     x = torch.rand(input_dim)
@@ -127,7 +140,7 @@ if __name__ == "__main__":
 
     print("\n---------test Box action space---------\n")
     act_space = gym.spaces.Box(low=-1, high=1, shape=(2,))
-    actlayer = ActLayer(act_space, input_dim)
+    actlayer = ACTLayer(act_space, input_dim, 0, 0, 0)
     # print(actlayer)
     print("ONE")
     x = torch.rand(input_dim)
