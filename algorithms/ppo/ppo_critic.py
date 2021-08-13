@@ -42,8 +42,35 @@ class PPOCritic(nn.Module):
             critic_features, rnn_states = self.rnn(critic_features, rnn_states)
 
         if len(self._act_hidden_size) > 0:
-            critic_features = self.mlp(obs)
+            critic_features = self.mlp(critic_features)
 
         values = self.value_out(critic_features)
 
         return values, rnn_states
+
+
+if __name__ == "__main__":
+    import numpy as np
+    import gym.spaces
+    from ...config import get_config
+    parser = get_config()
+    all_args = parser.parse_args()
+
+    obs_space = gym.spaces.Box(low=-1, high=1, shape=(18,))
+    critic = PPOCritic(all_args, obs_space)
+
+    print("ONE")
+    obs = np.expand_dims(obs_space.sample(), axis=0)
+    print(" obs shape:", obs.shape)
+    init_rnn_state = np.zeros((1, all_args.recurrent_hidden_layers, all_args.recurrent_hidden_size))
+    value, rnn_state = critic(obs, init_rnn_state)
+    print(" value:", value, "shape:", value.shape)
+    print(" rnn_state shape:", rnn_state.shape)
+
+    print("BATCH")
+    obss = np.array([obs_space.sample() for _ in range(5)])
+    print(" obs shape:", obss.shape)
+    init_rnn_states = np.zeros((5, all_args.recurrent_hidden_layers, all_args.recurrent_hidden_size))
+    values, rnn_states = critic(obss, init_rnn_states)
+    print(" values:", values, "shape:", values.shape)
+    print(" rnn_state shape:", rnn_states.shape)

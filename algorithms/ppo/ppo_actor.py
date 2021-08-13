@@ -57,3 +57,41 @@ class PPOActor(nn.Module):
         action_log_probs, dist_entropy = self.act.evaluate_actions(actor_features, action)
 
         return action_log_probs, dist_entropy
+
+
+if __name__ == "__main__":
+    import numpy as np
+    import gym.spaces
+    from ...config import get_config
+    parser = get_config()
+    all_args = parser.parse_args()
+
+    obs_space = gym.spaces.Box(low=-1, high=1, shape=(18,))
+    act_space = gym.spaces.MultiDiscrete([41, 41, 41, 30])
+    actor = PPOActor(all_args, obs_space, act_space)
+
+    print("ONE")
+    obs = np.expand_dims(obs_space.sample(), axis=0)
+    print(" obs shape:", obs.shape)
+    init_rnn_state = np.zeros((1, all_args.recurrent_hidden_layers, all_args.recurrent_hidden_size))
+    action, action_log_prob, rnn_state = actor(obs, init_rnn_state)
+    print(" action:", action, "shape:", action.shape)
+    print(" action_log_prob:", action_log_prob)
+    print(" rnn_state shape:", rnn_state.shape)
+    pre_action = np.expand_dims(act_space.sample(), axis=0)
+    action_log_prob, dist_entropy = actor.evaluate_actions(obs, init_rnn_state, pre_action)
+    print(" action_log_prob:", action_log_prob)
+    print(" dist_entropy:", dist_entropy)
+
+    print("BATCH")
+    obss = np.array([obs_space.sample() for _ in range(5)])
+    print(" obs shape:", obss.shape)
+    init_rnn_states = np.zeros((5, all_args.recurrent_hidden_layers, all_args.recurrent_hidden_size))
+    actions, action_log_probs, rnn_states = actor(obss, init_rnn_states)
+    print(" action:", actions, "shape:", actions.shape)
+    print(" action_log_probs:", action_log_probs)
+    print(" rnn_state shape:", rnn_states.shape)
+    pre_actions = np.array([act_space.sample() for _ in range(5)])
+    action_log_probs, dist_entropy = actor.evaluate_actions(obss, init_rnn_states, pre_actions)
+    print(" action_log_probs:", action_log_probs)
+    print(" dist_entropy:", dist_entropy)

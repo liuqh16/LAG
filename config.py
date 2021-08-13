@@ -100,7 +100,7 @@ def _get_recurrent_config(parser: argparse.ArgumentParser):
     """
     Recurrent parameters:
         --use-recurrent-policy
-            by default False, otherwise use Recurrent Policy.
+            by default, use Recurrent Policy. If set, do not use.
         --recurrent-hidden-size <int>
             Dimension of hidden layers for recurrent layers (default 128).
         --recurrent-hidden-layers <int>
@@ -109,7 +109,7 @@ def _get_recurrent_config(parser: argparse.ArgumentParser):
             Time length of chunks used to train a recurrent_policy, default 10.
     """
     group = parser.add_argument_group("Recurrent parameters")
-    group.add_argument("--use-recurrent-policy", action='store_true', default=False,
+    group.add_argument("--use-recurrent-policy", action='store_false', default=True,
                         help='Whether to use a recurrent policy')
     group.add_argument("--recurrent-hidden-size", type=int, default=128,
                         help="Dimension of hidden layers for recurrent layers (default 128)")
@@ -150,7 +150,7 @@ def _get_ppo_config(parser: argparse.ArgumentParser):
         --ppo-entropy-coef <float>
             ppo entropy term coefficient (default: 0.01)
         --ppo-use-max-grad-norm 
-            by default False, otherwise use max norm of gradients.
+            by default, use max norm of gradients. If set, do not use.
         --ppo-max-grad-norm <float>
             max norm of gradients (default: 0.5)
         --ppo-use-gae
@@ -173,11 +173,11 @@ def _get_ppo_config(parser: argparse.ArgumentParser):
                         help='ppo value loss coefficient (default: 1)')
     group.add_argument("--ppo-entropy-coef", type=float, default=0.01,
                         help='entropy term coefficient (default: 0.01)')
-    group.add_argument("--ppo-use-max-grad-norm", action='store_true', default=False,
+    group.add_argument("--ppo-use-max-grad-norm", action='store_false', default=True,
                         help="Whether to use max norm of gradients")
     group.add_argument("--ppo-max-grad-norm", type=float, default=2,
                         help='max norm of gradients (default: 2)')
-    group.add_argument("--ppo-use-gae", action='store_true', default=False,
+    group.add_argument("--ppo-use-gae", action='store_false', default=True,
                         help='Whether to use generalized advantage estimation')
     group.add_argument("--ppo-gae-lambda", type=float, default=0.95,
                         help='gae lambda parameter (default: 0.95)')
@@ -212,7 +212,7 @@ def _get_eval_config(parser: argparse.ArgumentParser):
     """
     Eval parameters:
         --use-eval
-            by default, do not start evaluation. If set`, start evaluation alongside with training.
+            by default, do not start evaluation. If set, start evaluation alongside with training.
         --eval-interval <int>
             time duration between contiunous twice evaluation progress.
         --eval-episodes <int>
