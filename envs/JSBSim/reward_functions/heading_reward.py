@@ -5,18 +5,15 @@ from ..core.catalog import Catalog as c
 
 class HeadingReward(BaseRewardFunction):
     """
-    TODO:
-    HeadingReward
-    Reward is built as a geometric mean of scaled gaussian rewards for each relevant variable
+    Measure the difference between the current heading and the target heading
     """
     def __init__(self, config):
         super().__init__(config)
 
     def get_reward(self, task, env, agent_id):
         """
-        TODO:
-        Reward is the sum of all the punishments.
-
+        Reward is built as a geometric mean of scaled gaussian rewards for each relevant variable
+        
         Args:
             task: task instance
             env: environment instance

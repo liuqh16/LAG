@@ -1,3 +1,4 @@
+from envs.JSBSim.core.render_tacview import data_replay
 import pdb
 import time
 import numpy as np
@@ -66,8 +67,9 @@ def test_heading_env():
     # env = SelfPlayEnv(config='selfplay_with_missile_task')
     act_space = env.action_space
     act_flattener = DictFlattener(act_space)
-
+    trajectory_list = []
     env.reset()
+    trajectory_list.append(env.render())
     cur_step = 0
     reward_blue = 0
     start_time = time.time()
@@ -76,14 +78,16 @@ def test_heading_env():
         # flying straight forward
         actions = {'blue_fighter': np.array([20., 18.6, 20., 0.])}
         # random fly
-        # actions = {"red_fighter": act_flattener(act_space.sample()), 'blue_fighter': act_flattener(act_space.sample())}
+        # actions = {'blue_fighter': act_flattener(act_space.sample())}
         next_obs, reward, done, env_info = env.step(actions)
-        reward_blue += reward['blue_fighter']
+        reward_blue = reward['blue_fighter']
+        trajectory_list.append(env.render())
         print(reward_blue)
         if done:
             print(env_info)
             break
     print(time.time() - start_time)
+    np.save('save_trajectories.npy', np.asarray(trajectory_list))
 
     
 # test_env()

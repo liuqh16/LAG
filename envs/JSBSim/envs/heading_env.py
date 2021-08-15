@@ -53,9 +53,9 @@ class HeadingEnv(BaseEnv):
         # Initial setting of each agent
         self.init_conditions = OrderedDict(
             [(agent, {
-                Catalog.target_heading_deg: 100,
-                Catalog.target_altitude_ft: 10000,
-                Catalog.steady_flight: 150,
+                Catalog.target_heading_deg: self.config.init_config[agent]['target_heading_deg'],
+                Catalog.target_altitude_ft: self.config.init_config[agent]['target_altitude_ft'],
+                Catalog.steady_flight: self.config.init_config[agent]['steady_flight'],
                 Catalog.ic_h_sl_ft: self.config.init_config[agent]['ic_h_sl_ft'],             # 1.1  altitude above mean sea level [ft]
                 Catalog.ic_terrain_elevation_ft: 0,                                           # +    default
                 Catalog.ic_long_gc_deg: self.config.init_config[agent]['ic_long_gc_deg'],     # 1.2  geodesic longitude [deg]

@@ -99,8 +99,13 @@ def data_replay(data):
     display.init_tcp()
     for time_step in range(len(data)):
         time.sleep(0.07)
-        show_tacview(display, sim_time=time_step / 12, state=data[time_step][:6], my_id='3000001', name='F16', color='Blue')
-        show_tacview(display, sim_time=time_step / 12, state=data[time_step][6:], my_id='3000002', name='F16', color='Red')
+        if len(data[time_step]) == 12:
+            show_tacview(display, sim_time=time_step / 12, state=data[time_step][:6], my_id='3000001', name='F16', color='Blue')
+            show_tacview(display, sim_time=time_step / 12, state=data[time_step][6:], my_id='3000002', name='F16', color='Red')
+        elif len(data[time_step]) == 6:
+            show_tacview(display, sim_time=time_step / 12, state=data[time_step][:6], my_id='3000001', name='F16', color='Blue')
+        else:
+             raise ValueError("the length of data unit error")
     display.close()
 
 

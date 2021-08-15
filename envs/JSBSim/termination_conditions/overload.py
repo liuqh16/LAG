@@ -29,7 +29,7 @@ class Overload(BaseTerminationCondition):
         """
         done = self._judge_overload(env.sims[env.agent_names[agent_id]])
         if done:
-            print(f'INFO: [{task.agent_names[agent_id]}] acceleration is too high!')
+            print(f'INFO: [{env.agent_names[agent_id]}] acceleration is too high!')
             info[f'{env.agent_names[agent_id]}_end_reason'] = 1  # crash
         success = False
         return done, success, info

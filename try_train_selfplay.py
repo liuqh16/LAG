@@ -9,17 +9,22 @@ import signal
 import random
 import numpy as np
 
-from envs.JSBSim.envs.selfplay_env import SelfPlayEnv
+from envs.JSBSim.envs import SelfPlayEnv, HeadingEnv
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
-from algorithms.ppo_data_collectors import SelfPlayDataCollector
+from algorithms.ppo_data_collectors import SelfPlayDataCollector, HeadingDataCollector
 from algorithms.ppo_training_agent import Trainer
 from algorithms.ppo_AC import ActorCritic
 from algorithms.ppo_args import Config
 
 
-def make_train_env(num_env, taskname):
+def make_train_env(num_env, envname, taskname):
     def env_fn():
-        return SelfPlayEnv(config=taskname)
+        if envname == 'selfplay':
+            return SelfPlayEnv(config=taskname)
+        elif envname == 'heading':
+            return HeadingEnv(config=taskname)
+        else:
+            raise NotImplementedError('Notimplement Environment')
     return SubprocVecEnv([env_fn for _ in range(num_env)])
 
 
@@ -50,7 +55,7 @@ def main():
     if not os.path.exists(rootpath):
         os.makedirs(f'{rootpath}/models')
 
-    envs = make_train_env(args.num_parallel_env, f'{args.task}_task')
+    envs = make_train_env(args.num_parallel_env, args.env, f'{args.task}_task')
     args_ppo = Config(env=envs)
     if args.gpu_id is None:
         args_ppo.device = torch.device('cpu')
@@ -59,7 +64,13 @@ def main():
     hyper_params = dict()
     hyper_params['ppo_hyper'] = args_ppo.ppo_hyper
 
-    collector = SelfPlayDataCollector(args_ppo)
+    if args.env == 'selfplay':
+        collector = SelfPlayDataCollector(args_ppo)
+    elif args.env == 'heading':
+        collector = HeadingDataCollector(args_ppo)
+    else:
+        raise NotImplementedError('Notimplement Environment')
+    
     trainer = Trainer(args_ppo)
     agent = ActorCritic(args_ppo, agent_idx=args.agent_id)
     agent.save_model(rootpath, None, epoch_t=0, args=args)
