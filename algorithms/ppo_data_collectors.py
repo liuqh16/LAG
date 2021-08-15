@@ -164,3 +164,138 @@ class SelfPlayDataCollector(object):
                 break
         print(f"Ego({'red' if self.red_flag else 'blue'}) accumulate reward = {ego_cumulative_reward:.2f}")
         return np.asarray(trajectory_list)
+
+
+class HeadingDataCollector(object):
+    def __init__(self, args):
+        self.env = args.env
+        self.num_envs = getattr(self.env, 'num_envs', 1)
+        self.buffers = [ReplayBuffer(args) for _ in range(self.num_envs)]
+        self.ego_policy = ActorCritic(args).to(args.device)
+
+    def _parse_obs(self, obs: np.ndarray):
+        """Parse obs_dict_list into ego obs
+        """
+        # default: ego is blue fighter
+        ego_cur_obss = []
+        for i in range(self.num_envs):
+            ego_cur_obss.append(obs[i]['blue_fighter'])
+        ego_cur_obss = np.asarray(ego_cur_obss, dtype=object)
+        return ego_cur_obss
+
+    def _make_action(self, ego_cur_act_list: list):
+        """Return action_dict_list for env input
+        """
+        acts = []
+        for i in range(self.num_envs):
+            ego_cur_act_array = self.ego_policy.policy.act_flatten(ego_cur_act_list[i])
+            act = {'blue_fighter': ego_cur_act_array}
+            acts.append(act)
+        return np.asarray(acts, dtype=object)
+
+    def _parse_rewards(self, rewards: np.ndarray):
+        """Parse reward_dict_list into ego reward
+        """
+        ego_rewards = np.zeros(self.num_envs)
+        for i in range(self.num_envs):
+            ego_rewards[i] = rewards[i]['blue_fighter']
+        return ego_rewards
+
+    def warmup(self):
+        # clear buffer
+        for i in range(self.num_envs):
+            self.buffers[i].clear()
+        self.red_flag = np.random.choice([True, False], size=self.num_envs)
+
+    def step(self, ego_cur_acts):
+        acts = self._make_action(ego_cur_acts)
+        next_obss, rewards, dones, env_infos = self.env.step(acts)
+        ego_next_obss = self._parse_obs(next_obss)
+        ego_rewards = self._parse_rewards(rewards)
+        return ego_next_obss, ego_rewards, dones, env_infos
+
+    def collect_data(self, ego_net_params, enm_net_params, hyper_params=None, agent_id=None):
+        print(f'agent: {agent_id} starts to collect data')
+        start_time = time.time()
+        # load policy
+        self.ego_policy.load_state_dict(ego_net_params)
+        rollout_step, flag_rollout_abort = 0, False
+        # start collecting
+        self.warmup()
+        ego_cur_obss = self._parse_obs(self.env.reset())
+        ego_cur_gru, ego_pre_acts = self.ego_policy.get_init_hidden_state(num_env=self.num_envs)
+        while not flag_rollout_abort:
+            ego_cur_acts, ego_log_pi, ego_next_gru, ego_old_values = self.ego_policy.get_action_value(ego_pre_acts, ego_cur_obss, ego_cur_gru)
+            ego_next_obss, ego_rewards, dones, env_infos = self.step(ego_cur_acts)
+            rollout_step += 1
+            # ego_rewards += hyper_params['reward_hyper'][0] * final_reward
+            for i in range(self.num_envs):
+                self.buffers[i].add_sample(ego_pre_acts[i],
+                                            ego_cur_obss[i],
+                                            ego_cur_gru[:, i, :],
+                                            ego_cur_acts[i],
+                                            ego_log_pi[i],
+                                            ego_old_values[i],
+                                            ego_rewards[i],
+                                            dones[i])
+            ego_pre_acts, ego_cur_obss, ego_cur_gru = ego_cur_acts, ego_next_obss, ego_next_gru
+            if rollout_step >= self.buffers[0].buffer_size:
+                ego_next_values, _ = self.ego_policy.get_value(ego_pre_acts, ego_cur_obss, ego_cur_gru)
+                for i in range(self.num_envs):
+                    self.buffers[i].rollout_last_value = ego_next_values[i]
+                flag_rollout_abort = True
+            # deal with env.reset situations
+            self.red_flag[dones] = np.random.choice([True, False], size=np.sum(dones))
+            ego_cur_gru[:, dones, :], ego_pre_acts[dones] = self.ego_policy.get_init_hidden_state(num_env=np.sum(dones))
+
+        time_elapsed = time.time() - start_time
+        print(f"Collect data done, rollout steps {rollout_step * self.num_envs}, time elapsed {time_elapsed}")
+        status_code = 0 if rollout_step > 0 else 1
+        return status_code, self.buffers
+
+    def evaluate_with_baseline(self, ego_net_params, enm_net_params, eval_num=1):
+        print('#####################################################################################')
+        print('\nStart evaluating...')
+        self.ego_policy.load_state_dict(ego_net_params['model_state_dict'])
+        ego_cur_obss = self._parse_obs(self.env.reset())
+        ego_cur_gru, ego_pre_acts = self.ego_policy.get_init_hidden_state(num_env=self.num_envs)
+        cumulative_rewards = np.zeros(self.num_envs)
+        episode_rewards = []
+        total_episodes = 0
+        while total_episodes < eval_num:
+            ego_cur_acts, _, ego_next_gru, _ = self.ego_policy.get_action_value(ego_pre_acts, ego_cur_obss, ego_cur_gru)
+            ego_next_obss, ego_rewards, dones, env_infos = self.step(ego_cur_acts)
+            ego_pre_acts, ego_cur_obss, ego_cur_gru = ego_cur_acts, ego_next_obss, ego_next_gru
+            cumulative_rewards += ego_rewards
+            # deal with env.reset situations
+            total_episodes += np.sum(dones)
+            episode_rewards += cumulative_rewards[dones].tolist()
+            cumulative_rewards[dones] = 0
+            ego_cur_gru[:, dones, :], ego_pre_acts[dones] = self.ego_policy.get_init_hidden_state(num_env=np.sum(dones))
+
+        average_rewards = np.mean(episode_rewards)
+        print(f"Average episode_reward = {average_rewards}")
+        print('#####################################################################################')
+        return average_rewards
+
+    def collect_data_once(self, ego_net_params, enm_net_params):
+        assert self.num_envs == 1
+        self.ego_policy.load_state_dict(ego_net_params)
+        trajectory_list, ego_cumulative_reward =[], 0
+        ego_cur_gru, ego_pre_act = self.ego_policy.get_init_hidden_state(num_env=1)
+        # start rendering
+        ego_cur_obs = self._parse_obs(np.expand_dims(np.asarray(self.env.reset()), axis=0))
+        trajectory_list.append(self.env.render())
+        while True:
+            ego_cur_act, _, ego_next_gru = self.ego_policy.get_action(ego_pre_act, ego_cur_obs, ego_cur_gru)
+            acts = self._make_action(ego_cur_act)
+            next_obs, reward, done, env_info = self.env.step(acts[0])
+            ego_next_obs = self._parse_obs(np.expand_dims(np.asarray(next_obs), axis=0))
+            ego_reward = self._parse_rewards(np.expand_dims(np.asarray(reward), axis=0))
+            trajectory_list.append(self.env.render())
+            ego_cumulative_reward += ego_reward[0]
+            ego_pre_act, ego_cur_gru, ego_cur_obs = ego_cur_act, ego_next_gru, ego_next_obs
+            if done:
+                break
+        print(f"Ego({'blue'}) accumulate reward = {ego_cumulative_reward:.2f}")
+        return np.asarray(trajectory_list)
