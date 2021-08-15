@@ -1,0 +1,3 @@
+from .heading_task import HeadingTask
+from .selfplay_task import SelfPlayTask
+from .selfplay_with_missle_task import SelfPlayWithMissileTask

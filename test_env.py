@@ -1,7 +1,7 @@
 import pdb
 import time
 import numpy as np
-from envs.JSBSim.envs.selfplay_env import SelfPlayEnv
+from envs.JSBSim.envs import SelfPlayEnv, HeadingEnv
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
 from utils.flatten_utils import DictFlattener
 
@@ -61,6 +61,31 @@ def test_parallel_env():
     print(f"Collect data finish: total step {n_current_steps}, total episode {n_current_episodes}, timecost: {time.time() - start_time:.2f}s")
     envs.close()
 
+def test_heading_env():
+    env = HeadingEnv(config='heading_task')
+    # env = SelfPlayEnv(config='selfplay_with_missile_task')
+    act_space = env.action_space
+    act_flattener = DictFlattener(act_space)
 
+    env.reset()
+    cur_step = 0
+    reward_blue = 0
+    start_time = time.time()
+    while True:
+        cur_step += 1
+        # flying straight forward
+        actions = {'blue_fighter': np.array([20., 18.6, 20., 0.])}
+        # random fly
+        # actions = {"red_fighter": act_flattener(act_space.sample()), 'blue_fighter': act_flattener(act_space.sample())}
+        next_obs, reward, done, env_info = env.step(actions)
+        reward_blue += reward['blue_fighter']
+        print(reward_blue)
+        if done:
+            print(env_info)
+            break
+    print(time.time() - start_time)
+
+    
 # test_env()
-test_parallel_env()
+# test_parallel_env()
+test_heading_env()

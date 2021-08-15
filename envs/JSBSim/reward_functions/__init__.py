@@ -4,3 +4,4 @@ from .missile_attack_reward import MissileAttackReward
 from .posture_reward import PostureReward
 from .relative_altitude_reward import RelativeAltitudeReward
 from .smooth_action_reward import SmoothActionReward
+from .heading_reward import HeadingReward
