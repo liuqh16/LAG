@@ -6,7 +6,7 @@ import random
 
 class UnreachHeading(BaseTerminationCondition):
     """
-    UnreachHeading
+    UnreachHeading [0, 1]
     End up the simulation if the aircraft didn't reach the target heading or attitude in limited time.
     """
 
@@ -34,7 +34,7 @@ class UnreachHeading(BaseTerminationCondition):
         if env.sims[ego_name].get_property_value(c.simulation_sim_time_sec) >= temp:
             if math.fabs(env.sims[ego_name].get_property_value(c.delta_heading)) > 10:
                 done = True
-            if math.fabs(env.sims[ego_name].get_property_value(c.delta_altitude)) >= 100:
+            if math.fabs(env.sims[ego_name].get_property_value(c.delta_altitude)) >= 3000:
                 done = True
             # Change heading every 150 seconds
             angle = int(env.sims[ego_name].get_property_value(c.steady_flight) / 150) * 10

@@ -5,6 +5,7 @@ import numpy as np
 from envs.JSBSim.envs import SelfPlayEnv, HeadingEnv
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
 from utils.flatten_utils import DictFlattener
+from envs.JSBSim.core.catalog import Catalog as c
 
 
 def test_env():
@@ -70,6 +71,7 @@ def test_heading_env():
     trajectory_list = []
     env.reset()
     trajectory_list.append(env.render())
+    reward_render = {}
     cur_step = 0
     reward_blue = 0
     start_time = time.time()
@@ -85,8 +87,11 @@ def test_heading_env():
         print(reward_blue)
         if done:
             print(env_info)
+            #reward_render = env.task.reward_functions[0].get_reward_trajectory()
+            print(env.sims['blue_fight'].get_property_value(c.simulation_sim_time_sec))
             break
     print(time.time() - start_time)
+    #print(reward_render)
     np.save('save_trajectories.npy', np.asarray(trajectory_list))
 
     
