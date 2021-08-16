@@ -17,7 +17,7 @@ class PostureReward(BaseRewardFunction):
     """
     def __init__(self, config):
         super().__init__(config)
-        assert len(self.config.init_config.keys()) == 2, \
+        assert self.num_agents == 2, \
             "PostureReward only support one-to-one environments but current env has more than 2 agents!"
         self.orientation_version = getattr(self.config, f'{self.__class__.__name__}_orientation_version', 'v2')
         self.range_version = getattr(self.config, f'{self.__class__.__name__}_range_version', 'v2')
@@ -38,15 +38,15 @@ class PostureReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        ego_name, enm_name = self.agent_names[agent_id], self.agent_names[(agent_id + 1) % self.num_agents]
+        ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_agents
         # feature: (north, east, down, vn, ve, vd) unit: km, mh
-        ego_feature = np.hstack([env.sims[ego_name].get_position() / 1000, env.sims[ego_name].get_velocity() / 340])
-        enm_feature = np.hstack([env.sims[enm_name].get_position() / 1000, env.sims[enm_name].get_velocity() / 340])
+        ego_feature = np.hstack([env.sims[ego_idx].get_position() / 1000, env.sims[ego_idx].get_velocity() / 340])
+        enm_feature = np.hstack([env.sims[enm_idx].get_position() / 1000, env.sims[enm_idx].get_velocity() / 340])
         AO, TA, R = get_AO_TA_R(ego_feature, enm_feature)
         orientation_reward = self.orientation_fn(AO, TA)
         range_reward = self.range_fn(R)
         new_reward = orientation_reward * range_reward
-        return self._process(new_reward, agent_id=agent_id, render_items=(orientation_reward, range_reward))
+        return self._process(new_reward, agent_id, (orientation_reward, range_reward))
 
     def get_orientation_function(self, version):
         if version == 'v0':

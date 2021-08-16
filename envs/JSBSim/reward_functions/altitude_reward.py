@@ -28,9 +28,8 @@ class AltitudeReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        ego_name = self.agent_names[agent_id]
-        ego_z = env.sims[ego_name].get_position()[-1] / 1000    # unit: km
-        ego_vz = env.sims[ego_name].get_velocity()[-1] / 340    # unit: mh
+        ego_z = env.sims[agent_id].get_position()[-1] / 1000    # unit: km
+        ego_vz = env.sims[agent_id].get_velocity()[-1] / 340    # unit: mh
         Pv = 0.
         if ego_z <= self.safe_altitude:
             Pv = -np.clip(ego_vz / self.Kv * (self.safe_altitude - ego_z) / self.safe_altitude, 0., 1.)
@@ -38,4 +37,4 @@ class AltitudeReward(BaseRewardFunction):
         if ego_z <= self.danger_altitude:
             PH = np.clip(ego_z / self.danger_altitude, 0., 1.) - 1. - 1.
         new_reward = Pv + PH
-        return self._process(new_reward, render_items=(Pv, PH))
+        return self._process(new_reward, agent_id, (Pv, PH))

@@ -10,12 +10,11 @@ class BaseRewardFunction(ABC):
     def __init__(self, config):
         self.config = config
         # inner variables
+        self.num_agents = getattr(self.config, 'num_agents', 1)
         self.reward_scale = getattr(self.config, f'{self.__class__.__name__}_scale', 1.0)
         self.is_potential = getattr(self.config, f'{self.__class__.__name__}_potential', False)
-        self.agent_names = list(self.config.init_config.keys())
-        self.num_agents = len(self.agent_names)
-        self.pre_rewards = dict([(agent, 0.0) for agent in self.agent_names])
-        self.reward_trajectory = []  # type: list[tuple[float]]
+        self.pre_rewards = [0.0 for _ in range(self.num_agents)]
+        self.reward_trajectory = [[] for _ in range(self.num_agents)]
         self.reward_item_names = [self.__class__.__name__]
 
     def reset(self, task, env):
@@ -27,9 +26,9 @@ class BaseRewardFunction(ABC):
             env: environment instance
         """
         if self.is_potential:
-            for agent_id, agent_name in enumerate(self.agent_names):
-                self.pre_rewards[agent_name] = self.get_reward(task, env, agent_id)
-        self.reward_trajectory = []
+            for agent_id in range(self.num_agents):
+                self.pre_rewards[agent_id] = self.get_reward(task, env, agent_id)
+        self.reward_trajectory = [[] for _ in range(self.num_agents)]
 
     @abstractmethod
     def get_reward(self, task, env, agent_id):
@@ -45,12 +44,12 @@ class BaseRewardFunction(ABC):
         """
         raise NotImplementedError
 
-    def _process(self, new_reward, agent_id=None, render_items=None):
+    def _process(self, new_reward, agent_id, render_items=None):
         """Process reward and inner variables.
 
         Args:
             new_reward (float)
-            agent_id (int, optional): Must set if `is_potential=True`. Defaults to None.
+            agent_id (int)
             render_items (tuple, optional): Must set if `len(reward_item_names)>1`. Defaults to None.
 
         Returns:
@@ -58,12 +57,11 @@ class BaseRewardFunction(ABC):
         """
         reward = new_reward * self.reward_scale
         if self.is_potential:
-            agent_name = self.agent_names[agent_id]
-            reward, self.pre_rewards[agent_name] = reward - self.pre_rewards[agent_name], reward
+            reward, self.pre_rewards[agent_id] = reward - self.pre_rewards[agent_id], reward
         if render_items is None:
-            self.reward_trajectory.append(reward)
+            self.reward_trajectory[agent_id].append(reward)
         else:
-            self.reward_trajectory.append((reward, *render_items))
+            self.reward_trajectory[agent_id].append((reward, *render_items))
         return reward
 
     def get_reward_trajectory(self):
@@ -75,4 +73,4 @@ class BaseRewardFunction(ABC):
         if len(self.reward_item_names) == 1:
             return {self.reward_item_names[0]: np.array(self.reward_trajectory)}
         else:
-            return dict(zip(self.reward_item_names, np.array(list(zip(*self.reward_trajectory)))))
+            return dict(zip(self.reward_item_names, np.array(self.reward_trajectory).transpose(1, 0, 2)))

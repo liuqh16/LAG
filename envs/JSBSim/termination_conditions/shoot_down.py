@@ -23,9 +23,9 @@ class ShootDown(BaseTerminationCondition):
         Returns:
             (tuple): (done, success, info)
         """
-        done = task.bloods[env.agent_names[agent_id]] <= 0
+        done = task.bloods[agent_id] <= 0
         if done:
-            print(f'INFO: [{env.agent_names[agent_id]}] has been shot down!')
-            info[f'{env.agent_names[agent_id]}_end_reason'] = 2  # shoot down
+            print(f'INFO: agent[{agent_id}] has been shot down!')
+            info[f'agent{agent_id}_end_reason'] = 2  # shoot down
         success = False
         return done, success, info

@@ -25,3 +25,13 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             LowAltitude(self.config),
             Timeout(self.config),
         ]
+
+        self.bloods = [100 for _ in range(self.num_agents)]
+
+    def reset(self, env):
+        """Task-specific reset, include reward function reset.
+
+        Must call it after `env.get_observation()`
+        """
+        self.bloods = [100 for _ in range(self.num_agents)]
+        return super().reset(env)

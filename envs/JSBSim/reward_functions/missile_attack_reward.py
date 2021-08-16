@@ -16,14 +16,14 @@ class MissileAttackReward(BaseRewardFunction):
     """
     def __init__(self, config):
         super().__init__(config)
-        assert len(self.config.init_config.keys()) == 2, \
+        assert self.num_agents == 2, \
             "MissileAttackReward only support one-to-one environments but current env has more than 2 agents!"
-        self.missile_models = OrderedDict([(agent, Missile3D()) for agent in self.agent_names])
+        self.missile_models = [Missile3D() for agent_id in range(self.num_agents)]
         self.all_reward_scales = []
 
     def reset(self, task, env):
         super().reset(task, env)
-        self.missile_models = OrderedDict([(agent, Missile3D()) for agent in self.agent_names])
+        self.missile_models = [Missile3D() for agent_id in range(self.num_agents)]
         for reward_fn in task.reward_functions:
             self.all_reward_scales.append(reward_fn.reward_scale)
 
@@ -38,11 +38,11 @@ class MissileAttackReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        ego_name, enm_name = self.agent_names[agent_id], self.agent_names[(agent_id + 1) % self.num_agents]
+        ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_agents
         # feature: (north, east, down, vn, ve, vd) unit: m, m/s
-        missile_info = np.hstack([env.sims[ego_name].get_position(), env.sims[ego_name].get_velocity()])
-        target_info = np.hstack([env.sims[enm_name].get_position(), env.sims[enm_name].get_velocity()])
-        missile_pos_vel, info = self.missile_models[ego_name].missile_step(missile_info, target_info)
+        missile_info = np.hstack([env.sims[ego_idx].get_position(), env.sims[ego_idx].get_velocity()])
+        target_info = np.hstack([env.sims[enm_idx].get_position(), env.sims[enm_idx].get_velocity()])
+        missile_pos_vel, info = self.missile_models[ego_idx].missile_step(missile_info, target_info)
         if info['mask_enm']:
             for reward_fn in task.reward_functions:
                 if not isinstance(reward_fn, MissileAttackReward):
@@ -53,4 +53,4 @@ class MissileAttackReward(BaseRewardFunction):
             for i, reward_fn in enumerate(task.reward_functions):
                 reward_fn.reward_scale = self.all_reward_scales[i]
             new_reward = 0.0
-        return self._process(new_reward)
+        return self._process(new_reward, agent_id)

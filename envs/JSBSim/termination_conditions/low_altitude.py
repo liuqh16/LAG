@@ -24,9 +24,9 @@ class LowAltitude(BaseTerminationCondition):
         Returns:
             (tuple): (done, success, info)
         """
-        done = env.sims[env.agent_names[agent_id]].get_property_value(c.position_h_sl_ft) <= self.altitude_limit * (1 / 0.3048)
+        done = env.sims[agent_id].get_property_value(c.position_h_sl_ft) <= self.altitude_limit * (1 / 0.3048)
         if done:
-            print(f'INFO: [{env.agent_names[agent_id]}] altitude is too low')
-            info[f'{env.agent_names[agent_id]}_end_reason'] = 1  # crash
+            print(f'INFO: agent[{agent_id}] altitude is too low')
+            info[f'agent{agent_id}_end_reason'] = 1  # crash
         success = False
         return done, success, info
