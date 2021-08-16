@@ -7,6 +7,7 @@ class PPOPolicy:
     def __init__(self, args, obs_space, act_space, device=torch.device("cpu")):
 
         self.device = device
+        # optimizer config
         self.lr = args.lr
 
         self.obs_space = obs_space

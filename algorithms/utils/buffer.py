@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from .flatten import build_flattener
+from .util import get_shape_from_space
 
 def _flatten(T, N, x):
     return x.reshape(T * N, *x.shape[2:])
@@ -10,25 +10,29 @@ def _cast(x):
 
 
 class ReplayBuffer(object):
-    def __init__(self, args, obs_space, act_space):
-        self.episode_length = args.episode_length
+    def __init__(self, args, num_agents, obs_space, act_space):
+        # env config
         self.n_rollout_threads = args.n_rollout_threads
+        # buffer config
+        self.gamma = args.gamma
+        self.episode_length = args.episode_length
+        self.use_gae = args.use_gae
+        self.gae_lambda = args.gae_lambda
+        # rnn config
         self.recurrent_hidden_size = args.recurrent_hidden_size
         self.recurrent_hidden_layers = args.recurrent_hidden_layers
-        self.gamma = args.gamma
-        self.gae_lambda = args.gae_lambda
-        self._use_gae = args.use_gae
+        self.data_chunk_length = args.data_chunk_length
 
-        self.obs_flattener = build_flattener(obs_space)
-        self.act_flattener = build_flattener(act_space)
+        obs_shape = get_shape_from_space(obs_space)
+        act_shape = get_shape_from_space(act_space)
 
         # (o_0, a_0, r_0, d_0, ..., o_T)
-        self.obs = np.zeros((self.episode_length + 1, self.n_rollout_threads, self.obs_flattener.size), dtype=np.float32)
-        self.actions = np.zeros((self.episode_length, self.n_rollout_threads, self.act_flattener.size), dtype=np.float32)
+        self.obs = np.zeros((self.episode_length + 1, self.n_rollout_threads, num_agents, *obs_shape), dtype=np.float32)
+        self.actions = np.zeros((self.episode_length, self.n_rollout_threads, *act_shape), dtype=np.float32)
         self.rewards = np.zeros((self.episode_length, self.n_rollout_threads, 1), dtype=np.float32)
         self.dones = np.zeros((self.episode_length, self.n_rollout_threads, 1), dtype=np.float32)
         # pi(a)
-        self.action_log_probs = np.zeros((self.episode_length, self.n_rollout_threads, self.act_flattener.size), dtype=np.float32)
+        self.action_log_probs = np.zeros((self.episode_length, self.n_rollout_threads, *act_shape), dtype=np.float32)
         # v(o), r(o) while advantage = returns - value_preds
         self.value_preds = np.zeros((self.episode_length + 1, self.n_rollout_threads, 1), dtype=np.float32)
         self.returns = np.zeros((self.episode_length + 1, self.n_rollout_threads, 1), dtype=np.float32)
@@ -68,7 +72,7 @@ class ReplayBuffer(object):
         self.rnn_states_critic[0] = self.rnn_states_critic[-1].copy()
 
     def compute_returns(self, next_value):
-        if self._use_gae:
+        if self.use_gae:
             self.value_preds[-1] = next_value
             gae = 0
             for step in reversed(range(self.rewards.shape[0])):
@@ -80,34 +84,33 @@ class ReplayBuffer(object):
             for step in reversed(range(self.rewards.shape[0])):
                 self.returns[step] = self.rewards[step] + self.gamma * (1 - self.dones[step]) * self.returns[step + 1]
 
-    def recurrent_generator(self, num_mini_batch, data_chunk_length):
+    def recurrent_generator(self, advantages, num_mini_batch):
         """A recurrent generator that returns a dictionary providing training data arranged in mini batches.
         This generator shuffles the data by sequences.
         """
-        buffer_size = self.episode_length * self.n_rollout_threads
-        data_chunks = buffer_size // data_chunk_length
-        mini_batch_size = data_chunks // num_mini_batch
-
-        assert self.n_rollout_threads * self.episode_length >= data_chunk_length, (
+        assert self.n_rollout_threads * self.episode_length >= self.data_chunk_length, (
             "PPO requires the number of processes ({}) * episode length ({}) "
             "to be greater than or equal to the number of "
-            "data chunk length ({}).".format(self.n_rollout_threads, self.episode_length, data_chunk_length))
+            "data chunk length ({}).".format(self.n_rollout_threads, self.episode_length, self.data_chunk_length))
 
-        rand = torch.randperm(data_chunks).numpy()
-        sampler = [rand[i*mini_batch_size:(i+1)*mini_batch_size] for i in range(num_mini_batch)]
-
+        # Transpose and reshape parallel data into sequential data
         obs = _cast(self.obs[:-1])
-
         actions = _cast(self.actions)
         action_log_probs = _cast(self.action_log_probs)
-        advantages = _cast(self.returns[:-1] - self.value_preds[:-1])
+        advantages = _cast(advantages)
         value_preds = _cast(self.value_preds[:-1])
         returns = _cast(self.returns[:-1])
         dones = _cast(self.dones[:-1])
-        # rnn_states = _cast(self.rnn_states[:-1])
-        # rnn_states_critic = _cast(self.rnn_states_critic[:-1])
-        rnn_states_actor = self.rnn_states_actor[:-1].transpose(1, 2, 0, 3, 4).reshape(-1, *self.rnn_states.shape[3:])
-        rnn_states_critic = self.rnn_states_critic[:-1].transpose(1, 2, 0, 3, 4).reshape(-1, *self.rnn_states_critic.shape[3:])
+        rnn_states_actor = _cast(self.rnn_states_actor[:-1])
+        rnn_states_critic = _cast(self.rnn_states_critic[:-1])
+
+        buffer_size = self.episode_length * self.n_rollout_threads
+        data_chunks = buffer_size // self.data_chunk_length
+        mini_batch_size = data_chunks // num_mini_batch
+        flag_splits = (np.where(self.dones == True)[0] + 1).tolist()
+
+        rand = torch.randperm(data_chunks).numpy()
+        sampler = [rand[i*mini_batch_size:(i+1)*mini_batch_size] for i in range(num_mini_batch)]
         
         for indices in sampler:
 
@@ -125,20 +128,20 @@ class ReplayBuffer(object):
             adv_targ = []
 
             for index in indices:
-                ind = index * data_chunk_length
+                ind = index * self.data_chunk_length
                 # size [T+1 N M Dim]-->[T N M Dim]-->[N,M,T,Dim]-->[N*M*T,Dim]-->[L,Dim]
-                obs_batch.append(obs[ind:ind+data_chunk_length])
-                actions_batch.append(actions[ind:ind+data_chunk_length])
-                value_preds_batch.append(value_preds[ind:ind+data_chunk_length])
-                return_batch.append(returns[ind:ind+data_chunk_length])
-                dones_batch.append(dones[ind:ind+data_chunk_length])
-                old_action_log_probs_batch.append(action_log_probs[ind:ind+data_chunk_length])
-                adv_targ.append(advantages[ind:ind+data_chunk_length])
+                obs_batch.append(obs[ind:ind+self.data_chunk_length])
+                actions_batch.append(actions[ind:ind+self.data_chunk_length])
+                value_preds_batch.append(value_preds[ind:ind+self.data_chunk_length])
+                return_batch.append(returns[ind:ind+self.data_chunk_length])
+                dones_batch.append(dones[ind:ind+self.data_chunk_length])
+                old_action_log_probs_batch.append(action_log_probs[ind:ind+self.data_chunk_length])
+                adv_targ.append(advantages[ind:ind+self.data_chunk_length])
                 # size [T+1 N M Dim]-->[T N M Dim]-->[N M T Dim]-->[N*M*T,Dim]-->[1,Dim]
                 rnn_states_actor_batch.append(rnn_states_actor[ind])
                 rnn_states_critic_batch.append(rnn_states_critic[ind])
 
-            L, N = data_chunk_length, mini_batch_size
+            L, N = self.data_chunk_length, mini_batch_size
 
             # These are all from_numpys of size (L, N, Dim) 
             obs_batch = np.stack(obs_batch, axis=1)

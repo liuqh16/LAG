@@ -29,11 +29,11 @@ class MLPLayer(nn.Module):
 
 # Feature extraction module
 class MLPBase(nn.Module):
-    def __init__(self, args, obs_space):
+    def __init__(self, obs_space, hidden_size, activation_id, use_feature_normalization):
         super(MLPBase, self).__init__()
-        self._hidden_size = args.hidden_size
-        self._activation_id = args.activation_id
-        self._use_feature_normalization = args.use_feature_normalization
+        self._hidden_size = hidden_size
+        self._activation_id = activation_id
+        self._use_feature_normalization = use_feature_normalization
 
         self.obs_flattener = build_flattener(obs_space)
         input_dim = self.obs_flattener.size
