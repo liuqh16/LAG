@@ -6,7 +6,8 @@ from collections import OrderedDict
 def build_flattener(space):
     if isinstance(space, gym.spaces.Dict):
         return DictFlattener(space)
-    elif isinstance(space, gym.spaces.Box):
+    elif isinstance(space, gym.spaces.Box) \
+        or isinstance(space, gym.spaces.MultiDiscrete):
         return BoxFlattener(space)
     elif isinstance(space, gym.spaces.Discrete):
         return DiscreteFlattener(space)
@@ -72,12 +73,13 @@ class DictFlattener():
 
 
 class BoxFlattener():
-    """把Box类型的空间变成一个Vector
+    """把Box/MultiDiscrete类型的空间变成一个Vector
     """
 
     def __init__(self, ori_space):
         self.space = ori_space
-        assert isinstance(ori_space, gym.spaces.Box)
+        assert isinstance(ori_space, gym.spaces.Box) \
+            or isinstance(ori_space, gym.spaces.MultiDiscrete)
         self.size = np.product(ori_space.shape)
 
     def __call__(self, observation):

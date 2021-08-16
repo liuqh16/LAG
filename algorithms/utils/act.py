@@ -33,7 +33,7 @@ class ACTLayer(nn.Module):
                 action_outs.append(Categorical(input_dim, action_dim))
             self.action_outs = nn.ModuleList(action_outs)
         else:  # TODO: discrete + continous
-            raise NotImplementedError("Mix action space!")
+            raise NotImplementedError(f"Unsupported action space type: {type(act_space)}!")
     
     def forward(self, x, deterministic=False):
         if self._mlp_actlayer:

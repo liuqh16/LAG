@@ -135,51 +135,51 @@ def _get_optimizer_config(parser: argparse.ArgumentParser):
 def _get_ppo_config(parser: argparse.ArgumentParser):
     """
     PPO parameters:
-        --ppo-gamma <float>
+        --gamma <float>
             discount factor for rewards (default: 0.99)
         --ppo-epoch <int>
             number of ppo epochs (default: 10)
-        --ppo-clip-param <float>
+        --clip-param <float>
             ppo clip parameter (default: 0.2)
-        --ppo-num-mini-batch <int>
+        --num-mini-batch <int>
             number of batches for ppo (default: 1)
-        --ppo-policy-value-loss-coef <float>
+        --policy-value-loss-coef <float>
             ppo policy value loss coefficient (default: 1)
-        --ppo-value-loss-coef <float>
+        --value-loss-coef <float>
             ppo value loss coefficient (default: 1)
-        --ppo-entropy-coef <float>
+        --entropy-coef <float>
             ppo entropy term coefficient (default: 0.01)
-        --ppo-use-max-grad-norm 
+        --use-max-grad-norm 
             by default, use max norm of gradients. If set, do not use.
-        --ppo-max-grad-norm <float>
+        --max-grad-norm <float>
             max norm of gradients (default: 0.5)
-        --ppo-use-gae
+        --use-gae
             by default, use generalized advantage estimation. If set, do not use gae.
-        --ppo-gae-lambda <float>
+        --gae-lambda <float>
             gae lambda parameter (default: 0.95)
     """
     group = parser.add_argument_group("PPO parameters")
-    group.add_argument("--ppo-gamma", type=float, default=0.99,
+    group.add_argument("--gamma", type=float, default=0.99,
                         help='discount factor for rewards (default: 0.99)')
     group.add_argument("--ppo-epoch", type=int, default=10,
                         help='number of ppo epochs (default: 10)')
-    group.add_argument("--ppo-clip-param", type=float, default=0.2,
+    group.add_argument("--clip-param", type=float, default=0.2,
                         help='ppo clip parameter (default: 0.2)')
-    group.add_argument("--ppo-num-mini-batch", type=int, default=1,
+    group.add_argument("--num-mini-batch", type=int, default=1,
                         help='number of batches for ppo (default: 1)')
-    group.add_argument("--ppo-policy-value-loss-coef", type=float, default=1,
+    group.add_argument("--policy-value-loss-coef", type=float, default=1,
                         help='ppo policy value loss coefficient (default: 1)')
-    group.add_argument("--ppo-value-loss-coef", type=float, default=1,
+    group.add_argument("--value-loss-coef", type=float, default=1,
                         help='ppo value loss coefficient (default: 1)')
-    group.add_argument("--ppo-entropy-coef", type=float, default=0.01,
+    group.add_argument("--entropy-coef", type=float, default=0.01,
                         help='entropy term coefficient (default: 0.01)')
-    group.add_argument("--ppo-use-max-grad-norm", action='store_false', default=True,
+    group.add_argument("--use-max-grad-norm", action='store_false', default=True,
                         help="Whether to use max norm of gradients")
-    group.add_argument("--ppo-max-grad-norm", type=float, default=2,
+    group.add_argument("--max-grad-norm", type=float, default=2,
                         help='max norm of gradients (default: 2)')
-    group.add_argument("--ppo-use-gae", action='store_false', default=True,
+    group.add_argument("--use-gae", action='store_false', default=True,
                         help='Whether to use generalized advantage estimation')
-    group.add_argument("--ppo-gae-lambda", type=float, default=0.95,
+    group.add_argument("--gae-lambda", type=float, default=0.95,
                         help='gae lambda parameter (default: 0.95)')
     return parser
 
