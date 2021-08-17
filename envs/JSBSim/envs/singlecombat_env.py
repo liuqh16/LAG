@@ -92,10 +92,10 @@ class SingleCombatEnv(BaseEnv):
         done = False
         for agent_id in range(self.num_agents):
             agent_done, info = self.task.get_termination(self, agent_id, info)
-            info[f'agent{agent_id}_done'] = agent_done
             done = agent_done or done
+        dones = done * np.ones(self.num_agents)
 
-        return next_observation, rewards, done, info
+        return next_observation, rewards, dones, info
 
     def get_observation(self):
         """
@@ -125,3 +125,7 @@ class SingleCombatEnv(BaseEnv):
         for agent_id in range(self.num_agents):
             render_list.append(np.array(self.sims[agent_id].get_property_values(self.task.render_var)))
         return np.hstack(render_list)
+
+    def seed(self, seed):
+        # TODO: random seed
+        return super().seed(seed=seed)

@@ -23,6 +23,8 @@ def get_config():
 def _get_prepare_config(parser: argparse.ArgumentParser):
     """
     Prepare parameters:
+        --env-name <str>
+            specify the name of environment
         --algorithm-name <str>
             specifiy the algorithm, including `["ppo"]`
         --experiment-name <str>
@@ -34,13 +36,21 @@ def _get_prepare_config(parser: argparse.ArgumentParser):
         --n-training-threads <int>
             number of training threads working in parallel. by default 1
         --n-rollout-threads <int>
-            number of parallel envs for training/evaluating rollout. by default 32
+            number of parallel envs for training/evaluating rollout. by default 4
         --num-env-steps <int>
             number of env steps to train (default: 1e7)
-        --model_dir <str>
+        --model-dir <str>
             by default None. set the path to pretrained model.
+        --use-wandb
+            [for wandb usage], by default False, if set, will log date to wandb server.
+        --user-name <str>
+            [for wandb usage], to specify user's name for simply collecting training data.
+        --wandb-name <str>
+            [for wandb usage], to specify user's name for simply collecting training data.
     """
     group = parser.add_argument_group("Prepare parameters")
+    group.add_argument("--env-name", type=str, default='JSBSim',
+                        help="specify the name of environment")
     group.add_argument("--algorithm-name", type=str, default='ppo', choices=["ppo"],
                         help="Specifiy the algorithm (default ppo)")
     group.add_argument("--experiment-name", type=str, default="check",
@@ -51,12 +61,18 @@ def _get_prepare_config(parser: argparse.ArgumentParser):
                         help="By default False, will use CPU to train; or else will use GPU;")
     group.add_argument("--n-training-threads", type=int, default=1,
                         help="Number of torch threads for training (default 1)")
-    group.add_argument("--n-rollout-threads", type=int, default=32,
-                        help="Number of parallel envs for training/evaluating rollout (default 32)")
+    group.add_argument("--n-rollout-threads", type=int, default=4,
+                        help="Number of parallel envs for training/evaluating rollout (default 4)")
     group.add_argument("--num-env-steps", type=int, default=1e7,
                         help='Number of environment steps to train (default: 1e7)')
-    group.add_argument("--model_dir", type=str, default=None,
+    group.add_argument("--model-dir", type=str, default=None,
                         help="By default None. set the path to pretrained model.")
+    group.add_argument("--use-wandb", action='store_true', default=False,
+                        help="[for wandb usage], by default False, if set, will log date to wandb server.")
+    group.add_argument("--user-name", type=str, default='liuqh',
+                        help="[for wandb usage], to specify user's name for simply collecting training data.")
+    group.add_argument("--wandb-name", type=str, default='liuqh',
+                        help="[for wandb usage], to specify user's name for simply collecting training data.")
     return parser
 
 
@@ -65,8 +81,8 @@ def _get_replaybuffer_config(parser: argparse.ArgumentParser):
     Replay Buffer parameters:
         --gamma <float>
             discount factor for rewards (default: 0.99)
-        --episode-length <int>
-            the max length of an episode in the buffer.
+        --buffer-size <int>
+            the maximum storage in the buffer.
         --use-gae
             by default, use generalized advantage estimation. If set, do not use gae.
         --gae-lambda <float>
@@ -75,8 +91,8 @@ def _get_replaybuffer_config(parser: argparse.ArgumentParser):
     group = parser.add_argument_group("Replay Buffer parameters")
     group.add_argument("--gamma", type=float, default=0.99,
                         help='discount factor for rewards (default: 0.99)')
-    group.add_argument("--episode-length", type=int, default=200,
-                        help="Max length for an episode.")
+    group.add_argument("--buffer-size", type=int, default=200,
+                        help="maximum storage in the buffer.")
     group.add_argument("--use-gae", action='store_false', default=True,
                         help='Whether to use generalized advantage estimation')
     group.add_argument("--gae-lambda", type=float, default=0.95,
@@ -152,7 +168,7 @@ def _get_ppo_config(parser: argparse.ArgumentParser):
         --clip-param <float>
             ppo clip parameter (default: 0.2)
         --use-clipped-value-loss 
-            by default, clip value loss. If set, do not clip value loss.
+            by default false. If set, clip value loss.
         --num-mini-batch <int>
             number of batches for ppo (default: 1)
         --value-loss-coef <float>
@@ -169,8 +185,8 @@ def _get_ppo_config(parser: argparse.ArgumentParser):
                         help='number of ppo epochs (default: 10)')
     group.add_argument("--clip-param", type=float, default=0.2,
                         help='ppo clip parameter (default: 0.2)')
-    group.add_argument("--use-clipped-value-loss", action='store_false', default=True,
-                        help="By default, clip value loss. If set, do not clip value loss.")
+    group.add_argument("--use-clipped-value-loss", action='store_true', default=False,
+                        help="By default false. If set, clip value loss.")
     group.add_argument("--num-mini-batch", type=int, default=1,
                         help='number of batches for ppo (default: 1)')
     group.add_argument("--value-loss-coef", type=float, default=1,
