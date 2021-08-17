@@ -47,10 +47,10 @@ class PPOPolicy:
         values, _ = self.critic(obs, rnn_states_critic)
         return values, action_log_probs, dist_entropy
 
-    def act(self, obs, rnn_states_actor):
+    def act(self, obs, rnn_states_actor, deterministic=False):
         """
         Returns:
             actions, rnn_states_actor
         """
-        actions, _, rnn_states_actor = self.actor(obs, rnn_states_actor)
+        actions, _, rnn_states_actor = self.actor(obs, rnn_states_actor, deterministic)
         return actions, rnn_states_actor

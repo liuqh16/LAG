@@ -69,17 +69,17 @@ class ACTLayer(nn.Module):
             for action_out, act in zip(self.action_outs, action):
                 action_dist = action_out(x)
                 action_log_probs.append(action_dist.log_prob(act))
-                dist_entropy.append(action_dist.entropy().mean())
+                dist_entropy.append(action_dist.entropy().mean(dim=-1, keepdim=True))
             action_log_probs = torch.cat(action_log_probs, dim=-1)
-            dist_entropy = torch.tensor(dist_entropy).mean()
+            dist_entropy = torch.cat(dist_entropy, dim=-1).mean(dim=-1, keepdim=True)
         elif self._continuous_action:
             action_dists = self.action_out(x)
             action_log_probs = action_dists.log_prob(action)
-            dist_entropy = action_dists.entropy().mean()       
+            dist_entropy = action_dists.entropy().mean(dim=-1, keepdim=True)
         else:
             action_dists = self.action_out(x)
             action_log_probs = action_dists.log_prob(action)
-            dist_entropy = action_dists.entropy().mean()
+            dist_entropy = action_dists.entropy().mean(dim=-1, keepdim=True)
         return action_log_probs, dist_entropy
 
     def get_probs(self, x):
@@ -101,10 +101,13 @@ class ACTLayer(nn.Module):
 
 
 if __name__ == "__main__":
+    import torch
+    import gym.spaces
+    from algorithms.utils.act import ACTLayer
     input_dim = 5
     print("\n---------test Discrete action space---------\n")
     act_space = gym.spaces.Discrete(3)
-    actlayer = ACTLayer(act_space, input_dim, 0, 0, 0)
+    actlayer = ACTLayer(act_space, input_dim, '', 1)
     # print(actlayer)
     print("ONE")
     x = torch.rand(input_dim)
@@ -122,7 +125,7 @@ if __name__ == "__main__":
 
     print("\n---------test MultiDiscrete action space---------\n")
     act_space = gym.spaces.MultiDiscrete([3, 2])
-    actlayer = ACTLayer(act_space, input_dim, 0, 0, 0)
+    actlayer = ACTLayer(act_space, input_dim, '', 1)
     # print(actlayer)
     print("ONE")
     x = torch.rand(input_dim)
@@ -140,7 +143,7 @@ if __name__ == "__main__":
 
     print("\n---------test Box action space---------\n")
     act_space = gym.spaces.Box(low=-1, high=1, shape=(2,))
-    actlayer = ACTLayer(act_space, input_dim, 0, 0, 0)
+    actlayer = ACTLayer(act_space, input_dim, '', 1)
     # print(actlayer)
     print("ONE")
     x = torch.rand(input_dim)
