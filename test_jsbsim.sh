@@ -1,8 +1,8 @@
 #!/bin/sh
-env="JSBSim"
-task="selfplay"
+env="heading"
+task="heading"
 exp="test"
-modelpath="results/JSBSim_selfplay/VsBaseline_OriginReward/models/agent0_history900.pt"
+modelpath="results/heading_heading/OriginReward_NotAccReward/models/agent0_history1068.pt"
 seed=1
 
 echo "env is ${env}, task is ${scenario}, exp is ${exp}, seed is ${seed}"
