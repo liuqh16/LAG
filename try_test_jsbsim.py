@@ -5,14 +5,19 @@ import signal
 import random
 import numpy as np
 
-from algorithms.ppo_data_collectors import SelfPlayDataCollector
+from algorithms.ppo_data_collectors import SelfPlayDataCollector, HeadingDataCollector
 from algorithms.ppo_args import Config
-from envs.JSBSim.envs.singlecombat_env import SingleCombatEnv
+from envs.JSBSim.envs import SingleCombatEnv, HeadingEnv
 from envs.JSBSim.core.render_tacview import data_replay
 
 
-def make_test_env(taskname):
-    return SingleCombatEnv(config=taskname)
+def make_test_env(envname, taskname):
+    if envname == 'selfplay':
+        return SingleCombatEnv(config=taskname)
+    elif envname == 'heading':
+        return HeadingEnv(config=taskname)
+    else:
+        raise NotImplementedError('Notimplement Environment')
 
 
 def main():
@@ -36,15 +41,18 @@ def main():
     assert filepath is not None, "Must select a model to load!"
     assert os.path.exists(filepath), 'ModelFile does not exist!'
 
-    envs = make_test_env(f'{args.task}')
-    args_ppo = Config(env=envs)
+    env = make_test_env(args.env, f'{args.task}_task')
+    args_ppo = Config(env=env)
     args_ppo.device = torch.device('cpu')
     hyper_params = dict()
     hyper_params['reward_hyper'] = [1]
     hyper_params['ppo_hyper'] = [1., 1.]
-    collector = SelfPlayDataCollector(args_ppo)
+    if args.env == 'selfplay':
+        collector = SelfPlayDataCollector(args_ppo)
+    elif args.env == 'heading':
+        collector = HeadingDataCollector(args_ppo)
     trajectory_data = collector.collect_data_once(ego_net_params=torch.load(filepath, map_location='cpu')['model_state_dict'],
-                                                  enm_net_params=torch.load(filepath, map_location='cpu')['model_state_dict'])
+                                                    enm_net_params=torch.load(filepath, map_location='cpu')['model_state_dict'])
     if not os.path.exists(f'./results/{args.env}_{args.task}/{args.exp}'):
         os.makedirs(f'./results/{args.env}_{args.task}/{args.exp}')
     np.save(f'./results/{args.env}_{args.task}/{args.exp}/render_data', trajectory_data)

@@ -2,6 +2,10 @@
 test.py
 deprecated
 results
+test_agent.py
+rewards.png
+plot.py
+save_trajectories.npy
 
 # vscode config
 .vscode
