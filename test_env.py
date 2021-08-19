@@ -2,16 +2,15 @@ from envs.JSBSim.core.render_tacview import data_replay
 import pdb
 import time
 import numpy as np
-from envs.JSBSim.envs.singlecombat_env import SingleCombatEnv
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
-from envs.JSBSim.envs import HeadingEnv
+from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
 from envs.JSBSim.core.catalog import Catalog as c
 
 
 def test_env():
-    env = SingleCombatEnv(config='singlecombat_simple')
-    # env = SingleCombatEnv(config='singlecombat_with_missile')
+    # env = SingleCombatEnv(config_name='singlecombat_selfplay')
+    env = SingleCombatEnv(config_name='singlecombat_vsbaseline')
     act_space = env.action_space[0]
 
     env.reset()
@@ -23,11 +22,11 @@ def test_env():
         # flying straight forward
         actions = [np.array([20, 18.6, 20, 0]) for _ in range(env.num_agents)]
         # random fly
-        # actions = {"red_fighter": act_space.sample(), 'blue_fighter': act_space.sample()}
+        # actions = [act_space.sample() for _ in range(env.num_agents)]
         next_obs, reward, done, env_info = env.step(actions)
         episode_reward += reward
         print(episode_reward)
-        if done:
+        if np.array(done).all():
             print(env_info)
             break
     print(time.time() - start_time)
@@ -35,9 +34,9 @@ def test_env():
 
 def test_parallel_env():
     
-    def make_train_env(num_env, config='singlecombat_simple'):
+    def make_train_env(num_env, config_name='singlecombat_vsbaseline'):
         def env_fn():
-            return SingleCombatEnv(config=config)
+            return SingleCombatEnv(config_name=config_name)
         return DummyVecEnv([env_fn for _ in range(num_env)])
 
     start_time = time.time()
@@ -56,13 +55,13 @@ def test_parallel_env():
         new_samples = list(zip(obss, actions, rewards, next_obss, dones))
         n_current_steps += len(new_samples)
         for i, done in enumerate(dones):
-            if done:
+            if np.array(done).all():
                 n_current_episodes += 1
     print(f"Collect data finish: total step {n_current_steps}, total episode {n_current_episodes}, timecost: {time.time() - start_time:.2f}s")
     envs.close()
 
 def test_heading_env():
-    env = HeadingEnv(config='heading_task')
+    env = SingleControlEnv(config_name='heading_task')
     # env = SelfPlayEnv(config='selfplay_with_missile_task')
     act_space = env.action_space
     trajectory_list = []
@@ -91,6 +90,6 @@ def test_heading_env():
     np.save('save_trajectories.npy', np.asarray(trajectory_list))
 
     
-# test_env()
+test_env()
 # test_parallel_env()
-test_heading_env()
+# test_heading_env()

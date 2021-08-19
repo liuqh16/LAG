@@ -13,7 +13,7 @@ class ArtilleryAttackReward(BaseRewardFunction):
     """
     def __init__(self, config):
         super().__init__(config)
-        assert self.num_agents == 2, \
+        assert self.num_fighters == 2, \
             "ArtilleryAttackReward only support one-to-one environments but current env has more than 2 agents!"
 
     def get_reward(self, task, env, agent_id):
@@ -27,7 +27,7 @@ class ArtilleryAttackReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_agents
+        ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_fighters
         # feature: (north, east, down, vn, ve, vd) unit: km, mh
         ego_feature = np.hstack([env.sims[ego_idx].get_position() / 1000, env.sims[ego_idx].get_velocity() / 340])
         enm_feature = np.hstack([env.sims[enm_idx].get_position() / 1000, env.sims[enm_idx].get_velocity() / 340])

@@ -13,7 +13,7 @@ acceleration_limit_y: 10.0
 acceleration_limit_z: 10.0
 
 # init config
-num_agents: 2
+num_fighters: 2
 init_config: {
   0: {
     aircraft_name: f16,

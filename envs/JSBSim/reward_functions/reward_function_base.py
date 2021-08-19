@@ -10,11 +10,11 @@ class BaseRewardFunction(ABC):
     def __init__(self, config):
         self.config = config
         # inner variables
-        self.num_agents = getattr(self.config, 'num_agents', 1)
+        self.num_fighters = getattr(self.config, 'num_fighters', 1)
         self.reward_scale = getattr(self.config, f'{self.__class__.__name__}_scale', 1.0)
         self.is_potential = getattr(self.config, f'{self.__class__.__name__}_potential', False)
-        self.pre_rewards = [0.0 for _ in range(self.num_agents)]
-        self.reward_trajectory = [[] for _ in range(self.num_agents)]
+        self.pre_rewards = [0.0 for _ in range(self.num_fighters)]
+        self.reward_trajectory = [[] for _ in range(self.num_fighters)]
         self.reward_item_names = [self.__class__.__name__]
 
     def reset(self, task, env):
@@ -26,9 +26,9 @@ class BaseRewardFunction(ABC):
             env: environment instance
         """
         if self.is_potential:
-            for agent_id in range(self.num_agents):
+            for agent_id in range(self.num_fighters):
                 self.pre_rewards[agent_id] = self.get_reward(task, env, agent_id)
-        self.reward_trajectory = [[] for _ in range(self.num_agents)]
+        self.reward_trajectory = [[] for _ in range(self.num_fighters)]
 
     @abstractmethod
     def get_reward(self, task, env, agent_id):

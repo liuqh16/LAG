@@ -1,2 +1,2 @@
-from .heading_env import HeadingEnv
+from .singlecontrol_env import SingleControlEnv
 from .singlecombat_env import SingleCombatEnv

@@ -3,17 +3,15 @@ from collections import OrderedDict
 from .env_base import BaseEnv
 from ..core.catalog import Catalog
 from ..core.simulation import Simulation
-from ..tasks.heading_task import HeadingTask
+from ..tasks import HeadingTask
 
 
-class HeadingEnv(BaseEnv):
+class SingleControlEnv(BaseEnv):
     """
-    HeadingEnv is an  environment.
+    SingleControlEnv is an fly-control env for single agent with no enemy fighters.
     """
-    metadata = {"render.modes": ["human", "csv"]}
-
-    def __init__(self, config: str):
-        super().__init__(config)
+    def __init__(self, config_name: str):
+        super().__init__(config_name)
 
     def load_task(self):
         taskname = getattr(self.config, 'task', 'heading_task')

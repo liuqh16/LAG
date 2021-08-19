@@ -16,14 +16,14 @@ class MissileAttackReward(BaseRewardFunction):
     """
     def __init__(self, config):
         super().__init__(config)
-        assert self.num_agents == 2, \
+        assert self.num_fighters == 2, \
             "MissileAttackReward only support one-to-one environments but current env has more than 2 agents!"
-        self.missile_models = [Missile3D() for agent_id in range(self.num_agents)]
+        self.missile_models = [Missile3D() for agent_id in range(self.num_fighters)]
         self.all_reward_scales = []
 
     def reset(self, task, env):
         super().reset(task, env)
-        self.missile_models = [Missile3D() for agent_id in range(self.num_agents)]
+        self.missile_models = [Missile3D() for agent_id in range(self.num_fighters)]
         for reward_fn in task.reward_functions:
             self.all_reward_scales.append(reward_fn.reward_scale)
 

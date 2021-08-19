@@ -12,8 +12,10 @@ from ..utils.utils import lonlat2dis, get_AO_TA_R
 class SingleCombatTask(BaseTask):
     def __init__(self, config):
         self.config = config
-        self.num_agents = getattr(self.config, 'num_agents', 2)
-        assert self.num_agents == 2, 'Only support one-to-one fighter combat!'
+        self.num_fighters = getattr(self.config, 'num_fighters', 2)
+        assert self.num_fighters == 2, 'Only support one-to-one fighter combat!'
+        self.use_baseline = getattr(self.config, 'use_baseline', False)
+        self.num_agents = self.num_fighters - self.use_baseline  # output obs/act space
 
         self.reward_functions = [
             AltitudeReward(self.config),
@@ -30,6 +32,8 @@ class SingleCombatTask(BaseTask):
         self.load_variables()
         self.load_observation_space()
         self.load_action_space()
+        if self.use_baseline:
+            self.baseline_agent = BaselineAgent(self.observation_space, self.action_space)
 
     def load_variables(self):
         self.state_var = [
@@ -73,7 +77,7 @@ class SingleCombatTask(BaseTask):
         """Convert simulation states into the format of observation_space
         """
         def _normalize(agent_id):
-            ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_agents
+            ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_fighters
             ego_obs_list, enm_obs_list = observations[ego_idx], observations[enm_idx]
             # (0) extract feature: [north(km), east(km), down(km), v_n(mh), v_e(mh), v_d(mh)]
             ego_cur_east, ego_cur_north = lonlat2dis(ego_obs_list[0], ego_obs_list[1], env.init_longitude, env.init_latitude)
@@ -110,25 +114,26 @@ class SingleCombatTask(BaseTask):
             observation[17] = enm_obs_list[8]                   # 17. enm_v_down    (unit: mh)
             return observation
 
-        norm_obs = np.zeros((self.num_agents, 18))
-        for agent_id in range(self.num_agents):
+        norm_obs = np.zeros((self.num_fighters, 18))
+        for agent_id in range(self.num_fighters):
             norm_obs[agent_id] = _normalize(agent_id)
         return norm_obs
 
     def normalize_action(self, env, actions):
         """Convert discrete action index into continuous value.
         """
-        def _normalize(agent_id):
-            action = np.zeros(4)
-            action[0] = actions[agent_id][0] * 2. / (self.action_space[0].nvec[0] - 1.) - 1.
-            action[1] = actions[agent_id][1] * 2. / (self.action_space[0].nvec[1] - 1.) - 1.
-            action[2] = actions[agent_id][2] * 2. / (self.action_space[0].nvec[2] - 1.) - 1.
-            action[3] = actions[agent_id][3] * 0.5 / (self.action_space[0].nvec[3] - 1.) + 0.4
-            return action
+        def _normalize(action):
+            action_norm = np.zeros(4)
+            action_norm[0] = action[0] * 2. / (self.action_space[0].nvec[0] - 1.) - 1.
+            action_norm[1] = action[1] * 2. / (self.action_space[0].nvec[1] - 1.) - 1.
+            action_norm[2] = action[2] * 2. / (self.action_space[0].nvec[2] - 1.) - 1.
+            action_norm[3] = action[3] * 0.5 / (self.action_space[0].nvec[3] - 1.) + 0.4
+            return action_norm
 
-        norm_act = np.zeros((self.num_agents, 4))
-        for agent_id in range(self.num_agents):
-            norm_act[agent_id] = _normalize(agent_id)
+        norm_act = np.zeros((self.num_fighters, 4))
+        for agent_id in range(self.num_fighters):
+            norm_act[agent_id] = _normalize(actions[agent_id])
+
         return norm_act
 
     def reset(self, env):
@@ -146,3 +151,12 @@ class SingleCombatTask(BaseTask):
 
     def get_termination(self, env, agent_id, info={}):
         return super().get_termination(env, agent_id, info)
+
+
+class BaselineAgent:
+    def __init__(self, obs_space, act_space):
+        self.obs_space = obs_space
+        self.act_space = act_space
+    
+    def get_action(self, env, task):
+        return np.array([20, 18.6, 20, 0])

@@ -1,5 +1,5 @@
 # task config
-task: singlecombat_with_missile
+task: singlecombat
 
 # simulation config
 jsbsim_freq: 60
@@ -13,8 +13,10 @@ acceleration_limit_y: 10.0
 acceleration_limit_z: 10.0
 
 # init config
+num_fighters: 2
+use_baseline: true
 init_config: {
-  blue_fighter: {
+  0: {
     aircraft_name: f16,
     ic_h_sl_ft: 20000,
     ic_lat_geod_deg: 60.0,
@@ -22,7 +24,7 @@ init_config: {
     ic_psi_true_deg: 0.0,
     ic_u_fps: 800.0,
   },
-  red_fighter: {
+  1: {
     aircraft_name: f16,
     ic_h_sl_ft: 20000,
     ic_lat_geod_deg: 60.05,

@@ -1,20 +1,24 @@
+from os import RTLD_DEEPBIND
+import pdb
 import numpy as np
-from collections import OrderedDict
 from .env_base import BaseEnv
 from ..core.catalog import Catalog
 from ..core.simulation import Simulation
-from ..tasks.singlecombat_task import SingleCombatTask
-from ..tasks.singlecombat_with_missle_task import SingleCombatWithMissileTask
+from ..tasks import SingleCombatTask, SingleCombatWithMissileTask
 
 
 class SingleCombatEnv(BaseEnv):
     """
     SingleCombatEnv is an one-to-one competitive environment.
     """
-    def __init__(self, config: str):
-        super().__init__(config)
-
-        self.aircraft_names = [self.config.init_config[idx]['aircraft_name'] for idx in range(self.num_agents)]
+    def __init__(self, config_name: str):
+        super().__init__(config_name)
+        # NOTE: num_fighters denote num of the simulated aircrafts
+        #       num_agents denote num of the aircraft controlled by RL
+        self.use_baseline = getattr(self.config, 'use_baseline', False)
+        self.num_agents = self.num_fighters - self.use_baseline
+        # specify the aircraft models to be simulated
+        self.aircraft_names = [self.config.init_config[idx]['aircraft_name'] for idx in range(self.num_fighters)]
 
     def load_task(self):
         taskname = getattr(self.config, 'task', None)
@@ -37,13 +41,12 @@ class SingleCombatEnv(BaseEnv):
             init_conditions=self.init_conditions[idx],
             origin_point=(self.init_longitude, self.init_latitude),
             jsbsim_freq=self.jsbsim_freq,
-            agent_interaction_steps=self.agent_interaction_steps) for idx in range(self.num_agents)]
+            agent_interaction_steps=self.agent_interaction_steps) for idx in range(self.num_fighters)]
         next_observation = self.get_observation()
         self.task.reset(self)
-        return next_observation
+        return self._mask(next_observation)
 
     def reset_conditions(self):
-        # TODO: randomization
         # Origin point of Combat Field [geodesic longitude&latitude (deg)]
         self.init_longitude, self.init_latitude = 120.0, 60.0
         # Initial setting of each agent
@@ -61,7 +64,10 @@ class SingleCombatEnv(BaseEnv):
             Catalog.ic_r_rad_sec: 0,                                                    # 3.3  yaw rate   [rad/s]     (-2 * math.pi, 2 * math.pi)
             Catalog.ic_roc_fpm: 0,                                                      # 4.   initial rate of climb [ft/min]
             Catalog.fcs_throttle_cmd_norm: 0.,                                          # 6.
-        } for idx in range(self.num_agents)]
+        } for idx in range(self.num_fighters)]
+        # TODO: randomization
+        np.random.shuffle(self.init_conditions)
+        
 
     def step(self, actions: list):
         """Run one timestep of the environment's dynamics. When end of
@@ -82,20 +88,26 @@ class SingleCombatEnv(BaseEnv):
         self.current_step += 1
         info = {}
 
+        if self.use_baseline:
+            # (1,dim) => (dim,) => (2,dim)
+            actions = np.array(actions).squeeze()
+            baseline_action = self.task.baseline_agent.get_action(self, self.task)
+            actions = np.stack((actions, baseline_action))
+
         actions = self.task.normalize_action(self, actions)
         next_observation = self.make_step(actions)
 
-        rewards = np.zeros(self.num_agents)
-        for agent_id in range(self.num_agents):
+        rewards = np.zeros(self.num_fighters)
+        for agent_id in range(self.num_fighters):
             rewards[agent_id], info = self.task.get_reward(self, agent_id, info)
 
         done = False
-        for agent_id in range(self.num_agents):
+        for agent_id in range(self.num_fighters):
             agent_done, info = self.task.get_termination(self, agent_id, info)
             done = agent_done or done
-        dones = done * np.ones(self.num_agents)
+        dones = done * np.ones(self.num_fighters)
 
-        return next_observation, rewards, dones, info
+        return self._mask(next_observation), self._mask(rewards), self._mask(dones), info
 
     def get_observation(self):
         """
@@ -105,7 +117,7 @@ class SingleCombatEnv(BaseEnv):
             (OrderedDict): the same format as self.observation_space
         """
         next_observation = []
-        for agent_id in range(self.num_agents):
+        for agent_id in range(self.num_fighters):
             next_observation.append(self.sims[agent_id].get_property_values(self.task.state_var))
         next_observation = self.task.normalize_observation(self, next_observation)
         return next_observation
@@ -115,17 +127,20 @@ class SingleCombatEnv(BaseEnv):
 
         Environments automatically close() when garbage collected or when the program exits.
         """
-        for agent_id in range(self.num_agents):
+        for agent_id in range(self.num_fighters):
             if self.sims[agent_id]:
                 self.sims[agent_id].close()
 
     def render(self):
         # TODO: real time rendering
         render_list = []
-        for agent_id in range(self.num_agents):
+        for agent_id in range(self.num_fighters):
             render_list.append(np.array(self.sims[agent_id].get_property_values(self.task.render_var)))
         return np.hstack(render_list)
 
     def seed(self, seed):
         # TODO: random seed
         return super().seed(seed=seed)
+
+    def _mask(self, data):
+        return np.expand_dims(data[0], axis=0) if self.use_baseline else data

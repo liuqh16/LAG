@@ -3,7 +3,7 @@ from collections import OrderedDict
 from gym import spaces
 from .task_base import BaseTask
 from ..core.catalog import Catalog as c
-from ..reward_functions import AltitudeReward, SmoothActionReward, HeadingReward
+from ..reward_functions import AltitudeReward, HeadingReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout, UnreachHeading
 from ..utils.utils import lonlat2dis
 
@@ -15,7 +15,6 @@ class HeadingTask(BaseTask):
         self.reward_functions = [
             HeadingReward(self.config),
             AltitudeReward(self.config),
-            SmoothActionReward(self.config),
         ]
 
         self.termination_conditions = [

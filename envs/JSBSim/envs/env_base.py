@@ -17,9 +17,9 @@ class BaseEnv(gym.Env):
     """
     metadata = {"render.modes": ["human", "csv"]}
 
-    def __init__(self, config: str):
-        self.config = parse_config(config)
-        self.num_agents = getattr(self.config, 'num_agents', 1)
+    def __init__(self, config_name: str):
+        self.config = parse_config(config_name)
+        self.num_fighters = getattr(self.config, 'num_fighters', 1)
         self.max_steps = getattr(self.config, 'max_steps', 100)
         self.jsbsim_freq = getattr(self.config, 'jsbsim_freq', 60)
         self.agent_interaction_steps = getattr(self.config, 'agent_interaction_steps', 12)
@@ -36,8 +36,8 @@ class BaseEnv(gym.Env):
 
     def load_variables(self):
         self.init_longitude, self.init_latitude = 120.0, 60.0
-        self.init_conditions = [None] * self.num_agents
-        self.sims = [None] * self.num_agents
+        self.init_conditions = [None] * self.num_fighters
+        self.sims = [None] * self.num_fighters
         self.current_step = 0
 
     def reset(self):
@@ -53,7 +53,7 @@ class BaseEnv(gym.Env):
                                 init_conditions=self.init_conditions[i],
                                 origin_point=(self.init_longitude, self.init_latitude),
                                 jsbsim_freq=self.jsbsim_freq,
-                                agent_interaction_steps=self.agent_interaction_steps) for i in range(self.num_agents)]
+                                agent_interaction_steps=self.agent_interaction_steps) for i in range(self.num_fighters)]
 
         next_observation = self.get_observation()
         self.task.reset(self)
@@ -95,7 +95,7 @@ class BaseEnv(gym.Env):
             (np.array): agents' observation of the environment state
         """
         # take actions
-        for agent_id in range(self.num_agents):
+        for agent_id in range(self.num_fighters):
             self.sims[agent_id].set_property_values(self.task.action_var, actions[agent_id])
             self.sims[agent_id].run()
 
@@ -108,7 +108,7 @@ class BaseEnv(gym.Env):
             (np.array): the first state observation of the episode
         """
         next_observation = []
-        for agent_id in range(self.num_agents):
+        for agent_id in range(self.num_fighters):
             next_observation.append(self.sims[agent_id].get_property_values(self.task.state_var))
         return np.array(next_observation)
 
