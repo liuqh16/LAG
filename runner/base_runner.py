@@ -17,6 +17,7 @@ class Runner(object):
 
         self.all_args = config['all_args']
         self.envs = config['envs']
+        self.eval_envs = self.envs #: TODO: add extra env?
         self.device = config['device']
         self.num_agents = config['num_agents']
 
