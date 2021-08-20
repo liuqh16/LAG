@@ -1,5 +1,5 @@
 # task config
-task: heading_task
+task: heading_altitude_task
 
 # simulation config
 jsbsim_freq: 60

@@ -61,7 +61,7 @@ def test_parallel_env():
     envs.close()
 
 def test_heading_env():
-    env = SingleControlEnv(config_name='heading_task')
+    env = SingleControlEnv(config_name='heading_altitude_task')
     # env = SelfPlayEnv(config='selfplay_with_missile_task')
     act_space = env.action_space
     trajectory_list = []
@@ -74,22 +74,22 @@ def test_heading_env():
     while True:
         cur_step += 1
         # flying straight forward
-        actions = np.array([20., 18.6, 20., 0.])
+        actions = [np.array([20., 18.6, 20., 0.])]
         # random fly
         # actions = act_space.sample()
         next_obs, reward, done, env_info = env.step(actions)
         trajectory_list.append(env.render())
-        print(reward_blue)
+        # print(reward_blue)
         if done:
             print(env_info)
             #reward_render = env.task.reward_functions[0].get_reward_trajectory()
-            print(env.sims['blue_fight'].get_property_value(c.simulation_sim_time_sec))
+            print(env.sims[0].get_property_value(c.simulation_sim_time_sec))
             break
     print(time.time() - start_time)
     #print(reward_render)
     np.save('save_trajectories.npy', np.asarray(trajectory_list))
 
     
-test_env()
+# test_env()
 # test_parallel_env()
-# test_heading_env()
+test_heading_env()

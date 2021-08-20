@@ -91,7 +91,7 @@ class SingleCombatEnv(BaseEnv):
         if self.use_baseline:
             # (1,dim) => (dim,) => (2,dim)
             actions = np.array(actions).squeeze()
-            baseline_action = self.task.baseline_agent.get_action(self, self.task)
+            baseline_action = self.task.baseline_agent.get_action(self, self.task) # ？加了个self
             actions = np.stack((actions, baseline_action))
 
         actions = self.task.normalize_action(self, actions)

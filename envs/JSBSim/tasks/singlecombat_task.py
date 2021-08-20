@@ -1,7 +1,5 @@
 import numpy as np
-from collections import OrderedDict
 from gym import spaces
-from torch import ones, pdist
 from .task_base import BaseTask
 from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, PostureReward, RelativeAltitudeReward

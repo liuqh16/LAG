@@ -13,7 +13,7 @@ class JSBSimRunner(Runner):
         self.episode_length = self.all_args.episode_length
 
     def load(self):
-        assert len(self.envs.observation_space) == self.num_agents
+        assert len(self.envs.observation_space) == self.num_agents, f'{len(self.envs.observation_space)}, {self.num_agents}'
         obs_space = self.envs.observation_space[0]
         act_space = self.envs.action_space[0]
 

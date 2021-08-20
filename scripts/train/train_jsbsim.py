@@ -12,7 +12,7 @@ import setproctitle
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 from config import get_config
 from runner.jsbsim_runner import JSBSimRunner as Runner
-from envs.JSBSim.envs.singlecombat_env import SingleCombatEnv
+from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
 
 
@@ -21,6 +21,8 @@ def make_train_env(all_args):
         def init_env():
             if all_args.env_name == "JSBSim":
                 env = SingleCombatEnv(all_args.task_name)
+            elif all_args.env_name == "SingleControl":
+                env = SingleControlEnv(all_args.task_name)
             else:
                 print("Can not support the " + all_args.env_name + "environment.")
                 raise NotImplementedError
@@ -37,9 +39,9 @@ def parse_args(args, parser):
     group = parser.add_argument_group("JSBSim Env parameters")
     group.add_argument('--episode-length', type=int, default=900,
                         help="the max length of an episode")
-    group.add_argument('--task-name', type=str, default='singlecombat_simple',
+    group.add_argument('--task-name', type=str, default='singlecombat_vsbaseline',
                         help="number of fighters controlled by RL policy")
-    group.add_argument('--num-agents', type=int, default=2,
+    group.add_argument('--num-agents', type=int, default=1,
                         help="number of fighters controlled by RL policy")
     all_args = parser.parse_known_args(args)[0]
     return all_args
@@ -99,11 +101,6 @@ def main(args):
 
     setproctitle.setproctitle(str(all_args.algorithm_name) + "-" + \
         str(all_args.env_name) + "-" + str(all_args.experiment_name) + "@" + str(all_args.user_name))
-
-    # seed
-    torch.manual_seed(all_args.seed)
-    torch.cuda.manual_seed_all(all_args.seed)
-    np.random.seed(all_args.seed)
 
     # env init
     envs = make_train_env(all_args)
