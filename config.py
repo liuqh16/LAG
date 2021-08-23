@@ -37,7 +37,7 @@ def _get_prepare_config(parser: argparse.ArgumentParser):
             number of training threads working in parallel. by default 1
         --n-rollout-threads <int>
             number of parallel envs for training/evaluating rollout. by default 4
-        --num-env-steps <int>
+        --num-env-steps <float>
             number of env steps to train (default: 1e7)
         --model-dir <str>
             by default None. set the path to pretrained model.
@@ -63,7 +63,7 @@ def _get_prepare_config(parser: argparse.ArgumentParser):
                         help="Number of torch threads for training (default 1)")
     group.add_argument("--n-rollout-threads", type=int, default=4,
                         help="Number of parallel envs for training/evaluating rollout (default 4)")
-    group.add_argument("--num-env-steps", type=int, default=1e7,
+    group.add_argument("--num-env-steps", type=float, default=1e7,
                         help='Number of environment steps to train (default: 1e7)')
     group.add_argument("--model-dir", type=str, default=None,
                         help="By default None. set the path to pretrained model.")

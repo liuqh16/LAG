@@ -84,7 +84,7 @@ class PPOTrainer():
         train_info = {}
         train_info['value_loss'] = 0
         train_info['policy_loss'] = 0
-        train_info['dist_entropy'] = 0
+        train_info['policy_entropy_loss'] = 0
         train_info['actor_grad_norm'] = 0
         train_info['critic_grad_norm'] = 0
         train_info['ratio'] = 0
@@ -97,12 +97,12 @@ class PPOTrainer():
 
             for sample in data_generator:
 
-                policy_loss, value_loss, dist_entropy, ratio, \
+                policy_loss, value_loss, policy_entropy_loss, ratio, \
                     actor_grad_norm, critic_grad_norm = self.ppo_update(sample)
 
                 train_info['value_loss'] += value_loss.item()
                 train_info['policy_loss'] += policy_loss.item()
-                train_info['dist_entropy'] += dist_entropy.item()
+                train_info['policy_entropy_loss'] += policy_entropy_loss.item()
                 train_info['actor_grad_norm'] += actor_grad_norm
                 train_info['critic_grad_norm'] += critic_grad_norm
                 train_info['ratio'] += ratio.mean().item()
