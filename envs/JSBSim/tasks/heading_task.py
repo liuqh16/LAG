@@ -109,3 +109,26 @@ class HeadingTask(BaseTask):
 
     def get_termination(self, env, agent_id, info={}):
         return super().get_termination(env, agent_id, info)
+
+
+class HeadingContinuousTask(HeadingTask):
+    def __init__(self, config):
+        super().__init__(config)
+    
+    def load_action_space(self):
+        # aileron, elevator, rudder, throttle
+        self.action_space = [spaces.Box(
+                                        low=np.array([-1.0, -1.0, -1.0, 0.4]), 
+                                        high=np.array([1.0, 1.0, 1.0, 0.9])
+                                         ) for _ in range(self.num_agents)]
+
+    def normalize_action(self, env, actions: list):
+        """Clip continuous value into proper value.
+        """
+        def _normalize(action):
+            return np.clip(action, [-1.0, -1.0, -1.0, 0.4], [1.0, 1.0, 1.0, 0.9])
+
+        norm_act = np.zeros((self.num_fighters, 4))
+        for agent_id in range(self.num_fighters):
+            norm_act[agent_id] = _normalize(actions[agent_id])
+        return norm_act

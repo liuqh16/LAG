@@ -3,7 +3,7 @@ from collections import OrderedDict
 from .env_base import BaseEnv
 from ..core.catalog import Catalog
 from ..core.simulation import Simulation
-from ..tasks import HeadingTask, HeadingAndAltitudeTask
+from ..tasks import HeadingTask, HeadingAndAltitudeTask, HeadingContinuousTask
 
 
 class SingleControlEnv(BaseEnv):
@@ -22,6 +22,8 @@ class SingleControlEnv(BaseEnv):
             self.task = HeadingTask(self.config)
         elif taskname == 'heading_altitude_task':
             self.task = HeadingAndAltitudeTask(self.config)
+        elif taskname == 'heading_continuous_task':
+            self.task = HeadingContinuousTask(self.config)
         else:
             raise NotImplementedError(f'Unknown taskname: {taskname}')
         self.observation_space = self.task.observation_space
@@ -50,7 +52,7 @@ class SingleControlEnv(BaseEnv):
         self.init_conditions = [{
                 Catalog.target_heading_deg: self.config.init_config[idx]['target_heading_deg'],
                 Catalog.target_altitude_ft: self.config.init_config[idx]['target_altitude_ft'],
-                Catalog.steady_flight: self.config.init_config[idx]['steady_flight'],
+                Catalog.heading_check_time: self.config.init_config[idx]['heading_check_interval'],
                 Catalog.ic_h_sl_ft: self.config.init_config[idx]['ic_h_sl_ft'],             # 1.1  altitude above mean sea level [ft]
                 Catalog.ic_terrain_elevation_ft: 0,                                           # +    default
                 Catalog.ic_long_gc_deg: self.config.init_config[idx]['ic_long_gc_deg'],     # 1.2  geodesic longitude [deg]
