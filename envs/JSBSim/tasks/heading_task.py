@@ -3,11 +3,14 @@ from gym import spaces
 from .task_base import BaseTask
 from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, HeadingReward
-from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout, UnreachHeading
+from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout, UnreachHeading, UnreachHeadingAndAltitude
 from ..utils.utils import lonlat2dis
 
 
 class HeadingTask(BaseTask):
+    '''
+    Control target heading with discrete action space
+    '''
     def __init__(self, config):
         self.config = config
         self.num_fighters = getattr(self.config, 'num_fighters', 2)
@@ -112,6 +115,9 @@ class HeadingTask(BaseTask):
 
 
 class HeadingContinuousTask(HeadingTask):
+    '''
+    Control target heading with continuous action space
+    '''
     def __init__(self, config):
         super().__init__(config)
     
@@ -132,3 +138,18 @@ class HeadingContinuousTask(HeadingTask):
         for agent_id in range(self.num_fighters):
             norm_act[agent_id] = _normalize(actions[agent_id])
         return norm_act
+
+
+class HeadingAndAltitudeTask(HeadingTask):
+    '''
+    Control target heading and target altitude with discrete action space
+    '''
+    def __init__(self, config):
+        super().__init__(config)
+        self.termination_conditions = [
+            UnreachHeadingAndAltitude(self.config),
+            ExtremeState(self.config),
+            Overload(self.config),
+            LowAltitude(self.config),
+            Timeout(self.config),
+        ]

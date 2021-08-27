@@ -1,5 +1,5 @@
 # task config
-task: heading_task
+task: heading_continuous_task
 
 # simulation config
 jsbsim_freq: 60
@@ -24,7 +24,7 @@ init_config: {
     ic_u_fps: 800.0,
     target_heading_deg: 30.0, 
     target_altitude_ft: 20000,
-    heading_check_interval: 10.0
+    heading_check_interval: 30.0
   }
 }
 

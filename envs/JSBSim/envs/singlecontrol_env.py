@@ -57,13 +57,13 @@ class SingleControlEnv(BaseEnv):
                 Catalog.ic_terrain_elevation_ft: 0,                                           # +    default
                 Catalog.ic_long_gc_deg: self.config.init_config[idx]['ic_long_gc_deg'],     # 1.2  geodesic longitude [deg]
                 Catalog.ic_lat_geod_deg: self.config.init_config[idx]['ic_lat_geod_deg'],   # 1.3  geodesic latitude  [deg]
-                Catalog.ic_psi_true_deg: self.config.init_config[idx]['ic_psi_true_deg'],   # 5.   initial (true) heading [deg]   (0, 360)
-                Catalog.ic_u_fps: self.config.init_config[idx]['ic_u_fps'],                 # 2.1  body frame x-axis velocity [ft/s]  (-2200, 2200)
-                Catalog.ic_v_fps: 0,                                                          # 2.2  body frame y-axis velocity [ft/s]  (-2200, 2200)
-                Catalog.ic_w_fps: 0,                                                          # 2.3  body frame z-axis velocity [ft/s]  (-2200, 2200)
-                Catalog.ic_p_rad_sec: 0,                                                      # 3.1  roll rate  [rad/s]     (-2 * math.pi, 2 * math.pi)
-                Catalog.ic_q_rad_sec: 0,                                                      # 3.2  pitch rate [rad/s]     (-2 * math.pi, 2 * math.pi)
-                Catalog.ic_r_rad_sec: 0,                                                      # 3.3  yaw rate   [rad/s]     (-2 * math.pi, 2 * math.pi)
+                Catalog.ic_psi_true_deg: np.random.uniform(0, 360),              # 5.   initial (true) heading [deg]   (0, 360)
+                Catalog.ic_u_fps: np.random.uniform(500, 1000),                     # 2.1  body frame x-axis velocity [ft/s]  (-2200, 2200)
+                Catalog.ic_v_fps: np.random.uniform(-100, 100),                     # 2.2  body frame y-axis velocity [ft/s]  (-2200, 2200)
+                Catalog.ic_w_fps: np.random.uniform(-100, 100),                     # 2.3  body frame z-axis velocity [ft/s]  (-2200, 2200)
+                Catalog.ic_p_rad_sec: np.random.uniform(-np.pi, np.pi),             # 3.1  roll rate  [rad/s]     (-2 * math.pi, 2 * math.pi)
+                Catalog.ic_q_rad_sec: np.random.uniform(-np.pi, np.pi),             # 3.2  pitch rate [rad/s]     (-2 * math.pi, 2 * math.pi)
+                Catalog.ic_r_rad_sec: np.random.uniform(-np.pi, np.pi),             # 3.3  yaw rate   [rad/s]     (-2 * math.pi, 2 * math.pi)
                 Catalog.ic_roc_fpm: 0,                                                        # 4.   initial rate of climb [ft/min]
                 Catalog.fcs_throttle_cmd_norm: 0.,                                            # 6.
             } for idx in range(self.num_fighters)]

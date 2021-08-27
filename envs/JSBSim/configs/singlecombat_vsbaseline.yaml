@@ -15,6 +15,8 @@ acceleration_limit_z: 10.0
 # init config
 num_fighters: 2
 use_baseline: true
+which_baseline: 1  # 0 for straight fly baseline, 1 for singlecontrol model baseline
+baseline_model_path: "/home/lqh/jyh/CloseAirCombat/scripts/results/SingleControl/heading_task/ppo/0824heading_save_structure/wandb/latest-run/files/actor.pth"
 init_config: {
   0: {
     aircraft_name: f16,
@@ -27,9 +29,9 @@ init_config: {
   1: {
     aircraft_name: f16,
     ic_h_sl_ft: 20000,
-    ic_lat_geod_deg: 60.05,
+    ic_lat_geod_deg: 60.5,
     ic_long_gc_deg: 120.0,
-    ic_psi_true_deg: 180.0,
+    ic_psi_true_deg: 0.0,
     ic_u_fps: 800.0,
   }
 }

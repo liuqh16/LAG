@@ -6,7 +6,7 @@ jsbsim_freq: 60
 agent_interaction_steps: 12 # step 0.2s
 
 # termination config
-max_steps: 3000              # episode: 600s
+max_steps: 900              # episode: 180s
 altitude_limit: 2500
 acceleration_limit_x: 10.0
 acceleration_limit_y: 10.0
@@ -22,9 +22,9 @@ init_config: {
     ic_long_gc_deg: 120.0,
     ic_psi_true_deg: 0.0,    # initial heading
     ic_u_fps: 800.0,
-    target_heading_deg: 0.0, 
-    target_altitude_ft: 20000,
-    steady_flight: 15.0
+    target_heading_deg: 30.0, 
+    target_altitude_ft: 21000,
+    heading_check_interval: 30.0
   }
 }
 

@@ -108,12 +108,12 @@ class Runner(object):
         torch.save(policy_critic, str(self.save_dir) + "/critic.pth")
 
     def restore(self):
-        policy_actor_state_dict = torch.load(str(self.model_dir) + '/actor_agent.pt')
-        self.policy.actor.load_state_dict(policy_actor_state_dict)
-        policy_critic_state_dict = torch.load(str(self.model_dir) + '/critic_agent.pt')
-        self.policy.critic.load_state_dict(policy_critic_state_dict)
-        # self.policy.actor = torch.load(str(self.model_dir) + '/actor_agent.pth')
-        # self.policy.critic = torch.load(str(self.model_dir) + '/critic_agent.pth')
+        # policy_actor_state_dict = torch.load(str(self.model_dir) + '/actor_agent.pt')
+        # self.policy.actor.load_state_dict(policy_actor_state_dict)
+        # policy_critic_state_dict = torch.load(str(self.model_dir) + '/critic_agent.pt')
+        # self.policy.critic.load_state_dict(policy_critic_state_dict)
+        self.policy.actor = torch.load(str(self.model_dir) + '/actor_agent.pth')
+        self.policy.critic = torch.load(str(self.model_dir) + '/critic_agent.pth')
 
 
     def log_info(self, infos, total_num_steps):

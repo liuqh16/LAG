@@ -1,11 +1,11 @@
 import numpy as np
 from gym import spaces
+import torch
 from .task_base import BaseTask
 from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, PostureReward, RelativeAltitudeReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, ShootDown, Timeout
-from ..utils.utils import lonlat2dis, get_AO_TA_R
-
+from ..utils.utils import in_range_deg, lonlat2dis, get_AO_TA_R, in_range_deg
 
 class SingleCombatTask(BaseTask):
     def __init__(self, config):
@@ -14,6 +14,8 @@ class SingleCombatTask(BaseTask):
         assert self.num_fighters == 2, 'Only support one-to-one fighter combat!'
         self.use_baseline = getattr(self.config, 'use_baseline', False)
         self.num_agents = self.num_fighters - self.use_baseline  # output obs/act space
+        self.which_baseline = getattr(self.config, 'which_baseline', 0)
+        self.baseline_model_path = getattr(self.config, 'baseline_model_path', None)
 
         self.reward_functions = [
             AltitudeReward(self.config),
@@ -31,7 +33,11 @@ class SingleCombatTask(BaseTask):
         self.load_observation_space()
         self.load_action_space()
         if self.use_baseline:
-            self.baseline_agent = BaselineAgent(self.observation_space, self.action_space)
+            if self.which_baseline == 1:
+                self.baseline_agent = SingleControlAgent(self.baseline_model_path)
+            else:
+                self.baseline_agent = StraightFlyAgent()
+            
 
     def load_variables(self):
         self.state_var = [
@@ -48,6 +54,7 @@ class SingleCombatTask(BaseTask):
             c.accelerations_n_pilot_x_norm,     # 10. a_north   (unit: G)
             c.accelerations_n_pilot_y_norm,     # 11. a_east    (unit: G)
             c.accelerations_n_pilot_z_norm,     # 12. a_down    (unit: G)
+            c.attitude_psi_deg
         ]
         self.action_var = [
             c.fcs_aileron_cmd_norm,             # [-1., 1.]
@@ -139,6 +146,8 @@ class SingleCombatTask(BaseTask):
 
         Must call it after `env.get_observation()`
         """
+        if self.use_baseline:
+            self.baseline_agent.reset()
         return super().reset(env)
 
     def get_reward(self, env, agent_id, info={}):
@@ -151,10 +160,49 @@ class SingleCombatTask(BaseTask):
         return super().get_termination(env, agent_id, info)
 
 
-class BaselineAgent:
-    def __init__(self, obs_space, act_space):
-        self.obs_space = obs_space
-        self.act_space = act_space
-    
+
+
+import torch
+class StraightFlyAgent:
+    def __init__(self):
+        pass
+
     def get_action(self, env, task):
         return np.array([20, 18.6, 20, 0])
+
+    def reset(self):
+        pass
+
+class SingleControlAgent:
+    def __init__(self, model_path=None):
+        self.model_path = model_path
+        self.restore()
+        self.prep_rollout()
+        self.reset()
+    
+    def reset(self):
+        self.rnn_states = np.zeros((1, 1, 128)) # hard code
+
+    def get_action(self, env, task):
+        ego_id, enm_id= 1, 0
+        ego_obs = env.sims[1].get_property_values(task.state_var)
+        enm_obs = env.sims[0].get_property_values(task.state_var)
+        observation = np.zeros(8)
+        observation[0] = (enm_obs[2]-ego_obs[2]) * 0.304 / 1000     #  0. ego delta altitude  (unit: 1km)
+        delta_heading = in_range_deg(enm_obs[13]-ego_obs[13])
+        observation[1] = delta_heading                 #  1. ego delta heading   (unit rad)
+        observation[2] = ego_obs[3]                    #  2. ego_roll    (unit: rad)
+        observation[3] = ego_obs[4]                    #  3. ego_pitch   (unit: rad)
+        observation[4] = ego_obs[6] * 0.304 / 340      #  4. ego_v_north        (unit: mh)
+        observation[5] = ego_obs[7] * 0.304 / 340      #  5. ego_v_east        (unit: mh)
+        observation[6] = ego_obs[8] * 0.304 / 340      #  6. ego_v_down        (unit: mh)
+        observation[7] = ego_obs[9] * 0.304 / 340      #  7. ego_vc        (unit: mh)
+        observation = np.expand_dims(observation, axis=0)    # dim: (1,8)
+        action, _, self.rnn_states = self.actor.forward(observation, self.rnn_states, deterministic=True) 
+        return action.detach().cpu().numpy().squeeze()
+
+    def restore(self):
+        self.actor = torch.load(str(self.model_path))
+
+    def prep_rollout(self):
+        self.actor.eval()

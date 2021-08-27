@@ -12,8 +12,9 @@ def test_env():
     # env = SingleCombatEnv(config_name='singlecombat_selfplay')
     env = SingleCombatEnv(config_name='singlecombat_vsbaseline')
     act_space = env.action_space[0]
-
+    trajectory_list = []
     env.reset()
+    trajectory_list.append(env.render())
     cur_step = -1
     episode_reward = np.zeros(env.num_agents)
     start_time = time.time()
@@ -24,12 +25,14 @@ def test_env():
         # random fly
         # actions = [act_space.sample() for _ in range(env.num_agents)]
         next_obs, reward, done, env_info = env.step(actions)
+        trajectory_list.append(env.render())
         episode_reward += reward
         print(episode_reward)
         if np.array(done).all():
             print(env_info)
             break
     print(time.time() - start_time)
+    np.save("trajectory_data", np.asarray(trajectory_list))
 
 
 def test_parallel_env():
@@ -61,7 +64,7 @@ def test_parallel_env():
     envs.close()
 
 def test_heading_env():
-    env = SingleControlEnv(config_name='heading_altitude_task')
+    env = SingleControlEnv(config_name='heading_task')
     # env = SelfPlayEnv(config='selfplay_with_missile_task')
     act_space = env.action_space
     trajectory_list = []
@@ -69,27 +72,26 @@ def test_heading_env():
     trajectory_list.append(env.render())
     reward_render = {}
     cur_step = 0
-    reward_blue = 0
     start_time = time.time()
     while True:
         cur_step += 1
         # flying straight forward
-        actions = [np.array([20., 18.6, 20., 0.])]
+        actions = [np.array([0, -0.05, 0., 0.4])]
         # random fly
         # actions = act_space.sample()
         next_obs, reward, done, env_info = env.step(actions)
         trajectory_list.append(env.render())
-        # print(reward_blue)
+        print(reward)
         if done:
             print(env_info)
             #reward_render = env.task.reward_functions[0].get_reward_trajectory()
             print(env.sims[0].get_property_value(c.simulation_sim_time_sec))
             break
     print(time.time() - start_time)
-    #print(reward_render)
-    np.save('save_trajectories.npy', np.asarray(trajectory_list))
+    # print(reward_render)
+    # np.save('save_trajectories.npy', np.asarray(trajectory_list))
 
     
-# test_env()
+test_env()
 # test_parallel_env()
-test_heading_env()
+# test_heading_env()
