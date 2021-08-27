@@ -66,8 +66,8 @@ class JSBSimRunner(Runner):
             # log information
             if episode % self.log_interval == 0:
                 end = time.time()
-                print("\n Task {} Algo {} Exp {} updates {}/{} episodes, total num timesteps {}/{}, FPS {}.\n"
-                        .format(self.all_args.task_name,
+                print("\n Scenario {} Algo {} Exp {} updates {}/{} episodes, total num timesteps {}/{}, FPS {}.\n"
+                        .format(self.all_args.scenario_name,
                                 self.algorithm_name,
                                 self.experiment_name,
                                 episode,

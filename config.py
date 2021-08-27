@@ -37,7 +37,7 @@ def _get_prepare_config(parser: argparse.ArgumentParser):
             number of training threads working in parallel. by default 1
         --n-rollout-threads <int>
             number of parallel envs for training/evaluating rollout. by default 4
-        --num-env-steps <int>
+        --num-env-steps <float>
             number of env steps to train (default: 1e7)
         --model-dir <str>
             by default None. set the path to pretrained model.

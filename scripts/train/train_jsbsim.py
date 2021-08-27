@@ -20,9 +20,9 @@ def make_train_env(all_args):
     def get_env_fn(rank):
         def init_env():
             if all_args.env_name == "JSBSim":
-                env = SingleCombatEnv(all_args.task_name)
+                env = SingleCombatEnv(all_args.scenario_name)
             elif all_args.env_name == "SingleControl":
-                env = SingleControlEnv(all_args.task_name)
+                env = SingleControlEnv(all_args.scenerio_name)
             else:
                 print("Can not support the " + all_args.env_name + "environment.")
                 raise NotImplementedError
@@ -39,9 +39,9 @@ def parse_args(args, parser):
     group = parser.add_argument_group("JSBSim Env parameters")
     group.add_argument('--episode-length', type=int, default=900,
                         help="the max length of an episode")
-    group.add_argument('--task-name', type=str, default='singlecombat_vsbaseline',
-                        help="number of fighters controlled by RL policy")
-    group.add_argument('--num-agents', type=int, default=1,
+    group.add_argument('--scenario-name', type=str, default='singlecombat_simple',
+                        help="Which scenario to run on")
+    group.add_argument('--num-agents', type=int, default=2,
                         help="number of fighters controlled by RL policy")
     all_args = parser.parse_known_args(args)[0]
     return all_args
@@ -71,7 +71,7 @@ def main(args):
 
     # run dir
     run_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/results") \
-         / all_args.env_name / all_args.task_name / all_args.algorithm_name / all_args.experiment_name
+         / all_args.env_name / all_args.scenario_name / all_args.algorithm_name / all_args.experiment_name
     if not run_dir.exists():
         os.makedirs(str(run_dir))
 
@@ -82,7 +82,7 @@ def main(args):
                          entity=all_args.wandb_name,
                          notes=socket.gethostname(),
                          name=f"{all_args.algorithm_name}_{all_args.experiment_name}_seed{all_args.seed}",
-                         group=all_args.task_name,
+                         group=all_args.scenario_name,
                          dir=str(run_dir),
                          job_type="training",
                          reinit=True)
