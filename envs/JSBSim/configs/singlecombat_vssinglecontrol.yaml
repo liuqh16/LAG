@@ -1,5 +1,5 @@
 # task config
-task: singlecombat
+task: continuous_singlecombat
 
 # simulation config
 jsbsim_freq: 60
@@ -15,7 +15,8 @@ acceleration_limit_z: 10.0
 # init config
 num_fighters: 2
 use_baseline: true
-which_baseline: 0  # 0 for straight fly baseline, 1 for singlecontrol model baseline
+which_baseline: 1  # 0 for straight fly baseline, 1 for singlecontrol model baseline
+baseline_model_path: "/home/lqh/jyh/CloseAirCombat/scripts/results/SingleControl/heading_task/ppo/0824heading_save_structure/wandb/latest-run/files/actor.pth"
 init_config: {
   0: {
     aircraft_name: f16,

@@ -148,10 +148,13 @@ class JSBSimRunner(Runner):
     @torch.no_grad()
     def render(self):
         render_episode_rewards, trajectory_data = 0, []
-
+        observation_data = []
+        action_data = []
+        rnn_states_data = []
         render_obs = self.envs.reset()
+        observation_data.append(render_obs)
         render_rnn_states = np.zeros((1, *self.buffer.rnn_states_actor.shape[2:]), dtype=np.float32)
-
+        rnn_states_data.append(render_rnn_states)
         while True:
             self.trainer.prep_rollout()
             render_actions, render_rnn_states = self.trainer.policy.act(np.concatenate(render_obs),
@@ -164,7 +167,10 @@ class JSBSimRunner(Runner):
             render_obs, render_rewards, render_dones, render_infos = self.envs.step(render_actions)
             render_episode_rewards += render_rewards
             trajectory_data.append(self.envs.render(mode='rgb_array'))
-            if render_dones:
+            observation_data.append(render_obs)
+            action_data.append(render_actions)
+            rnn_states_data.append(render_rnn_states)
+            if render_dones.any():
                 break
 
         render_infos = {}
@@ -172,3 +178,6 @@ class JSBSimRunner(Runner):
         print("render episode reward of agent: " + str(render_infos['render_episode_reward']))
         trajectory_data = np.asarray(trajectory_data).squeeze() # dim: (n_time, n_state)
         np.save(f'{self.run_dir}/render', trajectory_data)
+        np.save(f'{self.run_dir}/observation', observation_data)
+        np.save(f'{self.run_dir}/action', action_data)
+        np.save(f'{self.run_dir}/rnn_state', rnn_states_data)

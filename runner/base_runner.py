@@ -112,8 +112,8 @@ class Runner(object):
         # self.policy.actor.load_state_dict(policy_actor_state_dict)
         # policy_critic_state_dict = torch.load(str(self.model_dir) + '/critic_agent.pt')
         # self.policy.critic.load_state_dict(policy_critic_state_dict)
-        self.policy.actor = torch.load(str(self.model_dir) + '/actor_agent.pth')
-        self.policy.critic = torch.load(str(self.model_dir) + '/critic_agent.pth')
+        self.policy.actor = torch.load(str(self.model_dir) + '/actor.pth')
+        self.policy.critic = torch.load(str(self.model_dir) + '/critic.pth')
 
 
     def log_info(self, infos, total_num_steps):

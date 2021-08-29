@@ -1,5 +1,5 @@
 # task config
-task: singlecombat
+task: singlecombat_with_artillery
 
 # simulation config
 jsbsim_freq: 60

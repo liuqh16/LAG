@@ -4,7 +4,7 @@ import torch
 from .task_base import BaseTask
 from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, PostureReward, RelativeAltitudeReward
-from ..termination_conditions import ExtremeState, LowAltitude, Overload, ShootDown, Timeout
+from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout
 from ..utils.utils import in_range_deg, lonlat2dis, get_AO_TA_R, in_range_deg
 
 class SingleCombatTask(BaseTask):
@@ -12,6 +12,7 @@ class SingleCombatTask(BaseTask):
         self.config = config
         self.num_fighters = getattr(self.config, 'num_fighters', 2)
         assert self.num_fighters == 2, 'Only support one-to-one fighter combat!'
+        self.bloods = [100 for _ in range(self.num_fighters)]
         self.use_baseline = getattr(self.config, 'use_baseline', False)
         self.num_agents = self.num_fighters - self.use_baseline  # output obs/act space
         self.which_baseline = getattr(self.config, 'which_baseline', 0)
@@ -160,6 +161,30 @@ class SingleCombatTask(BaseTask):
         return super().get_termination(env, agent_id, info)
 
 
+class SingleCombatContinuousTask(SingleCombatTask):
+    '''
+    Combat task with continuous action space
+    '''
+    def __init__(self, config):
+        super().__init__(config)
+    
+    def load_action_space(self):
+        # aileron, elevator, rudder, throttle
+        self.action_space = [spaces.Box(
+                                        low=np.array([-1.0, -1.0, -1.0, 0.4]), 
+                                        high=np.array([1.0, 1.0, 1.0, 0.9])
+                                         ) for _ in range(self.num_agents)]
+
+    def normalize_action(self, env, actions: list):
+        """Clip continuous value into proper value.
+        """
+        def _normalize(action):
+            return np.clip(action, [-1.0, -1.0, -1.0, 0.4], [1.0, 1.0, 1.0, 0.9])
+
+        norm_act = np.zeros((self.num_fighters, 4))
+        for agent_id in range(self.num_fighters):
+            norm_act[agent_id] = _normalize(actions[agent_id])
+        return norm_act
 
 
 import torch
@@ -187,21 +212,27 @@ class SingleControlAgent:
         ego_id, enm_id= 1, 0
         ego_obs = env.sims[1].get_property_values(task.state_var)
         enm_obs = env.sims[0].get_property_values(task.state_var)
-        observation = np.zeros(8)
-        observation[0] = (enm_obs[2]-ego_obs[2]) * 0.304 / 1000     #  0. ego delta altitude  (unit: 1km)
-        delta_heading = in_range_deg(enm_obs[13]-ego_obs[13])
-        observation[1] = delta_heading                 #  1. ego delta heading   (unit rad)
-        observation[2] = ego_obs[3]                    #  2. ego_roll    (unit: rad)
-        observation[3] = ego_obs[4]                    #  3. ego_pitch   (unit: rad)
-        observation[4] = ego_obs[6] * 0.304 / 340      #  4. ego_v_north        (unit: mh)
-        observation[5] = ego_obs[7] * 0.304 / 340      #  5. ego_v_east        (unit: mh)
-        observation[6] = ego_obs[8] * 0.304 / 340      #  6. ego_v_down        (unit: mh)
-        observation[7] = ego_obs[9] * 0.304 / 340      #  7. ego_vc        (unit: mh)
-        observation = np.expand_dims(observation, axis=0)    # dim: (1,8)
+        # observation = np.zeros(8)
+        # observation[0] = (20000-ego_obs[2]) * 0.304 / 1000     #  0. ego delta altitude  (unit: 1km)
+        # delta_heading = in_range_deg(90-ego_obs[13])
+        # observation[1] = delta_heading                 #  1. ego delta heading   (unit rad)
+        # observation[2] = ego_obs[3]                    #  2. ego_roll    (unit: rad)
+        # observation[3] = ego_obs[4]                    #  3. ego_pitch   (unit: rad)
+        # observation[4] = ego_obs[6] * 0.304 / 340      #  4. ego_v_north        (unit: mh)
+        # observation[5] = ego_obs[7] * 0.304 / 340      #  5. ego_v_east        (unit: mh)
+        # observation[6] = ego_obs[8] * 0.304 / 340      #  6. ego_v_down        (unit: mh)
+        # observation[7] = ego_obs[9] * 0.304 / 340      #  7. ego_vc        (unit: mh)
+        # observation = np.expand_dims(observation, axis=0)    # dim: (1,8)
+        observation = self.observation[self.index].reshape((1,8))
+        self.rnn_states = self.rnn_states_list[self.index].reshape((1,1,128))
+        self.index += 1
         action, _, self.rnn_states = self.actor.forward(observation, self.rnn_states, deterministic=True) 
         return action.detach().cpu().numpy().squeeze()
 
     def restore(self):
+        self.observation = np.load('/home/lqh/jyh/CloseAirCombat/scripts/results/SingleControl/heading_task/ppo/heading_random_initial_20s/render1/observation.npy')
+        self.rnn_states_list = np.load('/home/lqh/jyh/CloseAirCombat/scripts/results/SingleControl/heading_task/ppo/heading_random_initial_20s/render1/rnn_state.npy')
+        self.index = 0
         self.actor = torch.load(str(self.model_path))
 
     def prep_rollout(self):

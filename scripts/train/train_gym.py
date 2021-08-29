@@ -42,7 +42,7 @@ class GymEnv:
 def make_train_env(all_args):
     def get_env_fn(rank):
         def init_env():
-            env = gym.make(all_args.task_name)
+            env = gym.make(all_args.scenario_name)
             # env.seed(all_args.seed + rank * 1000)
             return GymEnv(env)
         return init_env
@@ -54,7 +54,7 @@ def make_train_env(all_args):
 
 def parse_args(args, parser):
     group = parser.add_argument_group("Gym Env parameters")
-    group.add_argument('--task-name', type=str, default='CartPole-v1',
+    group.add_argument('--scenario-name', type=str, default='CartPole-v1',
                         help="the name of gym env")
     group.add_argument('--episode-length', type=int, default=900,
                         help="the max length of an episode")
@@ -88,7 +88,7 @@ def main(args):
 
     # run dir
     run_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/results") \
-         / all_args.env_name / all_args.task_name / all_args.algorithm_name / all_args.experiment_name
+         / all_args.env_name / all_args.scenario_name / all_args.algorithm_name / all_args.experiment_name
     if not run_dir.exists():
         os.makedirs(str(run_dir))
 
@@ -99,7 +99,7 @@ def main(args):
                          entity=all_args.wandb_name,
                          notes=socket.gethostname(),
                          name=f"{all_args.algorithm_name}_{all_args.experiment_name}_seed{all_args.seed}",
-                         group=all_args.task_name,
+                         group=all_args.scenario_name,
                          dir=str(run_dir),
                          job_type="training",
                          reinit=True)
