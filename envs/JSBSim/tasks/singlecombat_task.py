@@ -34,10 +34,12 @@ class SingleCombatTask(BaseTask):
         self.load_observation_space()
         self.load_action_space()
         if self.use_baseline:
-            if self.which_baseline == 1:
+            if self.which_baseline == 'control':
                 self.baseline_agent = SingleControlAgent(self.baseline_model_path)
-            else:
+            elif self.which_baseline == 'straight':
                 self.baseline_agent = StraightFlyAgent()
+            elif self.which_baseline == 'straight_continuous':
+                self.baseline_agent = StraightFlyContinuousAgent()
             
 
     def load_variables(self):
@@ -198,6 +200,18 @@ class StraightFlyAgent:
     def reset(self):
         pass
 
+
+class StraightFlyContinuousAgent:
+    def __init__(self) -> None:
+        pass
+
+    def get_action(self, env, task):
+        return np.array([0., -0.07 ,0., 0.4])
+    
+    def reset(self):
+        pass
+
+
 class SingleControlAgent:
     def __init__(self, model_path=None):
         self.model_path = model_path
@@ -212,26 +226,29 @@ class SingleControlAgent:
         ego_id, enm_id= 1, 0
         ego_obs = env.sims[1].get_property_values(task.state_var)
         enm_obs = env.sims[0].get_property_values(task.state_var)
-        # observation = np.zeros(8)
-        # observation[0] = (20000-ego_obs[2]) * 0.304 / 1000     #  0. ego delta altitude  (unit: 1km)
-        # delta_heading = in_range_deg(90-ego_obs[13])
-        # observation[1] = delta_heading                 #  1. ego delta heading   (unit rad)
-        # observation[2] = ego_obs[3]                    #  2. ego_roll    (unit: rad)
-        # observation[3] = ego_obs[4]                    #  3. ego_pitch   (unit: rad)
-        # observation[4] = ego_obs[6] * 0.304 / 340      #  4. ego_v_north        (unit: mh)
-        # observation[5] = ego_obs[7] * 0.304 / 340      #  5. ego_v_east        (unit: mh)
-        # observation[6] = ego_obs[8] * 0.304 / 340      #  6. ego_v_down        (unit: mh)
-        # observation[7] = ego_obs[9] * 0.304 / 340      #  7. ego_vc        (unit: mh)
-        # observation = np.expand_dims(observation, axis=0)    # dim: (1,8)
-        observation = self.observation[self.index].reshape((1,8))
-        self.rnn_states = self.rnn_states_list[self.index].reshape((1,1,128))
-        self.index += 1
-        action, _, self.rnn_states = self.actor.forward(observation, self.rnn_states, deterministic=True) 
-        return action.detach().cpu().numpy().squeeze()
+        observation = np.zeros(8)
+        observation[0] = (20000-ego_obs[2]) * 0.304 / 1000     #  0. ego delta altitude  (unit: 1km)
+        delta_heading = in_range_deg(90-ego_obs[13])
+        observation[1] = delta_heading                 #  1. ego delta heading   (unit rad)
+        observation[2] = ego_obs[3]                    #  2. ego_roll    (unit: rad)
+        observation[3] = ego_obs[4]                    #  3. ego_pitch   (unit: rad)
+        observation[4] = ego_obs[6] * 0.304 / 340      #  4. ego_v_north        (unit: mh)
+        observation[5] = ego_obs[7] * 0.304 / 340      #  5. ego_v_east        (unit: mh)
+        observation[6] = ego_obs[8] * 0.304 / 340      #  6. ego_v_down        (unit: mh)
+        observation[7] = ego_obs[9] * 0.304 / 340      #  7. ego_vc        (unit: mh)
+        observation = np.expand_dims(observation, axis=0)    # dim: (1,8)
+        # observation = self.observation[self.index].reshape((1,8))
+        # self.rnn_states = self.rnn_states_list[self.index].reshape((1,1,128))
+        # self.index += 1
+        action, _, self.rnn_states = self.actor.forward(observation, self.rnn_states, deterministic=True)
+        action_cpu = action.detach().cpu().numpy().squeeze()
+        # action_cpu = self.action[self.index].reshape((4,))
+        return  action_cpu
 
     def restore(self):
         self.observation = np.load('/home/lqh/jyh/CloseAirCombat/scripts/results/SingleControl/heading_task/ppo/heading_random_initial_20s/render1/observation.npy')
         self.rnn_states_list = np.load('/home/lqh/jyh/CloseAirCombat/scripts/results/SingleControl/heading_task/ppo/heading_random_initial_20s/render1/rnn_state.npy')
+        self.action = np.load('/home/lqh/jyh/CloseAirCombat/scripts/results/SingleControl/heading_task/ppo/heading_random_initial_20s/render1/action.npy')
         self.index = 0
         self.actor = torch.load(str(self.model_path))
 

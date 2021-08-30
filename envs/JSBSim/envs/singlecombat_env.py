@@ -89,7 +89,6 @@ class SingleCombatEnv(BaseEnv):
         """
         self.current_step += 1
         info = {}
-
         if self.use_baseline:
             # (1,dim) => (dim,) => (2,dim)
             actions = np.array(actions).squeeze()

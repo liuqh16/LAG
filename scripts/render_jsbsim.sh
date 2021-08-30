@@ -1,13 +1,15 @@
 #!/bin/sh
-env="SingleControl"     # JSBSim or SingleControl
-task="heading_task"     # singlecombat_task or heading_task or heading_altitude_task.py
-num_agents=1
+env="JSBSim"     # JSBSim or SingleControl
+scenario="singlecombat_with_artillery_selfplay"     # singlecombat_task or heading_task or heading_altitude_task.py
+num_agents=2
 algo="ppo"
-exp="heading_0820"
+exp="SelfPlay"
 seed=1
 
-echo "env is ${env}, task is ${task}, algo is ${algo}, exp is ${exp}, seed is ${seed}"
+echo "env is ${env}, scenario is ${scenario}, algo is ${algo}, exp is ${exp}, seed is ${seed}"
 python render/render_jsbsim.py \
-    --env-name ${env} --algorithm-name ${algo} --task-name ${task} --experiment-name ${exp} --num-agents ${num_agents} \
-    --user-name "jyh" --model-dir "results/SingleControl/heading_task/ppo/heading_0820/wandb/latest-run/files"\
+    --env-name ${env} --algorithm-name ${algo} --scenario-name ${scenario} --experiment-name ${exp} --num-agents ${num_agents} \
+    --user-name "jyh" \
+    --n-rollout-threads 1 \
+    --model-dir "/home/lqh/jyh/CloseAirCombat/scripts/results/JSBSim/singlecombat_with_artillery_selfplay/ppo/SelfPlay/wandb/latest-run/files"\
     --seed ${seed}

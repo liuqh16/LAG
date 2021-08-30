@@ -15,7 +15,7 @@ acceleration_limit_z: 10.0
 # init config
 num_fighters: 2
 use_baseline: true
-which_baseline: 0  # 0 for straight fly baseline, 1 for singlecontrol model baseline
+which_baseline: straight 
 init_config: {
   0: {
     aircraft_name: f16,
