@@ -5,7 +5,7 @@ from .task_base import BaseTask
 from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, PostureReward, RelativeAltitudeReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout
-from ..utils.utils import in_range_deg, lonlat2dis, get_AO_TA_R, in_range_deg
+from ..utils.utils import in_range_rad, lonlat2dis, get_AO_TA_R
 
 class SingleCombatTask(BaseTask):
     def __init__(self, config):
@@ -57,7 +57,6 @@ class SingleCombatTask(BaseTask):
             c.accelerations_n_pilot_x_norm,     # 10. a_north   (unit: G)
             c.accelerations_n_pilot_y_norm,     # 11. a_east    (unit: G)
             c.accelerations_n_pilot_z_norm,     # 12. a_down    (unit: G)
-            c.attitude_psi_deg
         ]
         self.action_var = [
             c.fcs_aileron_cmd_norm,             # [-1., 1.]
@@ -218,6 +217,7 @@ class SingleControlAgent:
         self.restore()
         self.prep_rollout()
         self.reset()
+        self.origin_observation = []
     
     def reset(self):
         self.rnn_states = np.zeros((1, 1, 128)) # hard code
@@ -226,10 +226,10 @@ class SingleControlAgent:
         ego_id, enm_id= 1, 0
         ego_obs = env.sims[1].get_property_values(task.state_var)
         enm_obs = env.sims[0].get_property_values(task.state_var)
+
         observation = np.zeros(8)
-        observation[0] = (20000-ego_obs[2]) * 0.304 / 1000     #  0. ego delta altitude  (unit: 1km)
-        delta_heading = in_range_deg(90-ego_obs[13])
-        observation[1] = delta_heading                 #  1. ego delta heading   (unit rad)
+        observation[0] = (enm_obs[2]-ego_obs[2]) * 0.304 / 1000         #  0. ego delta altitude  (unit: 1km)
+        observation[1] = in_range_rad((enm_obs[5]-ego_obs[5]) + np.pi)  #  1. ego delta heading   (unit rad)
         observation[2] = ego_obs[3]                    #  2. ego_roll    (unit: rad)
         observation[3] = ego_obs[4]                    #  3. ego_pitch   (unit: rad)
         observation[4] = ego_obs[6] * 0.304 / 340      #  4. ego_v_north        (unit: mh)
@@ -237,19 +237,12 @@ class SingleControlAgent:
         observation[6] = ego_obs[8] * 0.304 / 340      #  6. ego_v_down        (unit: mh)
         observation[7] = ego_obs[9] * 0.304 / 340      #  7. ego_vc        (unit: mh)
         observation = np.expand_dims(observation, axis=0)    # dim: (1,8)
-        # observation = self.observation[self.index].reshape((1,8))
-        # self.rnn_states = self.rnn_states_list[self.index].reshape((1,1,128))
-        # self.index += 1
-        action, _, self.rnn_states = self.actor.forward(observation, self.rnn_states, deterministic=True)
-        action_cpu = action.detach().cpu().numpy().squeeze()
-        # action_cpu = self.action[self.index].reshape((4,))
-        return  action_cpu
+
+        _action, _, self.rnn_states = self.actor(observation, self.rnn_states, deterministic=True)
+        action = _action.detach().cpu().numpy().squeeze()
+        return  action
 
     def restore(self):
-        self.observation = np.load('/home/lqh/jyh/CloseAirCombat/scripts/results/SingleControl/heading_task/ppo/heading_random_initial_20s/render1/observation.npy')
-        self.rnn_states_list = np.load('/home/lqh/jyh/CloseAirCombat/scripts/results/SingleControl/heading_task/ppo/heading_random_initial_20s/render1/rnn_state.npy')
-        self.action = np.load('/home/lqh/jyh/CloseAirCombat/scripts/results/SingleControl/heading_task/ppo/heading_random_initial_20s/render1/action.npy')
-        self.index = 0
         self.actor = torch.load(str(self.model_path))
 
     def prep_rollout(self):
