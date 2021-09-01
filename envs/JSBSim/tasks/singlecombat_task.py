@@ -256,8 +256,7 @@ class SingleControlAgent:
 
         observation = np.zeros(8)
         observation[0] = (enm_obs_list[2]-ego_obs_list[2]) * 0.304 / 1000         #  0. ego delta altitude  (unit: 1km)
-        observation[1] = in_range_rad(ego_AO)  #  1. ego delta heading   (unit rad)
-        print(ego_AO * 180 /np.pi, observation[1] * 180 / np.pi)
+        observation[1] = in_range_rad(ego_AO)               #  1. ego delta heading   (unit rad)
         observation[2] = ego_obs_list[3]                    #  2. ego_roll    (unit: rad)
         observation[3] = ego_obs_list[4]                    #  3. ego_pitch   (unit: rad)
         observation[4] = ego_obs_list[6] * 0.304 / 340      #  4. ego_v_north        (unit: mh)
