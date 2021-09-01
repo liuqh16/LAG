@@ -1,6 +1,7 @@
 import numpy as np
 from gym import spaces
 import torch
+from torch._C import device
 from .task_base import BaseTask
 from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, PostureReward, RelativeAltitudeReward
@@ -217,25 +218,52 @@ class SingleControlAgent:
         self.restore()
         self.prep_rollout()
         self.reset()
-        self.origin_observation = []
     
     def reset(self):
         self.rnn_states = np.zeros((1, 1, 128)) # hard code
 
     def get_action(self, env, task):
+        # get single control baseline observation
+        def get_delta_heading(ego_feature, enm_feature):
+            ego_x, ego_y, ego_vx, ego_vy = ego_feature
+            ego_v = np.linalg.norm([ego_vx, ego_vy])
+            enm_x, enm_y, enm_vx, enm_vy = enm_feature
+            enm_v = np.linalg.norm([enm_vx, enm_vy])
+            delta_x, delta_y = enm_x - ego_x, enm_y - ego_y
+            R = np.linalg.norm([delta_x, delta_y])
+
+            proj_dist = delta_x * ego_vx + delta_y * ego_vy
+            ego_AO = np.arccos(np.clip(proj_dist / (R * ego_v + 1e-8), -1, 1))
+
+            side_flag = np.sign(np.cross([ego_vx, ego_vy], [delta_x, delta_y]))
+            return - ego_AO * side_flag
+
         ego_id, enm_id= 1, 0
-        ego_obs = env.sims[1].get_property_values(task.state_var)
-        enm_obs = env.sims[0].get_property_values(task.state_var)
+        ego_obs_list = env.sims[1].get_property_values(task.state_var)
+        enm_obs_list = env.sims[0].get_property_values(task.state_var)
+
+        ego_cur_east, ego_cur_north = lonlat2dis(ego_obs_list[0], ego_obs_list[1], env.init_longitude, env.init_latitude)
+        enm_cur_east, enm_cur_north = lonlat2dis(enm_obs_list[0], enm_obs_list[1], env.init_longitude, env.init_latitude)
+        ego_feature = np.array([
+            ego_cur_east / 1000, ego_cur_north / 1000, 
+            ego_obs_list[7] * 0.304 / 340, ego_obs_list[6] * 0.304 / 340
+        ])
+        enm_feature = np.array([
+            enm_cur_east / 1000, enm_cur_north / 1000,
+            enm_obs_list[7] * 0.304 / 340, enm_obs_list[6] * 0.304 / 340
+        ])
+        ego_AO = get_delta_heading(ego_feature, enm_feature)
 
         observation = np.zeros(8)
-        observation[0] = (enm_obs[2]-ego_obs[2]) * 0.304 / 1000         #  0. ego delta altitude  (unit: 1km)
-        observation[1] = in_range_rad((enm_obs[5]-ego_obs[5]) + np.pi)  #  1. ego delta heading   (unit rad)
-        observation[2] = ego_obs[3]                    #  2. ego_roll    (unit: rad)
-        observation[3] = ego_obs[4]                    #  3. ego_pitch   (unit: rad)
-        observation[4] = ego_obs[6] * 0.304 / 340      #  4. ego_v_north        (unit: mh)
-        observation[5] = ego_obs[7] * 0.304 / 340      #  5. ego_v_east        (unit: mh)
-        observation[6] = ego_obs[8] * 0.304 / 340      #  6. ego_v_down        (unit: mh)
-        observation[7] = ego_obs[9] * 0.304 / 340      #  7. ego_vc        (unit: mh)
+        observation[0] = (enm_obs_list[2]-ego_obs_list[2]) * 0.304 / 1000         #  0. ego delta altitude  (unit: 1km)
+        observation[1] = in_range_rad(ego_AO)  #  1. ego delta heading   (unit rad)
+        print(ego_AO * 180 /np.pi, observation[1] * 180 / np.pi)
+        observation[2] = ego_obs_list[3]                    #  2. ego_roll    (unit: rad)
+        observation[3] = ego_obs_list[4]                    #  3. ego_pitch   (unit: rad)
+        observation[4] = ego_obs_list[6] * 0.304 / 340      #  4. ego_v_north        (unit: mh)
+        observation[5] = ego_obs_list[7] * 0.304 / 340      #  5. ego_v_east        (unit: mh)
+        observation[6] = ego_obs_list[8] * 0.304 / 340      #  6. ego_v_down        (unit: mh)
+        observation[7] = ego_obs_list[9] * 0.304 / 340      #  7. ego_vc        (unit: mh)
         observation = np.expand_dims(observation, axis=0)    # dim: (1,8)
 
         _action, _, self.rnn_states = self.actor(observation, self.rnn_states, deterministic=True)

@@ -22,7 +22,7 @@ def make_train_env(all_args):
             if all_args.env_name == "JSBSim":
                 env = SingleCombatEnv(all_args.scenario_name)
             elif all_args.env_name == "SingleControl":
-                env = SingleControlEnv(all_args.scenerio_name)
+                env = SingleControlEnv(all_args.scenario_name)
             else:
                 print("Can not support the " + all_args.env_name + "environment.")
                 raise NotImplementedError
