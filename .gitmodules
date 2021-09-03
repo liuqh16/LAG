@@ -1,0 +1,3 @@
+[submodule "envs/slimevolley"]
+	path = envs/slimevolley
+	url = https://github.com/liuqh16/slimevolleygym.git
