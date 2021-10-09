@@ -91,9 +91,12 @@ class SingleCombatEnv(BaseEnv):
             actions = np.array(actions).squeeze()
             baseline_action = self.task.baseline_agent.get_action(self, self.task)
             actions = np.stack((actions, baseline_action))
-
         actions = self.task.normalize_action(self, actions)
+
+        # run JSBSim for one step
         next_observation = self.make_step(actions)
+        # call task.step for extra simulation
+        self.task.step(self, actions)
 
         rewards = np.zeros(self.num_fighters)
         for agent_id in range(self.num_fighters):
