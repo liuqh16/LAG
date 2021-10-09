@@ -12,22 +12,39 @@ import setproctitle
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 from config import get_config
 from runner.jsbsim_runner import JSBSimRunner as Runner
-from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv
+import gym
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
+
+
+class GymEnv:
+    def __init__(self, env):
+        self.env = env
+        self.action_shape = self.env.action_space.shape
+        self.action_space = [self.env.action_space]
+        self.observation_space = [self.env.observation_space]
+
+    def reset(self):
+        observation = self.env.reset()
+        return np.array(observation).reshape((1,-1))
+
+    def step(self, action):
+        action = np.array(action).reshape(self.action_shape)
+        observation, reward, done, info = self.env.step(action)
+        observation = np.array(observation).reshape((1,-1))
+        done = np.array(done).reshape((1,))
+        reward = np.array(reward).reshape((1,-1))
+        return observation, reward, done, info
+    
+    def render(self, mode="human"):
+        self.env.render(mode)
 
 
 def make_train_env(all_args):
     def get_env_fn(rank):
         def init_env():
-            if all_args.env_name == "JSBSim":
-                env = SingleCombatEnv(all_args.scenario_name)
-            elif all_args.env_name == "SingleControl":
-                env = SingleControlEnv(all_args.scenario_name)
-            else:
-                print("Can not support the " + all_args.env_name + "environment.")
-                raise NotImplementedError
+            env = gym.make(all_args.scenario_name)
             # env.seed(all_args.seed + rank * 1000)
-            return env
+            return GymEnv(env)
         return init_env
     if all_args.n_rollout_threads == 1:
         return DummyVecEnv([get_env_fn(0)])
@@ -36,13 +53,13 @@ def make_train_env(all_args):
 
 
 def parse_args(args, parser):
-    group = parser.add_argument_group("JSBSim Env parameters")
+    group = parser.add_argument_group("Gym Env parameters")
+    group.add_argument('--scenario-name', type=str, default='CartPole-v1',
+                        help="the name of gym env")
     group.add_argument('--episode-length', type=int, default=900,
                         help="the max length of an episode")
-    group.add_argument('--scenario-name', type=str, default='singlecombat_simple',
-                        help="Which scenario to run on")
-    group.add_argument('--num-agents', type=int, default=2,
-                        help="number of fighters controlled by RL policy")
+    group.add_argument('--num-agents', type=int, default=1,
+                    help="number of agents controlled by RL policy")
     all_args = parser.parse_known_args(args)[0]
     return all_args
 
@@ -109,13 +126,12 @@ def main(args):
     config = {
         "all_args": all_args,
         "envs": envs,
-        "num_agents": num_agents,
         "device": device,
+        "num_agents": num_agents,
         "run_dir": run_dir
     }
 
     # run experiments
-
     runner = Runner(config)
     runner.run()
     
