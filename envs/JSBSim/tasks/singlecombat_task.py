@@ -138,8 +138,6 @@ class SingleCombatTask(BaseTask):
 
     def reset(self, env):
         """Task-specific reset, include reward function reset.
-
-        Must call it after `env.get_observation()`
         """
         return super().reset(env)
 

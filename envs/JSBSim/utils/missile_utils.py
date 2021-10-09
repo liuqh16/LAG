@@ -236,11 +236,13 @@ class Missile3D(object):
         self.args = self.simulator.args
         self.num_missile = self.args.num_missile
         self.missile_rule = MissileRule()
-        self.missile_info = [{'launched': False, 'strike_enm_fighter': False, 'destructed': False,
-                              'initial_state': None, 'current_state': None, 'launch_time': 0, 'step': 0,
-                              'pre_distance': self.args.shoot_max_distance,
-                              'trajectory': [],
-                              'increment_distance': deque(maxlen=13)} for _ in range(self.num_missile)]
+        self.missile_info = [{
+            'launched': False, 'strike_enm_fighter': False, 'destructed': False, 'flying': False,
+            'initial_state': None, 'current_state': None, 'launch_time': 0, 'step': 0,
+            'pre_distance': self.args.shoot_max_distance,
+            'trajectory': [],
+            'increment_distance': deque(maxlen=13)
+        } for _ in range(self.num_missile)]
 
     def _missile_initial_vel(self, ego_fighter_vel, max_missile_vel):
         return max_missile_vel
@@ -262,16 +264,17 @@ class Missile3D(object):
 
     def make_step(self, ego_fighter_state, enm_fighter_state, fighter_time_step):
         """
-                ego_fighter_state:      [x, y, z, vx, vy, vz]
-                enm_fighter_state:      [x, y, z, vx, vy, vz]
+        ego_fighter_state:      [x, y, z, vx, vy, vz]    (unit: m, m/s)
+        enm_fighter_state:      [x, y, z, vx, vy, vz]
         """
         # todo: shoot rule
         self.missile_rule.judge_shoot_condition(fighter_time_step, ego_fighter_state, enm_fighter_state,
                                                 self.missile_info)
         # simulation
+        flag_strike_enm = False
         for i in range(self.num_missile):
             # 1）如果第i枚弹没有发射或已经坠毁，不仿真；
-            if self.missile_info[i]['launched'] is False or self.missile_info[i]['destructed'] is True:
+            if self.missile_info[i]['launched'] is False or self.missile_info[i]['destructed']:
                 continue
             self.missile_info[i]['step'] += 1
             if self.missile_info[i]['initial_state'] is None:
@@ -283,6 +286,7 @@ class Missile3D(object):
                 self.missile_info[i]['initial_state'] = missile_state
                 self.missile_info[i]['current_state'] = missile_state
                 self.missile_info[i]['launch_time'] = fighter_time_step
+                self.missile_info[i]['flying'] = True
                 if self.args.flag_render:
                     self.missile_info[i]['trajectory'].append(missile_state)
             else:
@@ -297,8 +301,18 @@ class Missile3D(object):
             self.missile_info[i]['current_state'] = missile_state
             flag_hit = self.simulator.determine_hit(missile_state, enm_fighter_state, self.missile_info[i])
             self.missile_info[i]['strike_enm_fighter'] = flag_hit
-            self.missile_info[i]['destructed'] = self.simulator.determine_missile_crash(self.missile_info[i])
-        return self.missile_info[i]['strike_enm_fighter']
+            flag_crash = self.simulator.determine_missile_crash(self.missile_info[i])
+            self.missile_info[i]['destructed'] = flag_crash or flag_hit
+            self.missile_info[i]['flying'] = False if flag_hit or flag_crash else True
+            if self.missile_info[i]['strike_enm_fighter']:
+                flag_strike_enm = True
+        return flag_strike_enm
+
+    def check_no_missile_alive(self):
+        for i in range(self.num_missile):
+            if self.missile_info[i]['flying']:
+                return False
+        return True
 
 
 if __name__ == '__main__':

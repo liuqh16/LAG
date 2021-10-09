@@ -128,7 +128,6 @@ class Simulation:
 
     def get_sim_time(self):
         """ Gets the simulation time from JSBSim, a float. """
-
         return self.jsbsim_exec.get_sim_time()
 
     def close(self):

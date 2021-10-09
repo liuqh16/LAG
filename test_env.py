@@ -10,7 +10,8 @@ from envs.JSBSim.core.catalog import Catalog as c
 
 def test_env():
     # env = SingleCombatEnv(config_name='singlecombat_selfplay')
-    env = SingleCombatEnv(config_name='singlecombat_vsbaseline')
+    # env = SingleCombatEnv(config_name='singlecombat_vsbaseline')
+    env = SingleCombatEnv(config_name='scwm_selfplay')
     act_space = env.action_space[0]
 
     env.reset()

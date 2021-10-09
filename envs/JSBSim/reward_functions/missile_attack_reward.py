@@ -36,7 +36,7 @@ class MissileAttackReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_agents
+        ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_fighters
         # How to calculate missile reward?
         # (1) invoke Missile3D.missile_info to calculate
         # if info['mask_enm']:
@@ -50,6 +50,5 @@ class MissileAttackReward(BaseRewardFunction):
         #         reward_fn.reward_scale = self.all_reward_scales[i]
         #     new_reward = 0.0
         # (2) use task.blood directly
-        # new reward = 100 - task.blood[ego_idx]
-        new_reward = 0.0
+        new_reward = 100 - task.bloods[ego_idx]
         return self._process(new_reward, agent_id)
