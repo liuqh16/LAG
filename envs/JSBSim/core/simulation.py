@@ -2,8 +2,7 @@ from collections import namedtuple
 import numpy as np
 from os import path
 import jsbsim
-from .catalog import Catalog
-from .property import Property, CustomProperty
+from .catalog import Property, Catalog
 from ..utils.utils import get_root_dir, lonlat2dis
 
 
@@ -176,11 +175,6 @@ class Simulation:
                 if prop.update:
                     prop.update(self)
             return self.jsbsim_exec.get_property_value(prop.name_jsbsim)
-        elif isinstance(prop, CustomProperty):
-            if "R" in prop.access and prop.read:
-                return prop.read(self)
-            else:
-                raise RuntimeError(f"{prop} is not readable")
         else:
             raise ValueError(f"prop type unhandled: {type(prop)} ({prop})")
 
@@ -205,11 +199,6 @@ class Simulation:
             if "W" in prop.access:
                 if prop.update:
                     prop.update(self)
-        elif isinstance(prop, CustomProperty):
-            if "W" in prop.access and prop.write:
-                return prop.write(self, value)
-            else:
-                raise RuntimeError(f"{prop} is not readable")
         else:
             raise ValueError(f"prop type unhandled: {type(prop)} ({prop})")
 

@@ -34,7 +34,7 @@ def test_env():
             print(env_info)
             break
     print(time.time() - start_time)
-    np.save("trajectory_data", np.asarray(trajectory_list))
+    # np.save("trajectory_data", np.asarray(trajectory_list))
 
 
 def test_parallel_env():
@@ -94,6 +94,6 @@ def test_heading_env():
     # np.save('save_trajectories.npy', np.asarray(trajectory_list))
 
     
-test_env()
+# test_env()
 # test_parallel_env()
-# test_heading_env()
+test_heading_env()
