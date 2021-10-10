@@ -268,7 +268,7 @@ class MyCatalog(Property, Enum):
     )
 
     # following path
-
+    heading_check_time = Property("heading_check_time", "time to check whether current time reaches heading time", 0, 1000000)
     steady_flight = Property("steady_flight", "steady flight mode", 0, 1000000)
     turn_flight = Property("turn_flight", "turn flight mode", 0, 1)
     id_path = Property("id_path", "where I am in the centerline path")

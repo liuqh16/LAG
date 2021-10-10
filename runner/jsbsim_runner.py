@@ -13,7 +13,7 @@ class JSBSimRunner(Runner):
         self.episode_length = self.all_args.episode_length
 
     def load(self):
-        assert len(self.envs.observation_space) == self.num_agents
+        assert len(self.envs.observation_space) == self.num_agents, f'{len(self.envs.observation_space)}, {self.num_agents}'
         obs_space = self.envs.observation_space[0]
         act_space = self.envs.action_space[0]
 
@@ -115,8 +115,8 @@ class JSBSimRunner(Runner):
 
     @torch.no_grad()
     def eval(self, total_num_steps):
-        total_episodes, eval_episode_rewards = 0, []
-        eval_cumulative_rewards = np.zeros(self.n_rollout_threads, *self.buffer.rewards.shape[2:], dtype=np.float32)
+        total_episodes, eval_episode_rewards, trajectory_data = 0, [], []
+        eval_cumulative_rewards = np.zeros((self.n_rollout_threads, *self.buffer.rewards.shape[2:]), dtype=np.float32)
 
         eval_obs = self.envs.reset()
         eval_rnn_states = np.zeros((self.n_rollout_threads, *self.buffer.rnn_states_actor.shape[2:]), dtype=np.float32)
@@ -130,12 +130,12 @@ class JSBSimRunner(Runner):
             eval_rnn_states = np.array(np.split(_t2n(eval_rnn_states), self.n_rollout_threads))
 
             # Obser reward and next obs
-            eval_obs, eval_rewards, eval_dones, eval_infos = self.eval_envs.step(eval_actions)
+            eval_obs, eval_rewards, eval_dones, eval_infos = self.envs.step(eval_actions)
             eval_cumulative_rewards += eval_rewards
 
             eval_dones = np.all(eval_dones, axis=-1)
             total_episodes += np.sum(eval_dones)
-            eval_episode_rewards += eval_cumulative_rewards[eval_dones == True]
+            eval_episode_rewards += eval_cumulative_rewards[eval_dones == True].flatten().tolist()
             eval_cumulative_rewards[eval_dones == True] = 0
             eval_rnn_states[eval_dones == True] = np.zeros(((eval_dones == True).sum(), *self.buffer.rnn_states_actor.shape[2:]), dtype=np.float32)
 
@@ -143,7 +143,41 @@ class JSBSimRunner(Runner):
         eval_infos['eval_average_episode_rewards'] = np.array(eval_episode_rewards).mean()
         print("eval average episode rewards of agent: " + str(np.mean(eval_infos['eval_average_episode_rewards'])))
         self.log_info(eval_infos, total_num_steps)
+        
 
     @torch.no_grad()
     def render(self):
-        pass
+        render_episode_rewards, trajectory_data = 0, []
+        observation_data = []
+        action_data = []
+        rnn_states_data = []
+        render_obs = self.envs.reset()
+        observation_data.append(render_obs)
+        render_rnn_states = np.zeros((1, *self.buffer.rnn_states_actor.shape[2:]), dtype=np.float32)
+        rnn_states_data.append(render_rnn_states)
+        while True:
+            self.trainer.prep_rollout()
+            render_actions, render_rnn_states = self.trainer.policy.act(np.concatenate(render_obs),
+                                                                   np.concatenate(render_rnn_states),
+                                                                   deterministic=True)
+            render_actions = np.expand_dims(_t2n(render_actions), axis=0)
+            render_rnn_states = np.expand_dims(_t2n(render_rnn_states), axis=0)
+
+            # Obser reward and next obs
+            render_obs, render_rewards, render_dones, render_infos = self.envs.step(render_actions)
+            render_episode_rewards += render_rewards
+            trajectory_data.append(self.envs.render(mode='rgb_array'))
+            observation_data.append(render_obs)
+            action_data.append(render_actions)
+            rnn_states_data.append(render_rnn_states)
+            if render_dones.any():
+                break
+
+        render_infos = {}
+        render_infos['render_episode_reward'] = render_episode_rewards
+        print("render episode reward of agent: " + str(render_infos['render_episode_reward']))
+        trajectory_data = np.asarray(trajectory_data).squeeze() # dim: (n_time, n_state)
+        np.save(f'{self.run_dir}/render', trajectory_data)
+        np.save(f'{self.run_dir}/observation', observation_data)
+        np.save(f'{self.run_dir}/action', action_data)
+        np.save(f'{self.run_dir}/rnn_state', rnn_states_data)

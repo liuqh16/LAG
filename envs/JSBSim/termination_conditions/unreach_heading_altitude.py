@@ -4,7 +4,7 @@ import math
 import random
 
 
-class UnreachHeading(BaseTerminationCondition):
+class UnreachHeadingAndAltitude(BaseTerminationCondition):
     """
     UnreachHeading [0, 1]
     End up the simulation if the aircraft didn't reach the target heading or attitude in limited time.
@@ -29,23 +29,36 @@ class UnreachHeading(BaseTerminationCondition):
         done = False
         success = False
         check_time = env.sims[agent_id].get_property_value(c.heading_check_time)
-        # check heading when simulation_time exceed check_time
         if env.sims[agent_id].get_property_value(c.simulation_sim_time_sec) >= check_time:
+            if math.fabs(env.sims[agent_id].get_property_value(c.delta_altitude)) >= 1000:
+                done = True
+                print(info)
+                print(f'INFO: agent[{agent_id}] unreached attitude!')
+                info[f'agent{agent_id}_end_reason'] = 1
+
             if math.fabs(env.sims[agent_id].get_property_value(c.delta_heading)) > 10:
                 done = True
-            # if current target heading is reached, random generate a new taget heading
+                print(f'INFO: agent[{agent_id}] unreached heading!')
+                print(info)
+                info[f'agent{agent_id}_end_reason'] = 1
+            
+            # Change target angle every check_interval seconds
             angle = random.choice([30., 60., 90., 120., 150., 180.])
             sign = random.choice([+1.0, -1.0])
             new_heading = env.sims[agent_id].get_property_value(c.target_heading_deg) + sign * angle
             new_heading = (new_heading + 360) % 360
-
-            info[f'time{check_time}_target_heading'] = new_heading
             env.sims[agent_id].set_property_value(c.target_heading_deg, new_heading)
+
+            # Change target altitude every check_interval seconds
+            alt = random.choice([1000, 2000, 3000, 4000])
+            sign = random.choice([+1.0, -1.0])
+            new_alt = env.sims[agent_id].get_property_value(c.target_altitude_ft) + sign * alt
+            new_alt = max(new_alt, 15000)
+            env.sims[agent_id].set_property_value(c.target_altitude_ft, new_alt)
             env.sims[agent_id].set_property_value(c.heading_check_time, check_time + self.check_interval)
 
-        if done:
-            print(info) 
-            print(f'INFO: agent[{agent_id}] unreached heading!')
-            info[f'agent{agent_id}_end_reason'] = 1  # crash
+            info[f'time{check_time}_target_heading'] = new_heading
+            info[f'time{check_time}_target_altitude'] = new_alt
+
         success = False
         return done, success, info

@@ -15,7 +15,8 @@ acceleration_limit_z: 10.0
 # init config
 num_fighters: 2
 use_baseline: true
-which_baseline: straight 
+which_baseline: control
+baseline_model_path: "../envs/JSBSim/model/singlecontrol_baseline.pth"
 init_config: {
   0: {
     aircraft_name: f16,
