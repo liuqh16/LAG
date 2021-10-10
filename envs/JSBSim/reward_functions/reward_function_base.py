@@ -44,7 +44,7 @@ class BaseRewardFunction(ABC):
         """
         raise NotImplementedError
 
-    def _process(self, new_reward, agent_id, render_items=None):
+    def _process(self, new_reward, agent_id=0, render_items=None):
         """Process reward and inner variables.
 
         Args:

@@ -19,6 +19,7 @@ class Runner(object):
         self.envs = config['envs']
         self.device = config['device']
         self.num_agents = config['num_agents']
+        
 
         # parameters
         self.env_name = self.all_args.env_name
@@ -97,16 +98,23 @@ class Runner(object):
         return train_infos
 
     def save(self):
+        # policy_actor = self.trainer.policy.actor
+        # torch.save(policy_actor.state_dict(), str(self.save_dir) + "/actor.pt")
+        # policy_critic = self.trainer.policy.critic
+        # torch.save(policy_critic.state_dict(), str(self.save_dir) + "/critic.pt")
         policy_actor = self.trainer.policy.actor
-        torch.save(policy_actor.state_dict(), str(self.save_dir) + "/actor.pt")
+        torch.save(policy_actor, str(self.save_dir) + "/actor.pth")
         policy_critic = self.trainer.policy.critic
-        torch.save(policy_critic.state_dict(), str(self.save_dir) + "/critic.pt")
+        torch.save(policy_critic, str(self.save_dir) + "/critic.pth")
 
     def restore(self):
-        policy_actor_state_dict = torch.load(str(self.model_dir) + '/actor_agent.pt')
-        self.policy.actor.load_state_dict(policy_actor_state_dict)
-        policy_critic_state_dict = torch.load(str(self.model_dir) + '/critic_agent.pt')
-        self.policy.critic.load_state_dict(policy_critic_state_dict)
+        # policy_actor_state_dict = torch.load(str(self.model_dir) + '/actor_agent.pt')
+        # self.policy.actor.load_state_dict(policy_actor_state_dict)
+        # policy_critic_state_dict = torch.load(str(self.model_dir) + '/critic_agent.pt')
+        # self.policy.critic.load_state_dict(policy_critic_state_dict)
+        self.policy.actor = torch.load(str(self.model_dir) + '/actor.pth')
+        self.policy.critic = torch.load(str(self.model_dir) + '/critic.pth')
+
 
     def log_info(self, infos, total_num_steps):
         if self.use_wandb:

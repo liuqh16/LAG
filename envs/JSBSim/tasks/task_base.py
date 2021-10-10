@@ -67,6 +67,15 @@ class BaseTask(ABC):
         for reward_function in self.reward_functions:
             reward_function.reset(self, env)
 
+    def step(self, env, action):
+        """ Task-specific step
+
+        Args:
+            env: environment instance
+            action: input action
+        """
+        pass
+
     def get_reward(self, env, agent_id, info={}):
         """
         Aggregate reward functions

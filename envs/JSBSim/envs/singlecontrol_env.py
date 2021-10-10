@@ -3,7 +3,7 @@ from collections import OrderedDict
 from .env_base import BaseEnv
 from ..core.catalog import Catalog
 from ..core.simulation import Simulation
-from ..tasks import HeadingTask
+from ..tasks import HeadingTask, HeadingAndAltitudeTask, HeadingContinuousTask
 
 
 class SingleControlEnv(BaseEnv):
@@ -12,34 +12,34 @@ class SingleControlEnv(BaseEnv):
     """
     def __init__(self, config_name: str):
         super().__init__(config_name)
+        assert self.num_fighters == 1, "only support one fighter"
+        self.num_agents = self.num_fighters
+        self.aircraft_names = [self.config.init_config[idx]['aircraft_name'] for idx in range(self.num_fighters)]
 
     def load_task(self):
         taskname = getattr(self.config, 'task', 'heading_task')
         if taskname == 'heading_task':
             self.task = HeadingTask(self.config)
+        elif taskname == 'heading_altitude_task':
+            self.task = HeadingAndAltitudeTask(self.config)
+        elif taskname == 'heading_continuous_task':
+            self.task = HeadingContinuousTask(self.config)
         else:
             raise NotImplementedError(f'Unknown taskname: {taskname}')
-
-    def load_variables(self):
-        self.current_step = 0
-        self.sims = OrderedDict([(agent, None) for agent in self.agent_names])
-        self.init_longitude, self.init_latitude = 0.0, 0.0
-        self.init_conditions = OrderedDict([(agent, None) for agent in self.agent_names])
-        self.actions = OrderedDict([(agent, np.zeros(len(self.task.action_var))) for agent in self.agent_names])
+        self.observation_space = self.task.observation_space
+        self.action_space = self.task.action_space
 
     def reset(self):
         self.current_step = 0
-        # Default action is straight forward
-        self.actions = OrderedDict([(agent, np.array([20., 18.6, 20., 0.])) for agent in self.agent_names])
         self.close()
         self.reset_conditions()
         # recreate simulation
-        self.sims = OrderedDict([(agent, Simulation(
-            aircraft_name=self.aircraft_names[agent],
-            init_conditions=self.init_conditions[agent],
+        self.sims = [Simulation(
+            aircraft_name=self.aircraft_names[idx],
+            init_conditions=self.init_conditions[idx],
             origin_point=(self.init_longitude, self.init_latitude),
             jsbsim_freq=self.jsbsim_freq,
-            agent_interaction_steps=self.agent_interaction_steps)) for agent in self.agent_names])
+            agent_interaction_steps=self.agent_interaction_steps) for idx in range(self.num_fighters)]
         next_observation = self.get_observation()
         self.task.reset(self)
         return next_observation
@@ -48,29 +48,28 @@ class SingleControlEnv(BaseEnv):
         # TODO: randomization
         # Origin point of Combat Field [geodesic longitude&latitude (deg)]
         self.init_longitude, self.init_latitude = 120.0, 60.0
-        # Initial setting of each agent
-        self.init_conditions = OrderedDict(
-            [(agent, {
-                Catalog.target_heading_deg: self.config.init_config[agent]['target_heading_deg'],
-                Catalog.target_altitude_ft: self.config.init_config[agent]['target_altitude_ft'],
-                Catalog.steady_flight: self.config.init_config[agent]['steady_flight'],
-                Catalog.ic_h_sl_ft: self.config.init_config[agent]['ic_h_sl_ft'],             # 1.1  altitude above mean sea level [ft]
+        # Initial setting of each idx
+        self.init_conditions = [{
+                Catalog.target_heading_deg: self.config.init_config[idx]['target_heading_deg'],
+                Catalog.target_altitude_ft: self.config.init_config[idx]['target_altitude_ft'],
+                Catalog.heading_check_time: self.config.init_config[idx]['heading_check_interval'],
+                Catalog.ic_h_sl_ft: self.config.init_config[idx]['ic_h_sl_ft'],             # 1.1  altitude above mean sea level [ft]
                 Catalog.ic_terrain_elevation_ft: 0,                                           # +    default
-                Catalog.ic_long_gc_deg: self.config.init_config[agent]['ic_long_gc_deg'],     # 1.2  geodesic longitude [deg]
-                Catalog.ic_lat_geod_deg: self.config.init_config[agent]['ic_lat_geod_deg'],   # 1.3  geodesic latitude  [deg]
-                Catalog.ic_psi_true_deg: self.config.init_config[agent]['ic_psi_true_deg'],   # 5.   initial (true) heading [deg]   (0, 360)
-                Catalog.ic_u_fps: self.config.init_config[agent]['ic_u_fps'],                 # 2.1  body frame x-axis velocity [ft/s]  (-2200, 2200)
-                Catalog.ic_v_fps: 0,                                                          # 2.2  body frame y-axis velocity [ft/s]  (-2200, 2200)
-                Catalog.ic_w_fps: 0,                                                          # 2.3  body frame z-axis velocity [ft/s]  (-2200, 2200)
-                Catalog.ic_p_rad_sec: 0,                                                      # 3.1  roll rate  [rad/s]     (-2 * math.pi, 2 * math.pi)
-                Catalog.ic_q_rad_sec: 0,                                                      # 3.2  pitch rate [rad/s]     (-2 * math.pi, 2 * math.pi)
-                Catalog.ic_r_rad_sec: 0,                                                      # 3.3  yaw rate   [rad/s]     (-2 * math.pi, 2 * math.pi)
+                Catalog.ic_long_gc_deg: self.config.init_config[idx]['ic_long_gc_deg'],     # 1.2  geodesic longitude [deg]
+                Catalog.ic_lat_geod_deg: self.config.init_config[idx]['ic_lat_geod_deg'],   # 1.3  geodesic latitude  [deg]
+                Catalog.ic_psi_true_deg: np.random.uniform(0, 360),              # 5.   initial (true) heading [deg]   (0, 360)
+                Catalog.ic_u_fps: np.random.uniform(500, 1000),                     # 2.1  body frame x-axis velocity [ft/s]  (-2200, 2200)
+                Catalog.ic_v_fps: np.random.uniform(-100, 100),                     # 2.2  body frame y-axis velocity [ft/s]  (-2200, 2200)
+                Catalog.ic_w_fps: np.random.uniform(-100, 100),                     # 2.3  body frame z-axis velocity [ft/s]  (-2200, 2200)
+                Catalog.ic_p_rad_sec: np.random.uniform(-np.pi, np.pi),             # 3.1  roll rate  [rad/s]     (-2 * math.pi, 2 * math.pi)
+                Catalog.ic_q_rad_sec: np.random.uniform(-np.pi, np.pi),             # 3.2  pitch rate [rad/s]     (-2 * math.pi, 2 * math.pi)
+                Catalog.ic_r_rad_sec: np.random.uniform(-np.pi, np.pi),             # 3.3  yaw rate   [rad/s]     (-2 * math.pi, 2 * math.pi)
                 Catalog.ic_roc_fpm: 0,                                                        # 4.   initial rate of climb [ft/min]
                 Catalog.fcs_throttle_cmd_norm: 0.,                                            # 6.
-            }) for agent in self.agent_names]
-        )
+            } for idx in range(self.num_fighters)]
+        
 
-    def step(self, action: dict):
+    def step(self, actions: list):
         """Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`
         to reset this environment's state. Accepts an action and 
@@ -88,32 +87,21 @@ class SingleControlEnv(BaseEnv):
         """
         self.current_step += 1
         info = {}
-        self.actions = self.task.process_actions(self, action)
-        self.make_step(self.actions)
-        next_observation = self.get_observation()
-        reward = OrderedDict()
-        for agent_id, agent_name in enumerate(self.agent_names):
-            reward[agent_name], info = self.task.get_reward(self, agent_id, info)
+
+        actions = self.task.normalize_action(self, actions)
+        next_observation = self.make_step(actions)
+
+        rewards = np.zeros(self.num_fighters)
+        for agent_id in range(self.num_fighters):
+            rewards[agent_id], info = self.task.get_reward(self, agent_id, info)
+
         done = False
-        for agent_id in range(self.num_agents):
+        for agent_id in range(self.num_fighters):
             agent_done, info = self.task.get_termination(self, agent_id, info)
-            info[f'{self.agent_names[agent_id]}_done'] = agent_done
             done = agent_done or done
+        dones = done * np.ones(self.num_fighters)
 
-        return next_observation, reward, done, info
-
-    def make_step(self, action: dict):
-        """
-        Calculates new state.
-
-        Args:
-            action (dict{str: np.array}): the agents' action, with same length as action variables.
-        """
-        for agent_name in self.agent_names:
-            # take actions
-            self.sims[agent_name].set_property_values(self.task.action_var, action[agent_name])
-            # run simulation
-            self.sims[agent_name].run()
+        return next_observation, rewards, dones, info
 
     def get_observation(self):
         """
@@ -123,13 +111,10 @@ class SingleControlEnv(BaseEnv):
             (OrderedDict): the same format as self.observation_space
         """
         # generate observation (gym.Env output)
-        all_obs_list = []
-        for agent_name in self.agent_names:
-            all_obs_list.append(self.sims[agent_name].get_property_values(self.task.state_var))
-        next_observation = OrderedDict()
-        for (agent_id, agent_name) in enumerate(self.agent_names):
-            obs_norm = self.task.normalize_observation(self, all_obs_list)
-            next_observation[agent_name] = OrderedDict({'ego_info': obs_norm})
+        next_observation = []
+        for agent_id in range(self.num_fighters):
+            next_observation.append(self.sims[agent_id].get_property_values(self.task.state_var))
+        next_observation = self.task.normalize_observation(self, next_observation)
         return next_observation
 
     def close(self):
@@ -137,9 +122,9 @@ class SingleControlEnv(BaseEnv):
 
         Environments automatically close() when garbage collected or when the program exits.
         """
-        for agent_name in self.agent_names:
-            if self.sims[agent_name]:
-                self.sims[agent_name].close()
+        for agent_id in range(self.num_fighters):
+            if self.sims[agent_id]:
+                self.sims[agent_id].close()
 
     def render(self, mode="human", **kwargs):
         """Renders the environment.
@@ -160,7 +145,7 @@ class SingleControlEnv(BaseEnv):
               in implementations to use the functionality of this method.
         :param mode: str, the mode to render with
         """
-        obs_list = []
-        for agent_name in self.agent_names:
-            obs_list.append(np.array(self.sims[agent_name].get_property_values(self.task.render_var)))
-        return np.hstack(obs_list)
+        render_list = []
+        for agent_id in range(self.num_fighters):
+            render_list.append(np.array(self.sims[agent_id].get_property_values(self.task.render_var)))
+        return np.hstack(render_list)

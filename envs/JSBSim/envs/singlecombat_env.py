@@ -2,7 +2,7 @@ import numpy as np
 from .env_base import BaseEnv
 from ..core.catalog import Catalog
 from ..core.simulation import Simulation
-from ..tasks import SingleCombatTask, SingleCombatWithMissileTask
+from ..tasks import SingleCombatTask, SingleCombatWithMissileTask, SingleCombatContinuousTask, SingleCombatWithArtilleryTask
 
 
 class SingleCombatEnv(BaseEnv):
@@ -24,6 +24,10 @@ class SingleCombatEnv(BaseEnv):
             self.task = SingleCombatTask(self.config)
         elif taskname == 'singlecombat_with_missile':
             self.task = SingleCombatWithMissileTask(self.config)
+        elif taskname == 'singlecombat_with_artillery':
+            self.task = SingleCombatWithArtilleryTask(self.config)
+        elif taskname == 'continuous_singlecombat':
+            self.task = SingleCombatContinuousTask(self.config)
         else:
             raise NotImplementedError(f"Unknown taskname: {taskname}")
         self.observation_space = self.task.observation_space
@@ -85,15 +89,17 @@ class SingleCombatEnv(BaseEnv):
         """
         self.current_step += 1
         info = {}
-
         if self.use_baseline:
             # (1,dim) => (dim,) => (2,dim)
             actions = np.array(actions).squeeze()
-            baseline_action = self.task.baseline_agent.get_action(self, self.task)
+            baseline_action = self.task.baseline_agent.get_action(self, self.task) # 
             actions = np.stack((actions, baseline_action))
-
         actions = self.task.normalize_action(self, actions)
+
+        # run JSBSim for one step
         next_observation = self.make_step(actions)
+        # call task.step for extra simulation
+        self.task.step(self, actions)
 
         rewards = np.zeros(self.num_fighters)
         for agent_id in range(self.num_fighters):
@@ -129,7 +135,7 @@ class SingleCombatEnv(BaseEnv):
             if self.sims[agent_id]:
                 self.sims[agent_id].close()
 
-    def render(self):
+    def render(self, mode="human"):
         # TODO: real time rendering
         render_list = []
         for agent_id in range(self.num_fighters):

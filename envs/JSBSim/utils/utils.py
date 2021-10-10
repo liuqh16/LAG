@@ -80,7 +80,7 @@ def in_range_deg(angle):
     return angle
 
 
-def _in_range_rad(angle):
+def in_range_rad(angle):
     """ Given an angle in rads, normalises in (-pi, pi] """
     angle = angle % (2 * np.pi)
     if angle > np.pi:
