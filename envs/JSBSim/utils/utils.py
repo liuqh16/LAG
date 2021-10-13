@@ -43,6 +43,16 @@ def lonlat2dis(lon, lat, init_lon, init_lat):
     return np.array([east, north]) * 1000
 
 
+def dis2lonlat(x, y, init_lon, init_lat):
+    """
+    """
+    x = x / 1000
+    y = y / 1000
+    lon = np.rad2deg((x / 6371 / 1.734 / np.cos(np.deg2rad(init_lat))) + np.deg2rad(init_lon))
+    lat = np.rad2deg(y * 11.11949266 / 11.1319 / 6371 + np.deg2rad(init_lat))
+    return np.array([lon, lat])
+
+
 def get_AO_TA_R(ego_feature, enemy_feature, return_side=False):
     """Get AO & TA angles and relative distance between two agent.
 

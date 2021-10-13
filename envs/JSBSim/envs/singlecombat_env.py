@@ -30,6 +30,7 @@ class SingleCombatEnv(BaseEnv):
             self.task = SingleCombatContinuousTask(self.config)
         else:
             raise NotImplementedError(f"Unknown taskname: {taskname}")
+        self.taskname = taskname
         self.observation_space = self.task.observation_space
         self.action_space = self.task.action_space
 
@@ -139,7 +140,9 @@ class SingleCombatEnv(BaseEnv):
         # TODO: real time rendering
         render_list = []
         for agent_id in range(self.num_fighters):
-            render_list.append(np.array(self.sims[agent_id].get_property_values(self.task.render_var)))
+            render_list.append(np.array(self.sims[agent_id].get_property_values(self.task.render_var))) # flight
+            if 'missile' in self.taskname:
+                render_list.extend(self.task.render(agent_id)) # missile
         return np.hstack(render_list)
 
     def seed(self, seed):

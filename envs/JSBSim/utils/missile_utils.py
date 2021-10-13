@@ -17,7 +17,7 @@ class MissileConfig(object):
 
         self.hit_distance = 100           # [m]     导弹-命中敌机的判定条件
         self.missile_last_time = 15       # [s]     导弹-最大飞行时长
-        self.flag_render = False
+        self.flag_render = True
 
 
 class MissileCore(object):
@@ -259,7 +259,6 @@ class Missile3D(object):
         # 2) the missile's states
         psi_m_0, gma_m_0 = self.simulator.transfer2angles(initial_missile)
         missile_state = np.array([*initial_missile[:3], initial_missile[6], psi_m_0, gma_m_0])
-
         return missile_state, target_state
 
     def make_step(self, ego_fighter_state, enm_fighter_state, fighter_time_step):
@@ -282,7 +281,7 @@ class Missile3D(object):
                 missile_vel = self._missile_initial_vel(np.linalg.norm(ego_fighter_state[3:]), self.args.missile_vel)
                 initial_missile = np.array([*ego_fighter_state, missile_vel])
                 missile_state, target_state = self._initialize_missile_state(initial_missile, enm_fighter_state)
-
+                print('initial_missile_state', missile_state)
                 self.missile_info[i]['initial_state'] = missile_state
                 self.missile_info[i]['current_state'] = missile_state
                 self.missile_info[i]['launch_time'] = fighter_time_step

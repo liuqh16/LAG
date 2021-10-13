@@ -150,6 +150,9 @@ class SingleCombatTask(BaseTask):
         if self.use_baseline:
             self.baseline_agent.reset()
         return super().reset(env)
+    
+    def render(self, agent_id):
+        pass
 
     def get_reward(self, env, agent_id, info={}):
         """
