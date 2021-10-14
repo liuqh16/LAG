@@ -5,7 +5,7 @@ from math import sin, cos, asin
 
 class MissileConfig(object):
     def __init__(self):
-        self.num_missile = 2              # []      飞机带弹数量
+        self.num_missile = 1              # []      飞机带弹数量
         self.K = 6
         self.dt = 1 / 12.                 # [s]
         self.missile_vel = 600            # [m/s]   导弹-初始速度（）
@@ -13,9 +13,9 @@ class MissileConfig(object):
 
         self.shoot_max_distance = 6000    # [m]     规则-最远发弹距离   6000
         self.shoot_max_angle = 60         # [deg]   规则-发弹的最大方位角  60
-        self.shoot_lock_time = 1          # [s]     规则-持续锁定1s发弹
+        self.shoot_lock_time = 0.5          # [s]     规则-持续锁定1s发弹
 
-        self.hit_distance = 100           # [m]     导弹-命中敌机的判定条件
+        self.hit_distance = 50            # [m]     导弹-命中敌机的判定条件
         self.missile_last_time = 15       # [s]     导弹-最大飞行时长
         self.flag_render = True
 

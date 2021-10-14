@@ -27,13 +27,11 @@ def get_root_dir():
 
 
 def lonlat2dis(lon, lat, init_lon, init_lat):
-    """Convert longitude&latitude into xy distance
+    """Convert longitude-latitude into east-north distance
 
     Args:
-        lon (float): lontitude of current point
-        lat (float): latitude of current point
-        init_lon (float): lontitude of original point
-        init_lat (float): latitude of original point
+        lon/lat (float): lontitude/latitude of current point
+        init_lon/init_lat (float): lontitude/latitude of original point
 
     Returns:
         (np.array): (east, north), unit: m
@@ -43,13 +41,18 @@ def lonlat2dis(lon, lat, init_lon, init_lat):
     return np.array([east, north]) * 1000
 
 
-def dis2lonlat(x, y, init_lon, init_lat):
+def dis2lonlat(east, north, init_lon, init_lat):
+    """Convert east-north distance into longitude-latitude
+
+    Args:
+        east/north (float): coordinates in east-north distance system (unit: m)
+        init_lon/init_lat (float): lontitude/latitude of original point
+
+    Returns:
+        (np.array): (lon, lat), unit: degree
     """
-    """
-    x = x / 1000
-    y = y / 1000
-    lon = np.rad2deg((x / 6371 / 1.734 / np.cos(np.deg2rad(init_lat))) + np.deg2rad(init_lon))
-    lat = np.rad2deg(y * 11.11949266 / 11.1319 / 6371 + np.deg2rad(init_lat))
+    lon = np.rad2deg((east / 1000 / 6371 / 1.734 / np.cos(np.deg2rad(init_lat))) + np.deg2rad(init_lon))
+    lat = np.rad2deg(north / 1000 * 11.11949266 / 11.1319 / 6371 + np.deg2rad(init_lat))
     return np.array([lon, lat])
 
 

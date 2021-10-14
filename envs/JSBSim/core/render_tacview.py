@@ -106,6 +106,11 @@ def data_replay(data):
             show_tacview(display, sim_time=time_step / 12, state=data[time_step][18:24], my_id='300004', name='F16', color='Red')
             show_tacview(display, sim_time=time_step / 12, state=data[time_step][24:30], my_id='300005', name='FIM92C', color='Red')
             show_tacview(display, sim_time=time_step / 12, state=data[time_step][30:36], my_id='300006', name='FIM92C', color='Red')
+        elif len(data[time_step]) == 24:
+            show_tacview(display, sim_time=time_step / 12, state=data[time_step][:6], my_id='300001', name='F16', color='Blue')
+            show_tacview(display, sim_time=time_step / 12, state=data[time_step][6:12], my_id='300002', name='FIM92C', color='Blue')
+            show_tacview(display, sim_time=time_step / 12, state=data[time_step][12:18], my_id='300003', name='F16', color='Red')
+            show_tacview(display, sim_time=time_step / 12, state=data[time_step][18:24], my_id='300004', name='FIM92C', color='Red')
         elif len(data[time_step]) == 12:
             show_tacview(display, sim_time=time_step / 12, state=data[time_step][:6], my_id='3000001', name='F16', color='Blue')
             show_tacview(display, sim_time=time_step / 12, state=data[time_step][6:], my_id='3000002', name='F16', color='Red')

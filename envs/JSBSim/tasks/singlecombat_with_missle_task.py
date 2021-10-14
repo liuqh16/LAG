@@ -50,25 +50,8 @@ class SingleCombatWithMissileTask(SingleCombatTask):
         """Reset fighter blood & missile status
         """
         self.bloods = [100 for _ in range(self.num_agents)]
-        self.missile_lists = [Missile3D() for _ in range(self.num_agents)]  # By default, both figher has 2 missiles.
+        self.missile_lists = [Missile3D() for _ in range(self.num_agents)]  # By default, both figher has 1 missile.
         return super().reset(env)
-    
-    def render(self, agent_id):
-        """
-        render missile trajectory, if no missile, use default value instead
-        """
-        missile_render = []
-        for i in range(self.missile_lists[agent_id].num_missile):
-            missile_state = np.zeros((6,))
-            if self.missile_lists[agent_id].missile_info[i]['flying']:
-                missile_state[:3] = np.array(self.missile_lists[agent_id].missile_info[i]['current_state'][:3])
-                missile_state[0], missile_state[1] = dis2lonlat(*missile_state[0:2], 120, 60) # meter to degree
-                missile_state[2] = missile_state[2] / 0.304 # meter to feet
-                #print("missile state:", missile_state[0:3])
-            else:
-                missile_state[:3] = np.array([120,0,20000])
-            missile_render.append(missile_state)
-        return missile_render
 
     def step(self, env, action):
         for agent_id in range(self.num_agents):
@@ -92,3 +75,22 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             elif done and self.missile_lists[agent_id].check_no_missile_alive():
                 break
         return done, info
+
+    def get_missile_trajectory(self, env, agent_id):
+        """
+        render missile trajectory, if no missile, use default value instead
+        """
+        missile_render = []
+        for i in range(self.missile_lists[agent_id].num_missile):
+            missile_state = np.zeros((6,))
+            if self.missile_lists[agent_id].missile_info[i]['flying']:
+                missile_state[:3] = np.array(self.missile_lists[agent_id].missile_info[i]['current_state'][:3])
+            elif not self.missile_lists[agent_id].missile_info[i]['launched']:
+                missile_state[:3] = env.sims[agent_id].get_position()
+            else:
+                missile_state[:3] = np.array([120, 0, 20000])
+            # unit conversion (m, m, m) => (degree, degree, ft)
+            missile_state[0], missile_state[1] = dis2lonlat(*missile_state[0:2][::-1], 120, 60)
+            missile_state[2] = missile_state[2] / 0.304
+            missile_render.append(missile_state)
+        return missile_render

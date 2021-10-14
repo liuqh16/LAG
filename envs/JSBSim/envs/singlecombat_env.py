@@ -137,12 +137,14 @@ class SingleCombatEnv(BaseEnv):
                 self.sims[agent_id].close()
 
     def render(self, mode="human"):
-        # TODO: real time rendering
+        # TODO: real time rendering [Use FlightGear]
         render_list = []
         for agent_id in range(self.num_fighters):
-            render_list.append(np.array(self.sims[agent_id].get_property_values(self.task.render_var))) # flight
+            # flight
+            render_list.append(np.array(self.sims[agent_id].get_property_values(self.task.render_var)))
+            # missile
             if 'missile' in self.taskname:
-                render_list.extend(self.task.render(agent_id)) # missile
+                render_list.extend(self.task.get_missile_trajectory(self, agent_id))
         return np.hstack(render_list)
 
     def seed(self, seed):
