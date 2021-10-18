@@ -50,7 +50,8 @@ class SingleCombatWithMissileTask(SingleCombatTask):
         """Reset fighter blood & missile status
         """
         self.bloods = [100 for _ in range(self.num_agents)]
-        self.missile_lists = [Missile3D() for _ in range(self.num_agents)]  # By default, both figher has 1 missile.
+        # self.missile_lists = [Missile3D() for _ in range(self.num_agents)]  # By default, both figher has 1 missile.
+        self.missile_lists = [Missile3D(allow_shoot=False), Missile3D(allow_shoot=True)]  # By default, both figher has 1 missile.
         return super().reset(env)
 
     def step(self, env, action):
@@ -85,10 +86,11 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             missile_state = np.zeros((6,))
             if self.missile_lists[agent_id].missile_info[i]['flying']:
                 missile_state[:3] = np.array(self.missile_lists[agent_id].missile_info[i]['current_state'][:3])
+                missile_state[4:6] = np.array(self.missile_lists[agent_id].missile_info[i]['current_state'][4:6])           
             elif not self.missile_lists[agent_id].missile_info[i]['launched']:
                 missile_state[:3] = env.sims[agent_id].get_position()
             else:
-                missile_state[:3] = np.array([120, 0, 20000])
+                missile_state[:3] = np.array([0, 0, 0])
             # unit conversion (m, m, m) => (degree, degree, ft)
             missile_state[0], missile_state[1] = dis2lonlat(*missile_state[0:2][::-1], 120, 60)
             missile_state[2] = missile_state[2] / 0.304

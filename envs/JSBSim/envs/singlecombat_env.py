@@ -69,7 +69,7 @@ class SingleCombatEnv(BaseEnv):
             Catalog.fcs_throttle_cmd_norm: 0.,                                          # 6.
         } for idx in range(self.num_fighters)]
         # TODO: randomization
-        np.random.shuffle(self.init_conditions)
+        # np.random.shuffle(self.init_conditions)
         
 
     def step(self, actions: list):

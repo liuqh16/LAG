@@ -174,7 +174,7 @@ class MissileCore(object):
     def determine_missile_crash(self, missile_ith):
         cur_time_step = missile_ith['step'] * self.args.dt
         flag_missile_crash = False
-        if cur_time_step >= self.args.missile_last_time or np.sum(missile_ith['increment_distance']) >= 12:
+        if cur_time_step >= self.args.missile_last_time or np.sum(missile_ith['increment_distance']) >= 100:
             flag_missile_crash = True
         return flag_missile_crash
 
@@ -196,10 +196,13 @@ class MissileRule(object):
         }
 
     def judge_shoot_condition(self, cur_time_step, ego_state, enm_state, missile_info):
+        # 0) 不允许发弹
+        if not missile_info[0]['allow_shoot']:
+            return False
         # 1) 无弹可打
         num_all_missile = len(missile_info)
         num_available_missile = np.sum([1. - missile_info[_]['launched'] for _ in range(num_all_missile)])
-        print('available missile', num_available_missile)
+        # print('available missile', num_available_missile)
         if num_available_missile <= 0:
             return False
 
@@ -230,7 +233,7 @@ class MissileRule(object):
 
 
 class Missile3D(object):
-    def __init__(self, rule_shoot=True):
+    def __init__(self, allow_shoot=True):
         super(Missile3D, self).__init__()
         self.simulator = MissileCore()
         self.args = self.simulator.args
@@ -241,7 +244,8 @@ class Missile3D(object):
             'initial_state': None, 'current_state': None, 'launch_time': 0, 'step': 0,
             'pre_distance': self.args.shoot_max_distance,
             'trajectory': [],
-            'increment_distance': deque(maxlen=13)
+            'increment_distance': deque(maxlen=13),
+            'allow_shoot': allow_shoot
         } for _ in range(self.num_missile)]
 
     def _missile_initial_vel(self, ego_fighter_vel, max_missile_vel):
