@@ -89,8 +89,8 @@ def show_tacview(display: TacviewClient, sim_time, state, my_id='3000001', name=
                            state[1],                    # lat, unit: degree
                            state[2] / 3.2808399,        # alt, unit: feet => meter
                            state[3] * 180 / np.pi,      # roll, unit: rad => degree
-                           state[4] * 180 / np.pi,      # yaw, unit: rad => degree
-                           state[5] * 180 / np.pi],     # pitch, unit: rad => degree
+                           state[4] * 180 / np.pi,      # pitch, unit: rad => degree
+                           state[5] * 180 / np.pi],     # yaw, unit: rad => degree
                  my_id=my_id, name=name, color=color)
 
 

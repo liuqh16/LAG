@@ -84,13 +84,11 @@ class SingleCombatWithMissileTask(SingleCombatTask):
         missile_render = []
         for i in range(self.missile_lists[agent_id].num_missile):
             missile_state = np.zeros((6,))
-            if self.missile_lists[agent_id].missile_info[i]['flying']:
+            if self.missile_lists[agent_id].missile_info[i]['launched']:
                 missile_state[:3] = np.array(self.missile_lists[agent_id].missile_info[i]['current_state'][:3])
-                missile_state[4:6] = np.array(self.missile_lists[agent_id].missile_info[i]['current_state'][4:6])           
-            elif not self.missile_lists[agent_id].missile_info[i]['launched']:
-                missile_state[:3] = env.sims[agent_id].get_position()
+                missile_state[4:6] = np.array(self.missile_lists[agent_id].missile_info[i]['current_state'][4:6])[::-1]
             else:
-                missile_state[:3] = np.array([0, 0, 0])
+                missile_state[:3] = env.sims[agent_id].get_position()
             # unit conversion (m, m, m) => (degree, degree, ft)
             missile_state[0], missile_state[1] = dis2lonlat(*missile_state[0:2][::-1], 120, 60)
             missile_state[2] = missile_state[2] / 0.304
