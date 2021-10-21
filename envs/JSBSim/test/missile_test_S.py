@@ -17,8 +17,7 @@ class S_Agent:
         self.restore()
         self.prep_rollout()
         self.step = 0
-        self.seconds_per_turn = 5  # hyperparameter
-        self.step_list = np.array([1,2,3,4]) * self.seconds_per_turn * STEPS_PER_SECOND
+        self.seconds_per_turn = 3  # hyperparameter
         self.target_heading_list = [np.pi/2, np.pi, np.pi*1.5, np.pi*1.5]
         self.reset()
 
@@ -27,6 +26,7 @@ class S_Agent:
         self.step = 0
 
     def get_action(self, env, task):
+        step_list = np.array([1,2,3,4]) * self.seconds_per_turn * STEPS_PER_SECOND
         ego_obs_list = env.sims[0].get_property_values(task.state_var)
         enm_obs_list = env.sims[1].get_property_values(task.state_var)
         delta_heading = 0
@@ -36,7 +36,7 @@ class S_Agent:
         else:
             # choose target heading according to current steps
             index = 0
-            for i, interval in enumerate(self.step_list):
+            for i, interval in enumerate(step_list):
                 if self.step <= interval:
                     break
             target_heading = self.target_heading_list[i]
@@ -87,8 +87,8 @@ def test_env():
 
 def grid_search_test():
     turn_seconds = [5, 4, 3]
-    radius = [50, 100, 200]
-    accel = [200, 400, 600]
+    radius = [200, 300, 400, 500, 600]
+    accel = [600, 700, 800, 900, 1000]
     fly_time = [15, 20, 25]
     for s in turn_seconds:
         for r in radius:

@@ -18,8 +18,7 @@ class CircleAgent:
         self.restore()
         self.prep_rollout()
         self.step = 0
-        self.seconds_per_turn = 5  # hyperparameter
-        self.step_list = np.array([1,2,3,4]) * self.seconds_per_turn * STEPS_PER_SECOND
+        self.seconds_per_turn = 3  # hyperparameter
         self.target_heading_list = [np.pi/2, np.pi, np.pi*1.5, 0]
         self.reset()
 
@@ -28,6 +27,7 @@ class CircleAgent:
         self.step = 0
 
     def get_action(self, env, task):
+        step_list = np.array([1,2,3,4]) * self.seconds_per_turn * STEPS_PER_SECOND
         ego_obs_list = env.sims[0].get_property_values(task.state_var)
         enm_obs_list = env.sims[1].get_property_values(task.state_var)
         delta_heading = 0
@@ -37,7 +37,7 @@ class CircleAgent:
         else:
             # choose target heading according to current steps
             index = 0
-            for i, interval in enumerate(self.step_list):
+            for i, interval in enumerate(step_list):
                 if self.step <= interval:
                     index = i
                     break
@@ -89,9 +89,9 @@ def test_env():
 
 def grid_search_test():
     turn_seconds = [5, 4, 3]
-    radius = [50, 100, 200]
-    accel = [200, 400, 600]
-    fly_time = [15, 20, 25]
+    radius = [200, 300, 400, 500, 600]
+    accel = [600, 700, 800, 900, 1000]
+    fly_time = [15]
     for s in turn_seconds:
         for r in radius:
             for a in accel:
@@ -119,7 +119,7 @@ def grid_search_test():
                             break
                     hit = env.task.missile_lists[1].missile_info[0]['strike_enm_fighter']
                     print(time.time() - start_time)
-                    np.save(f'trajectory_S/{s}_{r}_{a}_{t}_{hit}.npy', np.asarray(trajectory_list))
+                    np.save(f'trajectory_circle/{s}_{r}_{a}_{t}_{hit}.npy', np.asarray(trajectory_list))
                     env.close()
 
 
