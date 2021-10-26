@@ -50,13 +50,12 @@ class SingleCombatWithMissileTask(SingleCombatTask):
         """Reset fighter blood & missile status
         """
         self.bloods = [100 for _ in range(self.num_fighters)]
-        # self.missile_lists = [Missile3D() for _ in range(self.num_agents)]  # By default, both figher has 1 missile.
         self.missile_lists = [Missile3D() for _ in range(self.num_fighters)]  # By default, both figher has 1 missile.
         return super().reset(env)
 
     def step(self, env, action):
-        for agent_id in range(self.num_agents):
-            ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_agents
+        for agent_id in range(self.num_fighters):
+            ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_fighters
             ego_feature = np.hstack([env.sims[ego_idx].get_position(), env.sims[ego_idx].get_velocity()])
             enm_feature = np.hstack([env.sims[enm_idx].get_position(), env.sims[enm_idx].get_velocity()])
             flag_hit = self.missile_lists[ego_idx].make_step(ego_feature, enm_feature, env.current_step)

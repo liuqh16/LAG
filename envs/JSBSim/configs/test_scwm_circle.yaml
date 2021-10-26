@@ -21,7 +21,7 @@ init_config: {
     ic_lat_geod_deg: 60.0,
     ic_long_gc_deg: 120.0,
     ic_psi_true_deg: 0,
-    ic_u_fps: 600.0,
+    ic_u_fps: 800.0,
   },
   1: {
     aircraft_name: f16,

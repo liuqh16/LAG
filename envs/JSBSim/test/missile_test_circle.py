@@ -89,8 +89,8 @@ def test_env():
 
 def grid_search_test():
     turn_seconds = [5, 4, 3]
-    radius = [200, 300, 400, 500, 600]
-    accel = [600, 700, 800, 900, 1000]
+    radius = [50, 100, 200, 300, 400, 500, 600]
+    accel = [200, 400, 600, 700, 800, 900, 1000]
     fly_time = [15]
     for s in turn_seconds:
         for r in radius:
@@ -123,5 +123,5 @@ def grid_search_test():
                     env.close()
 
 
-# grid_search_test()
-test_env()
+grid_search_test()
+# test_env()
