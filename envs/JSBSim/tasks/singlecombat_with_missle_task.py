@@ -28,8 +28,8 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             Timeout(self.config),
         ]
 
-        self.bloods = [100 for _ in range(self.num_agents)]
-        self.missile_lists = [Missile3D() for _ in range(self.num_agents)]
+        self.bloods = [100 for _ in range(self.num_fighters)]
+        self.missile_lists = [Missile3D() for _ in range(self.num_fighters)]
 
     def load_observation_space(self):
         self.observation_space = [spaces.Box(low=-10, high=10., shape=(18,)) for _ in range(self.num_agents)]
@@ -49,9 +49,9 @@ class SingleCombatWithMissileTask(SingleCombatTask):
     def reset(self, env):
         """Reset fighter blood & missile status
         """
-        self.bloods = [100 for _ in range(self.num_agents)]
+        self.bloods = [100 for _ in range(self.num_fighters)]
         # self.missile_lists = [Missile3D() for _ in range(self.num_agents)]  # By default, both figher has 1 missile.
-        self.missile_lists = [Missile3D(allow_shoot=False), Missile3D(allow_shoot=True)]  # By default, both figher has 1 missile.
+        self.missile_lists = [Missile3D() for _ in range(self.num_fighters)]  # By default, both figher has 1 missile.
         return super().reset(env)
 
     def step(self, env, action):
@@ -94,3 +94,13 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             missile_state[2] = missile_state[2] / 0.304
             missile_render.append(missile_state)
         return missile_render
+
+
+class SingleCombatWithAvoidMissileTask(SingleCombatWithMissileTask):
+    def __init__(self, config: str):
+        super().__init__(config)
+        self.missile_lists = [Missile3D(allow_shoot=False), Missile3D(allow_shoot=True)]  # By default, both figher has 1 missile.
+
+    def reset(self, env):
+        self.missile_lists = [Missile3D(allow_shoot=False), Missile3D(allow_shoot=True)]  # By default, both figher has 1 missile.
+        return super().reset(env)

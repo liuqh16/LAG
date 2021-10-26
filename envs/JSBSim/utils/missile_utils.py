@@ -8,7 +8,7 @@ class MissileConfig(object):
         self.num_missile = 1              # []      飞机带弹数量
         self.K = 6
         self.dt = 1 / 12.                 # [s]
-        self.missile_vel = 600            # [m/s]   导弹-初始速度（）
+        self.missile_vel = 300            # [m/s]   导弹-初始速度（）
         self.max_missile_acc = 800        # []      导弹-机动的最大加速度（近距不考虑衰减）
 
         self.shoot_max_distance = 6000    # [m]     规则-最远发弹距离   6000
@@ -207,7 +207,7 @@ class MissileRule(object):
             return False
 
         # 2) 发弹条件判断，（）
-        distance = np.linalg.norm(ego_state[:3] - enm_state[:3])
+        distance = max(np.linalg.norm(ego_state[:3] - enm_state[:3]), 50) # max is to avoid 0 in denominator
         pos_vector = enm_state[:3] - ego_state[:3]
         vel_vector = ego_state[3:]
         ego_angle = np.rad2deg(np.arccos(np.sum(pos_vector * vel_vector) / (distance * np.linalg.norm(vel_vector))))

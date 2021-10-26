@@ -2,7 +2,8 @@ import numpy as np
 from .env_base import BaseEnv
 from ..core.catalog import Catalog
 from ..core.simulation import Simulation
-from ..tasks import SingleCombatTask, SingleCombatWithMissileTask, SingleCombatContinuousTask, SingleCombatWithArtilleryTask
+from ..tasks import SingleCombatTask, SingleCombatWithMissileTask, SingleCombatContinuousTask, \
+                    SingleCombatWithArtilleryTask, SingleCombatWithAvoidMissileTask
 
 
 class SingleCombatEnv(BaseEnv):
@@ -24,6 +25,8 @@ class SingleCombatEnv(BaseEnv):
             self.task = SingleCombatTask(self.config)
         elif taskname == 'singlecombat_with_missile':
             self.task = SingleCombatWithMissileTask(self.config)
+        elif taskname == 'singlecombat_with_avoid_missile':
+            self.task = SingleCombatWithAvoidMissileTask(self.config)
         elif taskname == 'singlecombat_with_artillery':
             self.task = SingleCombatWithArtilleryTask(self.config)
         elif taskname == 'continuous_singlecombat':
@@ -69,7 +72,7 @@ class SingleCombatEnv(BaseEnv):
             Catalog.fcs_throttle_cmd_norm: 0.,                                          # 6.
         } for idx in range(self.num_fighters)]
         # TODO: randomization
-        # np.random.shuffle(self.init_conditions)
+        np.random.shuffle(self.init_conditions)
         
 
     def step(self, actions: list):
