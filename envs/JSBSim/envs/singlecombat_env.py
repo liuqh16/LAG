@@ -2,7 +2,8 @@ import numpy as np
 from .env_base import BaseEnv
 from ..core.catalog import Catalog
 from ..core.simulation import Simulation
-from ..tasks import SingleCombatTask, SingleCombatWithMissileTask, SingleCombatContinuousTask, SingleCombatWithArtilleryTask
+from ..tasks import SingleCombatTask, SingleCombatWithMissileTask, SingleCombatContinuousTask, \
+                    SingleCombatWithArtilleryTask, SingleCombatWithAvoidMissileTask
 
 
 class SingleCombatEnv(BaseEnv):
@@ -24,12 +25,15 @@ class SingleCombatEnv(BaseEnv):
             self.task = SingleCombatTask(self.config)
         elif taskname == 'singlecombat_with_missile':
             self.task = SingleCombatWithMissileTask(self.config)
+        elif taskname == 'singlecombat_with_avoid_missile':
+            self.task = SingleCombatWithAvoidMissileTask(self.config)
         elif taskname == 'singlecombat_with_artillery':
             self.task = SingleCombatWithArtilleryTask(self.config)
         elif taskname == 'continuous_singlecombat':
             self.task = SingleCombatContinuousTask(self.config)
         else:
             raise NotImplementedError(f"Unknown taskname: {taskname}")
+        self.taskname = taskname
         self.observation_space = self.task.observation_space
         self.action_space = self.task.action_space
 
@@ -68,7 +72,7 @@ class SingleCombatEnv(BaseEnv):
             Catalog.fcs_throttle_cmd_norm: 0.,                                          # 6.
         } for idx in range(self.num_fighters)]
         # TODO: randomization
-        np.random.shuffle(self.init_conditions)
+        # np.random.shuffle(self.init_conditions)
         
 
     def step(self, actions: list):
@@ -136,10 +140,14 @@ class SingleCombatEnv(BaseEnv):
                 self.sims[agent_id].close()
 
     def render(self, mode="human"):
-        # TODO: real time rendering
+        # TODO: real time rendering [Use FlightGear]
         render_list = []
         for agent_id in range(self.num_fighters):
+            # flight
             render_list.append(np.array(self.sims[agent_id].get_property_values(self.task.render_var)))
+            # missile
+            if 'missile' in self.taskname:
+                render_list.extend(self.task.get_missile_trajectory(self, agent_id))
         return np.hstack(render_list)
 
     def seed(self, seed):

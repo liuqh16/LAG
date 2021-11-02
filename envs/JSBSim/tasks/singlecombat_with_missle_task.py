@@ -6,11 +6,12 @@ from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, MissileAttackReward, PostureReward, RelativeAltitudeReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, ShootDown, Timeout
 from ..utils.missile_utils import Missile3D
+from ..utils.utils import dis2lonlat
 
 
 class SingleCombatWithMissileTask(SingleCombatTask):
     def __init__(self, config: str):
-        super().__init__(config)
+        super().__init__(config)            
 
         self.reward_functions = [
             MissileAttackReward(self.config),
@@ -26,9 +27,11 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             LowAltitude(self.config),
             Timeout(self.config),
         ]
+        self.init_missile()
 
-        self.bloods = [100 for _ in range(self.num_agents)]
-        self.missile_lists = [Missile3D() for _ in range(self.num_agents)]
+    def init_missile(self):
+        self.bloods = [100 for _ in range(self.num_fighters)]
+        self.missile_lists = [Missile3D() for _ in range(self.num_fighters)] # By default, both figher has 1 missile.
 
     def load_observation_space(self):
         self.observation_space = [spaces.Box(low=-10, high=10., shape=(18,)) for _ in range(self.num_agents)]
@@ -48,13 +51,12 @@ class SingleCombatWithMissileTask(SingleCombatTask):
     def reset(self, env):
         """Reset fighter blood & missile status
         """
-        self.bloods = [100 for _ in range(self.num_agents)]
-        self.missile_lists = [Missile3D() for _ in range(self.num_agents)]  # By default, both figher has 2 missiles.
+        self.init_missile()
         return super().reset(env)
 
     def step(self, env, action):
-        for agent_id in range(self.num_agents):
-            ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_agents
+        for agent_id in range(self.num_fighters):
+            ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_fighters
             ego_feature = np.hstack([env.sims[ego_idx].get_position(), env.sims[ego_idx].get_velocity()])
             enm_feature = np.hstack([env.sims[enm_idx].get_position(), env.sims[enm_idx].get_velocity()])
             flag_hit = self.missile_lists[ego_idx].make_step(ego_feature, enm_feature, env.current_step)
@@ -74,3 +76,27 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             elif done and self.missile_lists[agent_id].check_no_missile_alive():
                 break
         return done, info
+
+    def get_missile_trajectory(self, env, agent_id):
+        """
+        render missile trajectory, if no missile, use default value instead
+        """
+        missile_render = []
+        for i in range(self.missile_lists[agent_id].num_missile):
+            missile_state = np.zeros((6,))
+            if self.missile_lists[agent_id].missile_info[i]['launched']:
+                missile_state[:3] = np.array(self.missile_lists[agent_id].missile_info[i]['current_state'][:3])
+                missile_state[4:6] = np.array(self.missile_lists[agent_id].missile_info[i]['current_state'][4:6])[::-1]
+            else:
+                missile_state[:3] = env.sims[agent_id].get_position()
+            # unit conversion (m, m, m) => (degree, degree, ft)
+            missile_state[0], missile_state[1] = dis2lonlat(*missile_state[0:2][::-1], 120, 60)
+            missile_state[2] = missile_state[2] / 0.304
+            missile_render.append(missile_state)
+        return missile_render
+
+
+class SingleCombatWithAvoidMissileTask(SingleCombatWithMissileTask):
+    def init_missile(self):
+        self.bloods = [100 for _ in range(self.num_fighters)]
+        self.missile_lists = [Missile3D(allow_shoot=False), Missile3D(allow_shoot=True)] # By default, both figher has 1 missile.

@@ -89,8 +89,8 @@ def show_tacview(display: TacviewClient, sim_time, state, my_id='3000001', name=
                            state[1],                    # lat, unit: degree
                            state[2] / 3.2808399,        # alt, unit: feet => meter
                            state[3] * 180 / np.pi,      # roll, unit: rad => degree
-                           state[4] * 180 / np.pi,      # yaw, unit: rad => degree
-                           state[5] * 180 / np.pi],     # pitch, unit: rad => degree
+                           state[4] * 180 / np.pi,      # pitch, unit: rad => degree
+                           state[5] * 180 / np.pi],     # yaw, unit: rad => degree
                  my_id=my_id, name=name, color=color)
 
 
@@ -99,7 +99,19 @@ def data_replay(data):
     display.init_tcp()
     for time_step in range(len(data)):
         time.sleep(0.07)
-        if len(data[time_step]) == 12:
+        if len(data[time_step]) == 36:
+            show_tacview(display, sim_time=time_step / 12, state=data[time_step][:6], my_id='300001', name='F16', color='Blue')
+            show_tacview(display, sim_time=time_step / 12, state=data[time_step][6:12], my_id='300002', name='FIM92C', color='Blue')
+            show_tacview(display, sim_time=time_step / 12, state=data[time_step][12:18], my_id='300003', name='FIM92C', color='Blue')
+            show_tacview(display, sim_time=time_step / 12, state=data[time_step][18:24], my_id='300004', name='F16', color='Red')
+            show_tacview(display, sim_time=time_step / 12, state=data[time_step][24:30], my_id='300005', name='FIM92C', color='Red')
+            show_tacview(display, sim_time=time_step / 12, state=data[time_step][30:36], my_id='300006', name='FIM92C', color='Red')
+        elif len(data[time_step]) == 24:
+            show_tacview(display, sim_time=time_step / 12, state=data[time_step][:6], my_id='300001', name='F16', color='Blue')
+            show_tacview(display, sim_time=time_step / 12, state=data[time_step][6:12], my_id='300002', name='FIM92C', color='Blue')
+            show_tacview(display, sim_time=time_step / 12, state=data[time_step][12:18], my_id='300003', name='F16', color='Red')
+            show_tacview(display, sim_time=time_step / 12, state=data[time_step][18:24], my_id='300004', name='FIM92C', color='Red')
+        elif len(data[time_step]) == 12:
             show_tacview(display, sim_time=time_step / 12, state=data[time_step][:6], my_id='3000001', name='F16', color='Blue')
             show_tacview(display, sim_time=time_step / 12, state=data[time_step][6:], my_id='3000002', name='F16', color='Red')
         elif len(data[time_step]) == 6:
@@ -110,5 +122,9 @@ def data_replay(data):
 
 
 if __name__ == '__main__':
-    data = np.load('save_trajectories.npy')
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--path', default='trajectory_data.npy')
+    args = parser.parse_args()
+    data = np.load(args.path)
     data_replay(data)

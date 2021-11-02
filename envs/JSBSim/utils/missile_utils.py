@@ -5,19 +5,19 @@ from math import sin, cos, asin
 
 class MissileConfig(object):
     def __init__(self):
-        self.num_missile = 2              # []      飞机带弹数量
+        self.num_missile = 1              # []      飞机带弹数量
         self.K = 6
         self.dt = 1 / 12.                 # [s]
-        self.missile_vel = 600            # [m/s]   导弹-初始速度（）
-        self.max_missile_acc = 200        # []      导弹-机动的最大加速度（近距不考虑衰减）
+        self.missile_vel = 800            # [m/s]   导弹-初始速度（）
+        self.max_missile_acc = 800        # []      导弹-机动的最大加速度（近距不考虑衰减）
 
         self.shoot_max_distance = 6000    # [m]     规则-最远发弹距离   6000
         self.shoot_max_angle = 60         # [deg]   规则-发弹的最大方位角  60
-        self.shoot_lock_time = 1          # [s]     规则-持续锁定1s发弹
+        self.shoot_lock_time = 0.5          # [s]     规则-持续锁定1s发弹
 
-        self.hit_distance = 100           # [m]     导弹-命中敌机的判定条件
-        self.missile_last_time = 15       # [s]     导弹-最大飞行时长
-        self.flag_render = False
+        self.hit_distance = 300            # [m]     导弹-命中敌机的判定条件
+        self.missile_last_time = 25       # [s]     导弹-最大飞行时长
+        self.flag_render = True
 
 
 class MissileCore(object):
@@ -174,7 +174,7 @@ class MissileCore(object):
     def determine_missile_crash(self, missile_ith):
         cur_time_step = missile_ith['step'] * self.args.dt
         flag_missile_crash = False
-        if cur_time_step >= self.args.missile_last_time or np.sum(missile_ith['increment_distance']) >= 12:
+        if cur_time_step >= self.args.missile_last_time or np.sum(missile_ith['increment_distance']) >= 100:
             flag_missile_crash = True
         return flag_missile_crash
 
@@ -196,15 +196,18 @@ class MissileRule(object):
         }
 
     def judge_shoot_condition(self, cur_time_step, ego_state, enm_state, missile_info):
+        # 0) 不允许发弹
+        if not missile_info[0]['allow_shoot']:
+            return False
         # 1) 无弹可打
         num_all_missile = len(missile_info)
         num_available_missile = np.sum([1. - missile_info[_]['launched'] for _ in range(num_all_missile)])
-        print('available missile', num_available_missile)
+        # print('available missile', num_available_missile)
         if num_available_missile <= 0:
             return False
 
         # 2) 发弹条件判断，（）
-        distance = np.linalg.norm(ego_state[:3] - enm_state[:3])
+        distance = max(np.linalg.norm(ego_state[:3] - enm_state[:3]), 50) # max is to avoid 0 in denominator
         pos_vector = enm_state[:3] - ego_state[:3]
         vel_vector = ego_state[3:]
         ego_angle = np.rad2deg(np.arccos(np.sum(pos_vector * vel_vector) / (distance * np.linalg.norm(vel_vector))))
@@ -230,7 +233,7 @@ class MissileRule(object):
 
 
 class Missile3D(object):
-    def __init__(self, rule_shoot=True):
+    def __init__(self, allow_shoot=True):
         super(Missile3D, self).__init__()
         self.simulator = MissileCore()
         self.args = self.simulator.args
@@ -241,7 +244,8 @@ class Missile3D(object):
             'initial_state': None, 'current_state': None, 'launch_time': 0, 'step': 0,
             'pre_distance': self.args.shoot_max_distance,
             'trajectory': [],
-            'increment_distance': deque(maxlen=13)
+            'increment_distance': deque(maxlen=13),
+            'allow_shoot': allow_shoot
         } for _ in range(self.num_missile)]
 
     def _missile_initial_vel(self, ego_fighter_vel, max_missile_vel):
@@ -259,7 +263,6 @@ class Missile3D(object):
         # 2) the missile's states
         psi_m_0, gma_m_0 = self.simulator.transfer2angles(initial_missile)
         missile_state = np.array([*initial_missile[:3], initial_missile[6], psi_m_0, gma_m_0])
-
         return missile_state, target_state
 
     def make_step(self, ego_fighter_state, enm_fighter_state, fighter_time_step):
@@ -282,7 +285,7 @@ class Missile3D(object):
                 missile_vel = self._missile_initial_vel(np.linalg.norm(ego_fighter_state[3:]), self.args.missile_vel)
                 initial_missile = np.array([*ego_fighter_state, missile_vel])
                 missile_state, target_state = self._initialize_missile_state(initial_missile, enm_fighter_state)
-
+                print('initial_missile_state', missile_state)
                 self.missile_info[i]['initial_state'] = missile_state
                 self.missile_info[i]['current_state'] = missile_state
                 self.missile_info[i]['launch_time'] = fighter_time_step

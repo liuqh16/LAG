@@ -187,7 +187,6 @@ class SingleCombatContinuousTask(SingleCombatTask):
         return norm_act
 
 
-import torch
 class StraightFlyAgent:
     def __init__(self):
         pass

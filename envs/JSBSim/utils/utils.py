@@ -27,13 +27,11 @@ def get_root_dir():
 
 
 def lonlat2dis(lon, lat, init_lon, init_lat):
-    """Convert longitude&latitude into xy distance
+    """Convert longitude-latitude into east-north distance
 
     Args:
-        lon (float): lontitude of current point
-        lat (float): latitude of current point
-        init_lon (float): lontitude of original point
-        init_lat (float): latitude of original point
+        lon/lat (float): lontitude/latitude of current point
+        init_lon/init_lat (float): lontitude/latitude of original point
 
     Returns:
         (np.array): (east, north), unit: m
@@ -41,6 +39,21 @@ def lonlat2dis(lon, lat, init_lon, init_lat):
     east = (np.deg2rad(lon) - np.deg2rad(init_lon)) * np.cos(np.deg2rad(init_lat)) * 6371 * 1.734
     north = (np.deg2rad(lat) - np.deg2rad(init_lat)) * 6371 * 11.1319 / 11.11949266
     return np.array([east, north]) * 1000
+
+
+def dis2lonlat(east, north, init_lon, init_lat):
+    """Convert east-north distance into longitude-latitude
+
+    Args:
+        east/north (float): coordinates in east-north distance system (unit: m)
+        init_lon/init_lat (float): lontitude/latitude of original point
+
+    Returns:
+        (np.array): (lon, lat), unit: degree
+    """
+    lon = np.rad2deg((east / 1000 / 6371 / 1.734 / np.cos(np.deg2rad(init_lat))) + np.deg2rad(init_lon))
+    lat = np.rad2deg(north / 1000 * 11.11949266 / 11.1319 / 6371 + np.deg2rad(init_lat))
+    return np.array([lon, lat])
 
 
 def get_AO_TA_R(ego_feature, enemy_feature, return_side=False):

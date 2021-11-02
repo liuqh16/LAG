@@ -1,4 +1,4 @@
 from .heading_task import HeadingTask, HeadingContinuousTask, HeadingAndAltitudeTask
 from .singlecombat_task import SingleCombatTask, SingleCombatContinuousTask
-from .singlecombat_with_missle_task import SingleCombatWithMissileTask
+from .singlecombat_with_missle_task import SingleCombatWithMissileTask, SingleCombatWithAvoidMissileTask
 from .singlecombat_with_artillery_task import SingleCombatWithArtilleryTask

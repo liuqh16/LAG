@@ -5,7 +5,7 @@ results
 test_agent.py
 rewards.png
 plot.py
-save_trajectories.npy
+*.npy
 
 # vscode config
 .vscode
