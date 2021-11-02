@@ -1,6 +1,6 @@
 import os
-import math
 import yaml
+import pymap3d
 import numpy as np
 
 
@@ -26,34 +26,32 @@ def get_root_dir():
     return os.path.join(os.path.split(os.path.realpath(__file__))[0], '..')
 
 
-def lonlat2dis(lon, lat, init_lon, init_lat):
-    """Convert longitude-latitude into east-north distance
+def LLA2NEU(lon, lat, alt, lon0=120.0, lat0=60.0, alt0=0):
+    """Convert from Geodetic Coordinate System to NEU Coordinate System.
 
     Args:
-        lon/lat (float): lontitude/latitude of current point
-        init_lon/init_lat (float): lontitude/latitude of original point
+        lon, lat, alt (float): target geodetic lontitude(°), latitude(°), altitude(m)
+        lon, lat, alt (float): observer geodetic lontitude(°), latitude(°), altitude(m); Default=`(120°E, 60°N, 0m)`
 
     Returns:
-        (np.array): (east, north), unit: m
+        (np.array): (North, East, Up), unit: m
     """
-    east = (np.deg2rad(lon) - np.deg2rad(init_lon)) * np.cos(np.deg2rad(init_lat)) * 6371 * 1.734
-    north = (np.deg2rad(lat) - np.deg2rad(init_lat)) * 6371 * 11.1319 / 11.11949266
-    return np.array([east, north]) * 1000
+    n, e, d = pymap3d.geodetic2ned(lat, lon, alt, lat0, lon0, alt0)
+    return np.array([n, e, -d])
 
 
-def dis2lonlat(east, north, init_lon, init_lat):
-    """Convert east-north distance into longitude-latitude
+def NEU2LLA(n, e, u, lon0=120.0, lat0=60.0, alt0=0):
+    """Convert from NEU Coordinate System to Geodetic Coordinate System.
 
     Args:
-        east/north (float): coordinates in east-north distance system (unit: m)
-        init_lon/init_lat (float): lontitude/latitude of original point
+        n, e, u (float): target relative position w.r.t. North, East, Down
+        lon, lat, alt (float): observer geodetic lontitude(°), latitude(°), altitude(m); Default=`(120°E, 60°N, 0m)`
 
     Returns:
-        (np.array): (lon, lat), unit: degree
+        (np.array): (lon, lat, alt), unit: °, °, m
     """
-    lon = np.rad2deg((east / 1000 / 6371 / 1.734 / np.cos(np.deg2rad(init_lat))) + np.deg2rad(init_lon))
-    lat = np.rad2deg(north / 1000 * 11.11949266 / 11.1319 / 6371 + np.deg2rad(init_lat))
-    return np.array([lon, lat])
+    lat, lon, h = pymap3d.ned2geodetic(n, e, -u, lat0, lon0, alt0)
+    return np.array([lon, lat, h])
 
 
 def get_AO_TA_R(ego_feature, enemy_feature, return_side=False):
@@ -101,10 +99,17 @@ def in_range_rad(angle):
     return angle
 
 
-def unit_converse(x, left: str, right: str):
-    if left == 'ft' and right == 'm':
-        return x * 0.3048
-    elif left == 'm' and right == 'ft':
-        return x * 3.2808
-    else:
-        raise NotImplementedError
+if __name__ == "__main__":
+    p1 = (120.05, 59.9)
+    p2 = (120.1, 60.05)
+    o = (120.0, 60.0)
+    from pyproj import Geod, Proj, Transformer
+    print(Geod(ellps="WGS84").line_length(*list(zip(p1, p2))))
+    print(Geod(ellps="clrk66").line_length(*list(zip(p1, p2))))
+
+    print("***" * 10)
+    print(NEU2LLA(*LLA2NEU(*p1, 4000)))
+    print("***" * 10)
+    print(LLA2NEU(*o, 4000))
+    print("***" * 10)
+    print(np.linalg.norm(LLA2NEU(*p1, 4000) - LLA2NEU(*p2, 4000)))

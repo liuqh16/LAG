@@ -2,7 +2,7 @@ import numpy as np
 from numpy.core.numeric import array_equal
 from numpy.lib.arraypad import pad
 from .reward_function_base import BaseRewardFunction
-from ..utils.utils import get_AO_TA_R, lonlat2dis
+from ..utils.utils import get_AO_TA_R
 from ..core.catalog import Catalog
 
 

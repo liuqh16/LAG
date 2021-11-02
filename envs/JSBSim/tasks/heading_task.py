@@ -4,7 +4,6 @@ from .task_base import BaseTask
 from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, HeadingReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout, UnreachHeading, UnreachHeadingAndAltitude
-from ..utils.utils import lonlat2dis
 
 
 class HeadingTask(BaseTask):
@@ -36,8 +35,8 @@ class HeadingTask(BaseTask):
 
     def load_variables(self):
         self.state_var = [
-            c.delta_altitude,                   #  0. delta_h   (unit: feet)
-            c.delta_heading,                    #  1.           (unit: degree)
+            c.delta_altitude,                   #  0. delta_h   (unit: m)
+            c.delta_heading,                    #  1.           (unit: °)
             c.attitude_roll_rad,                #  2. roll      (unit: rad)
             c.attitude_pitch_rad,               #  3. pitch     (unit: rad)
             c.velocities_v_north_fps,           #  4. v_north   (unit: fps)
@@ -54,7 +53,7 @@ class HeadingTask(BaseTask):
         self.render_var = [
             c.position_long_gc_deg,
             c.position_lat_geod_deg,
-            c.position_h_sl_ft,
+            c.position_h_sl_m,
             c.attitude_roll_rad,
             c.attitude_pitch_rad,
             c.attitude_heading_true_rad,
@@ -70,14 +69,14 @@ class HeadingTask(BaseTask):
     def normalize_observation(self, env, obsersvations: list):
         ego_obs_list = obsersvations[0]
         observation = np.zeros(8)
-        observation[0] = ego_obs_list[0] * 0.304 / 1000     #  0. ego delta altitude  (unit: 1km)
-        observation[1] = ego_obs_list[1] / 180 * np.pi      #  1. ego delta heading   (unit rad)
-        observation[2] = ego_obs_list[2]                    #  2. ego_roll    (unit: rad)
-        observation[3] = ego_obs_list[3]                    #  3. ego_pitch   (unit: rad)
-        observation[4] = ego_obs_list[4] * 0.304 / 340      #  4. ego_v_north        (unit: mh)
-        observation[5] = ego_obs_list[5] * 0.304 / 340      #  5. ego_v_east        (unit: mh)
-        observation[6] = ego_obs_list[6] * 0.304 / 340      #  6. ego_v_down        (unit: mh)
-        observation[7] = ego_obs_list[7] * 0.304 / 340      #  7. ego_vc        (unit: mh)
+        observation[0] = ego_obs_list[0] / 1000         #  0. ego delta altitude  (unit: 1km)
+        observation[1] = ego_obs_list[1] / 180 * np.pi  #  1. ego delta heading   (unit rad)
+        observation[2] = ego_obs_list[2]                #  2. ego_roll      (unit: rad)
+        observation[3] = ego_obs_list[3]                #  3. ego_pitch     (unit: rad)
+        observation[4] = ego_obs_list[4] / 340          #  4. ego_v_north   (unit: mh)
+        observation[5] = ego_obs_list[5] / 340          #  5. ego_v_east    (unit: mh)
+        observation[6] = ego_obs_list[6] / 340          #  6. ego_v_down    (unit: mh)
+        observation[7] = ego_obs_list[7] / 340          #  7. ego_vc        (unit: mh)
         observation = np.expand_dims(observation, axis=0)    # dim: (1,8)
         return observation
 

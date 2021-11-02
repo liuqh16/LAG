@@ -284,15 +284,35 @@ class JsbsimCatalog(Property, Enum):
 
 class ExtraCatalog(Property, Enum):
     """
-
     A class to define and store new properties not implemented in JSBSim
-
     """
+
+    # state in other formats
+
+    position_h_sl_m = Property("position/h-sl-m", "altitude above mean sea level [m]", -500, 26000, \
+        access="R", update=lambda sim: sim.set_property_value(ExtraCatalog.position_h_sl_m, \
+            sim.get_property_value(JsbsimCatalog.position_h_sl_ft) * 0.3048))
+
+    velocities_v_north_mps = Property("velocities/v-north-mps", "velocity true north [m/s]", -700, 700, \
+        access="R", update=lambda sim: sim.set_property_value(ExtraCatalog.velocities_v_north_mps, \
+            sim.get_property_value(JsbsimCatalog.velocities_v_north_fps) * 0.3048))
+
+    velocities_v_east_mps = Property("velocities/v-east-mps", "velocity east [m/s]", -700, 700, \
+        access="R", update=lambda sim: sim.set_property_value(ExtraCatalog.velocities_v_east_mps, \
+            sim.get_property_value(JsbsimCatalog.velocities_v_east_fps) * 0.3048))
+
+    velocities_v_down_mps = Property("velocities/v-down-mps", "velocity downwards [m/s]", -700, 700, \
+        access="R", update=lambda sim: sim.set_property_value(ExtraCatalog.velocities_v_down_mps, \
+            sim.get_property_value(JsbsimCatalog.velocities_v_down_fps) * 0.3048))
+
+    velocities_vc_mps = Property("velocities/vc-mps", "airspeed in knots [m/s]", 0, 1400, \
+        access="R", update=lambda sim: sim.set_property_value(ExtraCatalog.velocities_vc_mps, \
+            sim.get_property_value(JsbsimCatalog.velocities_vc_fps) * 0.3048))
 
     def update_delta_altitude(sim):
         value = sim.get_property_value(ExtraCatalog.target_altitude_ft) - sim.get_property_value(
             JsbsimCatalog.position_h_sl_ft
-        )
+        ) * 0.3048
         sim.set_property_value(ExtraCatalog.delta_altitude, value)
 
     def update_delta_heading(sim):
@@ -371,8 +391,8 @@ class ExtraCatalog(Property, Enum):
     # position and attitude
 
     delta_altitude = Property(
-        "position/delta-altitude-to-target-ft",
-        "delta altitude to target [ft]",
+        "position/delta-altitude-to-target-m",
+        "delta altitude to target [m]",
         -40000,
         40000,
         access="R",
@@ -466,7 +486,8 @@ class ExtraCatalog(Property, Enum):
 
 
 class MixedCatalog(dict):
-    """A class to store both jsbsim & extra properties initiated and used during jsbsim simulation.
+    """
+    A class to store both jsbsim & extra properties initiated and used during jsbsim simulation.
     """
 
     def __getitem__(self, name):
@@ -493,6 +514,8 @@ class MixedCatalog(dict):
             access = re.sub(r"[\(\)]", "", access)  # remove parenthesis from the flag
             name = re.sub(r"_$", "", re.sub(r"[\-/\]\[]+", "_", name_jsbsim))  # get property name from jsbsim name
             if name not in self:
+                assert name not in ExtraCatalog.__members__, \
+                    f"{name} has been defined in JSBSim, use another name in ExtraCatalog"
                 try:
                     self[name] = JsbsimCatalog[name].value
                 except KeyError:

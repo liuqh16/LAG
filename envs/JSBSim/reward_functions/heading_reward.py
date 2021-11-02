@@ -24,7 +24,7 @@ class HeadingReward(BaseRewardFunction):
         heading_error_scale = 5.0  # degrees
         heading_r = math.exp(-((env.sims[agent_id].get_property_value(c.delta_heading) / heading_error_scale) ** 2))
 
-        alt_error_scale = 50.0  # feet
+        alt_error_scale = 15.24  # m
         alt_r = math.exp(-((env.sims[agent_id].get_property_value(c.delta_altitude) / alt_error_scale) ** 2))
 
         roll_error_scale = 0.35  # radians ~= 20 degrees

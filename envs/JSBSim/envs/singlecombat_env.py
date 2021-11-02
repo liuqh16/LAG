@@ -45,7 +45,7 @@ class SingleCombatEnv(BaseEnv):
         self.sims = [Simulation(
             aircraft_name=self.aircraft_names[idx],
             init_conditions=self.init_conditions[idx],
-            origin_point=(self.init_longitude, self.init_latitude),
+            origin_point=(self.init_longitude, self.init_latitude, 0),
             jsbsim_freq=self.jsbsim_freq,
             agent_interaction_steps=self.agent_interaction_steps) for idx in range(self.num_fighters)]
         next_observation = self.get_observation()
@@ -96,7 +96,7 @@ class SingleCombatEnv(BaseEnv):
         if self.use_baseline:
             # (1,dim) => (dim,) => (2,dim)
             actions = np.array(actions).squeeze()
-            baseline_action = self.task.baseline_agent.get_action(self, self.task) # 
+            baseline_action = self.task.baseline_agent.get_action(self, self.task)
             actions = np.stack((actions, baseline_action))
         actions = self.task.normalize_action(self, actions)
 

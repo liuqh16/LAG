@@ -46,15 +46,15 @@ class CircleAgent:
             self.step += 1
 
         observation = np.zeros(8)
-        observation[0] = 0                                  #  0. ego delta altitude  (unit: 1km)
-        observation[1] = in_range_rad(delta_heading)        #  1. ego delta heading   (unit rad)
-        observation[2] = ego_obs_list[3]                    #  2. ego_roll    (unit: rad)
-        observation[3] = ego_obs_list[4]                    #  3. ego_pitch   (unit: rad)
-        observation[4] = ego_obs_list[6] * 0.304 / 340      #  4. ego_v_north        (unit: mh)
-        observation[5] = ego_obs_list[7] * 0.304 / 340      #  5. ego_v_east        (unit: mh)
-        observation[6] = ego_obs_list[8] * 0.304 / 340      #  6. ego_v_down        (unit: mh)
-        observation[7] = ego_obs_list[9] * 0.304 / 340      #  7. ego_vc        (unit: mh)
-        observation = np.expand_dims(observation, axis=0)    # dim: (1,8)
+        observation[0] = 0                              #  0. ego delta altitude  (unit: 1km)
+        observation[1] = in_range_rad(delta_heading)    #  1. ego delta heading   (unit rad)
+        observation[2] = ego_obs_list[3]                #  2. ego_roll      (unit: rad)
+        observation[3] = ego_obs_list[4]                #  3. ego_pitch     (unit: rad)
+        observation[4] = ego_obs_list[6] / 340          #  4. ego_v_north   (unit: mh)
+        observation[5] = ego_obs_list[7] / 340          #  5. ego_v_east    (unit: mh)
+        observation[6] = ego_obs_list[8] / 340          #  6. ego_v_down    (unit: mh)
+        observation[7] = ego_obs_list[9] / 340          #  7. ego_vc        (unit: mh)
+        observation = np.expand_dims(observation, axis=0)   # dim: (1,8)
         _action, _, self.rnn_states = self.actor(observation, self.rnn_states, deterministic=True)
         action = _action.detach().cpu().numpy().squeeze()
         return action
@@ -123,5 +123,5 @@ def grid_search_test():
                     env.close()
 
 
-grid_search_test()
-# test_env()
+# grid_search_test()
+test_env()

@@ -87,7 +87,7 @@ def show_tacview(display: TacviewClient, sim_time, state, my_id='3000001', name=
     display.send(time=sim_time,
                  state_in=[state[0],                    # lon, unit: degree
                            state[1],                    # lat, unit: degree
-                           state[2] / 3.2808399,        # alt, unit: feet => meter
+                           state[2],                    # alt, unit: meter
                            state[3] * 180 / np.pi,      # roll, unit: rad => degree
                            state[4] * 180 / np.pi,      # pitch, unit: rad => degree
                            state[5] * 180 / np.pi],     # yaw, unit: rad => degree
@@ -97,7 +97,8 @@ def show_tacview(display: TacviewClient, sim_time, state, my_id='3000001', name=
 def data_replay(data):
     display = TacviewClient()
     display.init_tcp()
-    for time_step in range(len(data)):
+    for time_step in range(len(data) + 2):
+        time_step = min(time_step, len(data) - 1)
         time.sleep(0.07)
         if len(data[time_step]) == 36:
             show_tacview(display, sim_time=time_step / 12, state=data[time_step][:6], my_id='300001', name='F16', color='Blue')

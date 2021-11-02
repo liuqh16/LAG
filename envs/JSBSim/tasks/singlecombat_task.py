@@ -6,7 +6,8 @@ from .task_base import BaseTask
 from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, PostureReward, RelativeAltitudeReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout
-from ..utils.utils import in_range_rad, lonlat2dis, get_AO_TA_R
+from ..utils.utils import in_range_rad, get_AO_TA_R, LLA2NEU
+
 
 class SingleCombatTask(BaseTask):
     def __init__(self, config):
@@ -45,16 +46,16 @@ class SingleCombatTask(BaseTask):
 
     def load_variables(self):
         self.state_var = [
-            c.position_long_gc_deg,             #  0. lontitude (unit: degree)
-            c.position_lat_geod_deg,            #  1. latitude  (unit: degree)
-            c.position_h_sl_ft,                 #  2. altitude  (unit: feet)
+            c.position_long_gc_deg,             #  0. lontitude (unit: °)
+            c.position_lat_geod_deg,            #  1. latitude  (unit: °)
+            c.position_h_sl_m,                  #  2. altitude  (unit: m)
             c.attitude_roll_rad,                #  3. roll      (unit: rad)
             c.attitude_pitch_rad,               #  4. pitch     (unit: rad)
             c.attitude_heading_true_rad,        #  5. yaw       (unit: rad)
-            c.velocities_v_north_fps,           #  6. v_north   (unit: fps)
-            c.velocities_v_east_fps,            #  7. v_east    (unit: fps)
-            c.velocities_v_down_fps,            #  8. v_down    (unit: fps)
-            c.velocities_vc_fps,                #  9. vc        (unit: fps)
+            c.velocities_v_north_mps,           #  6. v_north   (unit: m/s)
+            c.velocities_v_east_mps,            #  7. v_east    (unit: m/s)
+            c.velocities_v_down_mps,            #  8. v_down    (unit: m/s)
+            c.velocities_vc_mps,                #  9. vc        (unit: m/s)
             c.accelerations_n_pilot_x_norm,     # 10. a_north   (unit: G)
             c.accelerations_n_pilot_y_norm,     # 11. a_east    (unit: G)
             c.accelerations_n_pilot_z_norm,     # 12. a_down    (unit: G)
@@ -68,7 +69,7 @@ class SingleCombatTask(BaseTask):
         self.render_var = [
             c.position_long_gc_deg,
             c.position_lat_geod_deg,
-            c.position_h_sl_ft,
+            c.position_h_sl_m,
             c.attitude_roll_rad,
             c.attitude_pitch_rad,
             c.attitude_heading_true_rad,
@@ -86,28 +87,22 @@ class SingleCombatTask(BaseTask):
         """
         def _normalize(agent_id):
             ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_fighters
-            ego_obs_list, enm_obs_list = observations[ego_idx], observations[enm_idx]
+            ego_obs_list, enm_obs_list = np.array(observations[ego_idx]), np.array(observations[enm_idx])
             # (0) extract feature: [north(km), east(km), down(km), v_n(mh), v_e(mh), v_d(mh)]
-            ego_cur_east, ego_cur_north = lonlat2dis(ego_obs_list[0], ego_obs_list[1], env.init_longitude, env.init_latitude)
-            enm_cur_east, enm_cur_north = lonlat2dis(enm_obs_list[0], enm_obs_list[1], env.init_longitude, env.init_latitude)
-            ego_feature = np.array([
-                ego_cur_north / 1000, ego_cur_east / 1000, ego_obs_list[2] * 0.304 / 1000,
-                ego_obs_list[6] * 0.304 / 340, ego_obs_list[7] * 0.304 / 340, ego_obs_list[8] * 0.304 / 340
-            ])
-            enm_feature = np.array([
-                enm_cur_north / 1000, enm_cur_east / 1000, enm_obs_list[2] * 0.304 / 1000,
-                enm_obs_list[6] * 0.304 / 340, enm_obs_list[7] * 0.304 / 340, enm_obs_list[8] * 0.304 / 340
-            ])
+            ego_cur_ned = LLA2NEU(*ego_obs_list[:3], env.init_longitude, env.init_latitude)
+            enm_cur_ned = LLA2NEU(*enm_obs_list[:3], env.init_longitude, env.init_latitude)
+            ego_feature = np.array([*(ego_cur_ned / 1000), *(ego_obs_list[6:9] / 340)])
+            enm_feature = np.array([*(enm_cur_ned / 1000), *(enm_obs_list[6:9] / 340)])
             observation = np.zeros(18)
             # (1) ego info normalization
-            observation[0] = ego_obs_list[2] * 0.304 / 5000     #  0. ego altitude  (unit: 5km)
+            observation[0] = ego_obs_list[2] / 5000             #  0. ego altitude  (unit: 5km)
             observation[1] = np.linalg.norm(ego_feature[3:])    #  1. ego_v         (unit: mh)
             observation[2] = ego_obs_list[8]                    #  2. ego_v_down    (unit: mh)
             observation[3] = np.sin(ego_obs_list[3])            #  3. ego_roll_sin
             observation[4] = np.cos(ego_obs_list[3])            #  4. ego_roll_cos
             observation[5] = np.sin(ego_obs_list[4])            #  5. ego_pitch_sin
             observation[6] = np.cos(ego_obs_list[4])            #  6. ego_pitch_cos
-            observation[7] = ego_obs_list[9] * 0.304 / 340      #  7. ego_vc        (unit: mh)
+            observation[7] = ego_obs_list[9] / 340              #  7. ego_vc        (unit: mh)
             observation[8] = ego_obs_list[10]                   #  8. ego_north_ng  (unit: 5G)
             observation[9] = ego_obs_list[11]                   #  9. ego_east_ng   (unit: 5G)
             observation[10] = ego_obs_list[12]                  # 10. ego_down_ng   (unit: 5G)
@@ -117,7 +112,7 @@ class SingleCombatTask(BaseTask):
             observation[12] = ego_AO                            # 12. ego_AO        (unit: rad)
             observation[13] = ego_TA                            # 13. ego_TA        (unit: rad)
             observation[14] = side_flag                         # 14. enm_delta_heading: 1 or 0 or -1
-            observation[15] = enm_obs_list[2] * 0.304 / 5000    # 15. enm_altitude  (unit: 5km)
+            observation[15] = enm_obs_list[2] / 5000            # 15. enm_altitude  (unit: 5km)
             observation[16] = np.linalg.norm(enm_feature[3:])   # 16. enm_v         (unit: mh)
             observation[17] = enm_obs_list[8]                   # 17. enm_v_down    (unit: mh)
             return observation
@@ -239,28 +234,22 @@ class SingleControlAgent:
         ego_obs_list = env.sims[1].get_property_values(task.state_var)
         enm_obs_list = env.sims[0].get_property_values(task.state_var)
 
-        ego_cur_east, ego_cur_north = lonlat2dis(ego_obs_list[0], ego_obs_list[1], env.init_longitude, env.init_latitude)
-        enm_cur_east, enm_cur_north = lonlat2dis(enm_obs_list[0], enm_obs_list[1], env.init_longitude, env.init_latitude)
-        ego_feature = np.array([
-            ego_cur_east / 1000, ego_cur_north / 1000, 
-            ego_obs_list[7] * 0.304 / 340, ego_obs_list[6] * 0.304 / 340
-        ])
-        enm_feature = np.array([
-            enm_cur_east / 1000, enm_cur_north / 1000,
-            enm_obs_list[7] * 0.304 / 340, enm_obs_list[6] * 0.304 / 340
-        ])
+        ego_cur_ned = LLA2NEU(*ego_obs_list[:3], env.init_longitude, env.init_latitude)
+        enm_cur_ned = LLA2NEU(*enm_obs_list[:3], env.init_longitude, env.init_latitude)
+        ego_feature = np.array([*(ego_cur_ned[:2] / 1000), *(ego_obs_list[6:8] / 340)])
+        enm_feature = np.array([*(enm_cur_ned[:2] / 1000), *(enm_obs_list[6:8] / 340)])
         ego_AO = get_delta_heading(ego_feature, enm_feature)
 
         observation = np.zeros(8)
-        observation[0] = (enm_obs_list[2]-ego_obs_list[2]) * 0.304 / 1000         #  0. ego delta altitude  (unit: 1km)
-        observation[1] = in_range_rad(ego_AO)               #  1. ego delta heading   (unit rad)
-        observation[2] = ego_obs_list[3]                    #  2. ego_roll    (unit: rad)
-        observation[3] = ego_obs_list[4]                    #  3. ego_pitch   (unit: rad)
-        observation[4] = ego_obs_list[6] * 0.304 / 340      #  4. ego_v_north        (unit: mh)
-        observation[5] = ego_obs_list[7] * 0.304 / 340      #  5. ego_v_east        (unit: mh)
-        observation[6] = ego_obs_list[8] * 0.304 / 340      #  6. ego_v_down        (unit: mh)
-        observation[7] = ego_obs_list[9] * 0.304 / 340      #  7. ego_vc        (unit: mh)
-        observation = np.expand_dims(observation, axis=0)    # dim: (1,8)
+        observation[0] = (enm_obs_list[2] - ego_obs_list[2]) / 1000 #  0. ego delta altitude  (unit: 1km)
+        observation[1] = in_range_rad(ego_AO)                       #  1. ego delta heading   (unit rad)
+        observation[2] = ego_obs_list[3]                            #  2. ego_roll      (unit: rad)
+        observation[3] = ego_obs_list[4]                            #  3. ego_pitch     (unit: rad)
+        observation[4] = ego_obs_list[6] / 340                      #  4. ego_v_north   (unit: mh)
+        observation[5] = ego_obs_list[7] / 340                      #  5. ego_v_east    (unit: mh)
+        observation[6] = ego_obs_list[8] / 340                      #  6. ego_v_down    (unit: mh)
+        observation[7] = ego_obs_list[9] / 340                      #  7. ego_vc        (unit: mh)
+        observation = np.expand_dims(observation, axis=0)           # dim: (1,8)
 
         _action, _, self.rnn_states = self.actor(observation, self.rnn_states, deterministic=True)
         action = _action.detach().cpu().numpy().squeeze()

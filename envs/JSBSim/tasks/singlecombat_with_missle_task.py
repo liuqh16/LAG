@@ -6,7 +6,7 @@ from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, MissileAttackReward, PostureReward, RelativeAltitudeReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, ShootDown, Timeout
 from ..utils.missile_utils import Missile3D
-from ..utils.utils import dis2lonlat
+from ..utils.utils import NEU2LLA
 
 
 class SingleCombatWithMissileTask(SingleCombatTask):
@@ -89,9 +89,9 @@ class SingleCombatWithMissileTask(SingleCombatTask):
                 missile_state[4:6] = np.array(self.missile_lists[agent_id].missile_info[i]['current_state'][4:6])[::-1]
             else:
                 missile_state[:3] = env.sims[agent_id].get_position()
+                missile_state[4:6] = env.sims[agent_id].get_rpy()[1:]
             # unit conversion (m, m, m) => (degree, degree, ft)
-            missile_state[0], missile_state[1] = dis2lonlat(*missile_state[0:2][::-1], 120, 60)
-            missile_state[2] = missile_state[2] / 0.304
+            missile_state[:3] = NEU2LLA(*missile_state[:3], env.init_longitude, env.init_latitude)
             missile_render.append(missile_state)
         return missile_render
 

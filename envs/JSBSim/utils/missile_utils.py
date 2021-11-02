@@ -6,16 +6,16 @@ from math import sin, cos, asin
 class MissileConfig(object):
     def __init__(self):
         self.num_missile = 1              # []      飞机带弹数量
-        self.K = 6
+        self.K = 5
         self.dt = 1 / 12.                 # [s]
-        self.missile_vel = 800            # [m/s]   导弹-初始速度（）
-        self.max_missile_acc = 800        # []      导弹-机动的最大加速度（近距不考虑衰减）
+        self.missile_vel = 400            # [m/s]   导弹-初始速度（）
+        self.max_missile_acc = 300        # []      导弹-机动的最大加速度（近距不考虑衰减）
 
         self.shoot_max_distance = 6000    # [m]     规则-最远发弹距离   6000
         self.shoot_max_angle = 60         # [deg]   规则-发弹的最大方位角  60
         self.shoot_lock_time = 0.5          # [s]     规则-持续锁定1s发弹
 
-        self.hit_distance = 300            # [m]     导弹-命中敌机的判定条件
+        self.hit_distance = 100            # [m]     导弹-命中敌机的判定条件
         self.missile_last_time = 25       # [s]     导弹-最大飞行时长
         self.flag_render = True
 
@@ -183,6 +183,7 @@ class MissileCore(object):
         missile_ith['increment_distance'].append(np.sign(distance - missile_ith['pre_distance']))
         missile_ith['pre_distance'] = distance
         flag_hit = False
+        # print(f"{distance}")
         if distance <= self.args.hit_distance:
             flag_hit = True
         return flag_hit
@@ -249,7 +250,7 @@ class Missile3D(object):
         } for _ in range(self.num_missile)]
 
     def _missile_initial_vel(self, ego_fighter_vel, max_missile_vel):
-        return max_missile_vel
+        return max_missile_vel + ego_fighter_vel
 
     def _initialize_missile_state(self, initial_missile, initial_target):
         """

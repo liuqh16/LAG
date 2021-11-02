@@ -30,7 +30,7 @@ class UnreachHeadingAndAltitude(BaseTerminationCondition):
         success = False
         check_time = env.sims[agent_id].get_property_value(c.heading_check_time)
         if env.sims[agent_id].get_property_value(c.simulation_sim_time_sec) >= check_time:
-            if math.fabs(env.sims[agent_id].get_property_value(c.delta_altitude)) >= 1000:
+            if math.fabs(env.sims[agent_id].get_property_value(c.delta_altitude)) >= 300:
                 done = True
                 print(info)
                 print(f'INFO: agent[{agent_id}] unreached attitude!')
