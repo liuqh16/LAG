@@ -121,5 +121,5 @@ def grid_search_test():
                     env.close()
 
 
-grid_search_test()
-# test_env()
+# grid_search_test()
+test_env()
