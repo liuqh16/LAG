@@ -231,8 +231,8 @@ class SingleControlAgent:
             return - ego_AO * side_flag
 
         ego_id, enm_id= 1, 0
-        ego_obs_list = env.sims[1].get_property_values(task.state_var)
-        enm_obs_list = env.sims[0].get_property_values(task.state_var)
+        ego_obs_list = np.array(env.sims[1].get_property_values(task.state_var))
+        enm_obs_list = np.array(env.sims[0].get_property_values(task.state_var))
 
         ego_cur_ned = LLA2NEU(*ego_obs_list[:3], env.init_longitude, env.init_latitude)
         enm_cur_ned = LLA2NEU(*enm_obs_list[:3], env.init_longitude, env.init_latitude)
