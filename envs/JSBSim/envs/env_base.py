@@ -1,6 +1,6 @@
 import gym
 import numpy as np
-from ..core.simulation import Simulation
+from ..core.simulatior import AircraftSimulator
 from ..tasks.task_base import BaseTask
 from ..utils.utils import parse_config
 
@@ -19,15 +19,21 @@ class BaseEnv(gym.Env):
 
     def __init__(self, config_name: str):
         self.config = parse_config(config_name)
-        self.num_fighters = getattr(self.config, 'num_fighters', 1)
+        self.aircraft_configs = self.config.aircraft_config     # type: dict
+        self.num_aircrafts = len(self.aircraft_configs.keys())
         self.max_steps = getattr(self.config, 'max_steps', 100)
         self.jsbsim_freq = getattr(self.config, 'jsbsim_freq', 60)
         self.agent_interaction_steps = getattr(self.config, 'agent_interaction_steps', 12)
         self.load()
 
+    @property
+    def num_agents(self):
+        return self.task.num_agents
+
     def load(self):
         self.load_task()
         self.load_variables()
+        self.load_simulator()
 
     def load_task(self):
         self.task = BaseTask(self.config)
@@ -35,10 +41,18 @@ class BaseEnv(gym.Env):
         self.action_space = self.task.action_space
 
     def load_variables(self):
-        self.init_longitude, self.init_latitude = 120.0, 60.0
-        self.init_conditions = [None] * self.num_fighters
-        self.sims = [None] * self.num_fighters
         self.current_step = 0
+        self.center_lon, self.center_lat, self.center_alt = \
+            getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0))
+
+    def load_simulator(self):
+        self.sims = [
+            AircraftSimulator(aircraft_model=self.aircraft_configs[key].get("model", "f16"),
+                              init_state=self.aircraft_configs[key].get("init_state", {}),
+                              battle_field_center=(self.center_lon, self.center_lat, self.center_alt),
+                              jsbsim_freq=self.jsbsim_freq,
+                              agent_interaction_steps=self.agent_interaction_steps)
+        for key in self.aircraft_configs.keys()]
 
     def reset(self):
         """Resets the state of the environment and returns an initial observation.
@@ -47,14 +61,8 @@ class BaseEnv(gym.Env):
             init_conditions (np.array): the initial observation of the space.
         """
         self.current_step = 0
-        self.close()
-
-        self.sims = [Simulation(aircraft_name='f16',
-                                init_conditions=self.init_conditions[i],
-                                origin_point=(self.init_longitude, self.init_latitude),
-                                jsbsim_freq=self.jsbsim_freq,
-                                agent_interaction_steps=self.agent_interaction_steps) for i in range(self.num_fighters)]
-
+        for sim in self.sims:
+            sim.reload()
         next_observation = self.get_observation()
         self.task.reset(self)
         return next_observation
@@ -95,7 +103,7 @@ class BaseEnv(gym.Env):
             (np.array): agents' observation of the environment state
         """
         # take actions
-        for agent_id in range(self.num_fighters):
+        for agent_id in range(self.num_aircrafts):
             self.sims[agent_id].set_property_values(self.task.action_var, actions[agent_id])
             self.sims[agent_id].run()
 
@@ -108,7 +116,7 @@ class BaseEnv(gym.Env):
             (np.array): the first state observation of the episode
         """
         next_observation = []
-        for agent_id in range(self.num_fighters):
+        for agent_id in range(self.num_aircrafts):
             next_observation.append(self.sims[agent_id].get_property_values(self.task.state_var))
         return np.array(next_observation)
 

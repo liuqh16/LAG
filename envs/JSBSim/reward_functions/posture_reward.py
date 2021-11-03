@@ -17,7 +17,7 @@ class PostureReward(BaseRewardFunction):
     """
     def __init__(self, config):
         super().__init__(config)
-        assert self.num_fighters == 2, \
+        assert self.num_aircrafts == 2, \
             "PostureReward only support one-to-one environments but current env has more than 2 agents!"
         self.orientation_version = getattr(self.config, f'{self.__class__.__name__}_orientation_version', 'v2')
         self.range_version = getattr(self.config, f'{self.__class__.__name__}_range_version', 'v2')
@@ -38,7 +38,7 @@ class PostureReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_fighters
+        ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_aircrafts
         # feature: (north, east, down, vn, ve, vd) unit: km, mh
         ego_feature = np.hstack([env.sims[ego_idx].get_position() / 1000, env.sims[ego_idx].get_velocity() / 340])
         enm_feature = np.hstack([env.sims[enm_idx].get_position() / 1000, env.sims[enm_idx].get_velocity() / 340])

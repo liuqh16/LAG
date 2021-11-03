@@ -30,8 +30,8 @@ class SingleCombatWithMissileTask(SingleCombatTask):
         self.init_missile()
 
     def init_missile(self):
-        self.bloods = [100 for _ in range(self.num_fighters)]
-        self.missile_lists = [Missile3D() for _ in range(self.num_fighters)] # By default, both figher has 1 missile.
+        self.bloods = [100 for _ in range(self.num_aircrafts)]
+        self.missile_lists = [Missile3D() for _ in range(self.num_aircrafts)] # By default, both figher has 1 missile.
 
     def load_observation_space(self):
         self.observation_space = [spaces.Box(low=-10, high=10., shape=(18,)) for _ in range(self.num_agents)]
@@ -55,8 +55,8 @@ class SingleCombatWithMissileTask(SingleCombatTask):
         return super().reset(env)
 
     def step(self, env, action):
-        for agent_id in range(self.num_fighters):
-            ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_fighters
+        for agent_id in range(self.num_aircrafts):
+            ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_aircrafts
             ego_feature = np.hstack([env.sims[ego_idx].get_position(), env.sims[ego_idx].get_velocity()])
             enm_feature = np.hstack([env.sims[enm_idx].get_position(), env.sims[enm_idx].get_velocity()])
             flag_hit = self.missile_lists[ego_idx].make_step(ego_feature, enm_feature, env.current_step)
@@ -91,12 +91,12 @@ class SingleCombatWithMissileTask(SingleCombatTask):
                 missile_state[:3] = env.sims[agent_id].get_position()
                 missile_state[4:6] = env.sims[agent_id].get_rpy()[1:]
             # unit conversion (m, m, m) => (degree, degree, ft)
-            missile_state[:3] = NEU2LLA(*missile_state[:3], env.init_longitude, env.init_latitude)
+            missile_state[:3] = NEU2LLA(*missile_state[:3], env.center_lon, env.center_lat, env.center_alt)
             missile_render.append(missile_state)
         return missile_render
 
 
 class SingleCombatWithAvoidMissileTask(SingleCombatWithMissileTask):
     def init_missile(self):
-        self.bloods = [100 for _ in range(self.num_fighters)]
+        self.bloods = [100 for _ in range(self.num_aircrafts)]
         self.missile_lists = [Missile3D(allow_shoot=False), Missile3D(allow_shoot=True)] # By default, both figher has 1 missile.

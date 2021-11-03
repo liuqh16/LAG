@@ -1,5 +1,5 @@
 #!/bin/sh
-env="JSBSim"
+env="SingleControl"
 scenario="singlecombat_vssinglecontrol"
 num_agents=1
 algo="ppo"

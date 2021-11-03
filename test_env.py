@@ -9,10 +9,8 @@ from envs.JSBSim.core.catalog import Catalog as c
 
 
 def test_env():
-    # env = SingleCombatEnv(config_name='singlecombat_selfplay')
-    # env = SingleCombatEnv(config_name='singlecombat_vsbaseline')
-    # env = SingleCombatEnv(config_name='singlecombat_vssinglecontrol')
-    env = SingleCombatEnv(config_name='scwm_selfplay')
+    # env = SingleCombatEnv(config_name='1v1/NoWeapon/Selfplay')
+    env = SingleCombatEnv(config_name='1v1/NoWeapon/vsBaseline')
     act_space = env.action_space[0]
     trajectory_list = []
     env.reset()
@@ -34,7 +32,7 @@ def test_env():
             print(env_info)
             break
     print(time.time() - start_time)
-    # np.save("trajectory_data", np.asarray(trajectory_list))
+    np.save("trajectory_data", np.asarray(trajectory_list))
 
 
 def test_parallel_env():
@@ -93,7 +91,6 @@ def test_heading_env():
     # print(reward_render)
     # np.save('save_trajectories.npy', np.asarray(trajectory_list))
 
-    
-# test_env()
+test_env()
 # test_parallel_env()
-test_heading_env()
+# test_heading_env()

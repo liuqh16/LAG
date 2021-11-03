@@ -1,5 +1,5 @@
 # task config
-task: heading_continuous_task
+task: heading_altitude_task
 
 # simulation config
 jsbsim_freq: 60
@@ -12,21 +12,24 @@ acceleration_limit_x: 10.0
 acceleration_limit_y: 10.0
 acceleration_limit_z: 10.0
 
-# init config
-num_fighters: 1
-init_config: {
+# aircraft config
+aircraft_config: {
   0: {
-    aircraft_name: f16,
-    ic_h_sl_ft: 20000,     # initial altitude
-    ic_lat_geod_deg: 60.0,
-    ic_long_gc_deg: 120.0,
-    ic_psi_true_deg: 30.0,    # initial heading
-    ic_u_fps: 800.0,
-    target_heading_deg: 30.0, 
-    target_altitude_ft: 20000,
-    heading_check_interval: 30.0
+    model: f16,
+    init_state: {
+      ic_long_gc_deg: 120.0,
+      ic_lat_geod_deg: 60.0,
+      ic_h_sl_ft: 20000,
+      ic_psi_true_deg: 0.0,
+      ic_u_fps: 800.0,
+      target_heading_deg: 30.0, 
+      target_altitude_ft: 21000,
+      heading_check_interval: 30.0
+    },
   }
 }
+# (lontitude, latitude, altitude)
+battle_field_center: [120.0, 60.0, 0.0]
 
 # reward config
 HeadingReward_render: false

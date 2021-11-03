@@ -65,7 +65,7 @@ class S_Agent:
 
 
 def test_env():
-    env = SingleCombatEnv(config_name='test_scwm_S')
+    env = SingleCombatEnv(config_name='1v1/Missile/test/s_maneuver')
     agent = S_Agent(model_path='envs\JSBSim\model\singlecontrol_baseline.pth')
     trajectory_list = []
     obs = env.reset()

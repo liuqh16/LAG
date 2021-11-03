@@ -1,8 +1,4 @@
-import numpy as np
-from collections import OrderedDict
-from gym import spaces
 from .singlecombat_task import SingleCombatTask
-from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, PostureReward, RelativeAltitudeReward, ArtilleryAttackReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, ShootDown, Timeout
 

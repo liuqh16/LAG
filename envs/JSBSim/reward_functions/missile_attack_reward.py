@@ -16,7 +16,7 @@ class MissileAttackReward(BaseRewardFunction):
     """
     def __init__(self, config):
         super().__init__(config)
-        assert self.num_fighters == 2, \
+        assert self.num_aircrafts == 2, \
             "MissileAttackReward only support one-to-one environments but current env has more than 2 agents!"
         # self.all_reward_scales = []
 
@@ -36,7 +36,7 @@ class MissileAttackReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_fighters
+        ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_aircrafts
         # How to calculate missile reward?
         # (1) invoke Missile3D.missile_info to calculate
         # if info['mask_enm']:
