@@ -8,7 +8,7 @@ class MissileConfig(object):
         self.num_missile = 1              # []      飞机带弹数量
         self.K = 5
         self.dt = 1 / 12.                 # [s]
-        self.missile_vel = 400            # [m/s]   导弹-初始速度（）
+        self.missile_vel = 300            # [m/s]   导弹-初始速度（）
         self.max_missile_acc = 300        # []      导弹-机动的最大加速度（近距不考虑衰减）
 
         self.shoot_max_distance = 6000    # [m]     规则-最远发弹距离   6000
@@ -16,7 +16,7 @@ class MissileConfig(object):
         self.shoot_lock_time = 0.5          # [s]     规则-持续锁定1s发弹
 
         self.hit_distance = 100            # [m]     导弹-命中敌机的判定条件
-        self.missile_last_time = 25       # [s]     导弹-最大飞行时长
+        self.missile_last_time = 15       # [s]     导弹-最大飞行时长
         self.flag_render = True
 
 

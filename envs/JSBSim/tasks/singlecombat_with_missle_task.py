@@ -15,6 +15,7 @@ class SingleCombatWithMissileTask(SingleCombatTask):
 
         self.reward_functions = [
             MissileAttackReward(self.config),
+            MissilePostureReward(self.config),
             AltitudeReward(self.config),
             PostureReward(self.config),
             RelativeAltitudeReward(self.config),
@@ -34,7 +35,7 @@ class SingleCombatWithMissileTask(SingleCombatTask):
         self.missile_lists = [Missile3D() for _ in range(self.num_fighters)] # By default, both figher has 1 missile.
 
     def load_observation_space(self):
-        self.observation_space = [spaces.Box(low=-10, high=10., shape=(18,)) for _ in range(self.num_agents)]
+        self.observation_space = [spaces.Box(low=-10, high=10., shape=(25,)) for _ in range(self.num_agents)]
         # TODO: add extra obs_space for missile information here!
 
     def load_action_space(self):
@@ -53,7 +54,7 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             enm_cur_ned = LLA2NEU(*enm_obs_list[:3], env.init_longitude, env.init_latitude)
             ego_feature = np.array([*(ego_cur_ned / 1000), *(ego_obs_list[6:9] / 340)])
             enm_feature = np.array([*(enm_cur_ned / 1000), *(enm_obs_list[6:9] / 340)])
-            observation = np.zeros(18)
+            observation = np.zeros(25)
             # (1) ego info normalization
             observation[0] = ego_obs_list[2] / 5000             #  0. ego altitude  (unit: 5km)
             observation[1] = np.linalg.norm(ego_feature[3:])    #  1. ego_v         (unit: mh)
@@ -81,16 +82,16 @@ class SingleCombatWithMissileTask(SingleCombatTask):
                 enm_missile_feature = self.missile_lists[enm_idx].simulator.transfer2raw(enm_missile_feature) # transform coordinate system
                 enm_missile_feature = np.array([*(enm_missile_feature[:3]/1000), *(enm_missile_feature[3:6]/340)]) # transform unit
                 ego_AO, ego_TA, R, side_flag = get_AO_TA_R(ego_feature, enm_missile_feature, return_side=True)
-                observation[11] = R / 10                            # 11. relative distance (unit: 10km)
-                observation[12] = ego_AO                            # 12. ego_AO        (unit: rad)
-                observation[13] = ego_TA                            # 13. ego_TA        (unit: rad)
-                observation[14] = side_flag                         # 14. enm_delta_heading: 1 or 0 or -1
-                observation[15] = enm_missile_feature[2] / 5000            # 15. enm_altitude  (unit: 5km)
-                observation[16] = np.linalg.norm(enm_missile_feature[3:])   # 16. enm_v         (unit: mh)
-                observation[17] = enm_missile_feature[5]                   # 17. enm_v_down    (unit: mh)
+                observation[18] = R / 10                            # 11. relative distance (unit: 10km)
+                observation[19] = ego_AO                            # 12. ego_AO        (unit: rad)
+                observation[20] = ego_TA                            # 13. ego_TA        (unit: rad)
+                observation[21] = side_flag                         # 14. enm_delta_heading: 1 or 0 or -1
+                observation[22] = enm_missile_feature[2] / 5000            # 15. enm_altitude  (unit: 5km)
+                observation[23] = np.linalg.norm(enm_missile_feature[3:])   # 16. enm_v         (unit: mh)
+                observation[24] = enm_missile_feature[5]                   # 17. enm_v_down    (unit: mh)
             return observation
 
-        norm_obs = np.zeros((self.num_fighters, 18))
+        norm_obs = np.zeros((self.num_fighters, 25))
         for agent_id in range(self.num_fighters):
             norm_obs[agent_id] = _normalize(agent_id)
         return norm_obs
