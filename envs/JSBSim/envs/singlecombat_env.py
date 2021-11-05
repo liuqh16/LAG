@@ -1,7 +1,8 @@
 import numpy as np
+from typing import List
 from .env_base import BaseEnv
 from ..core.catalog import Catalog
-from ..core.simulatior import AircraftSimulator
+from ..core.simulatior import BaseSimulator
 from ..tasks import SingleCombatTask, SingleCombatWithMissileTask, SingleCombatWithArtilleryTask, SingleCombatWithAvoidMissileTask
 
 
@@ -12,6 +13,11 @@ class SingleCombatEnv(BaseEnv):
     def __init__(self, config_name: str):
         super().__init__(config_name)
         # Env-Specific initialization here!
+        self._create_records = False
+
+    @property
+    def sims(self) -> List[BaseSimulator]:
+        return list(self.jsbsims.values()) + list(self.other_sims.values())
 
     def load_task(self):
         taskname = getattr(self.config, 'task', None)
@@ -30,15 +36,16 @@ class SingleCombatEnv(BaseEnv):
 
     def reset(self):
         self.current_step = 0
-        self.reset_conditions()
+        self.reset_simulators()
         next_observation = self.get_observation()
         self.task.reset(self)
         return self._mask(next_observation)
 
-    def reset_conditions(self):
+    def reset_simulators(self):
         # Assign new initial condition here!
-        for idx in range(self.num_aircrafts):
-            self.sims[idx].reload()
+        for sim in self.jsbsims.values():
+            sim.reload()
+        self.other_sims = {}  # type: dict[str, BaseSimulator]
 
     def step(self, actions: list):
         """Run one timestep of the environment's dynamics. When end of
@@ -57,12 +64,20 @@ class SingleCombatEnv(BaseEnv):
                 info: auxiliary information
         """
         self.current_step += 1
-        info = {}
+        info = {"current_step": self.current_step}
+
+        # apply action
         actions = self.task.normalize_action(self, actions)
-        # run JSBSim for one step
-        next_observation = self.make_step(actions)
-        # call task.step for extra simulation
+        for idx, sim in enumerate(self.jsbsims.values()):
+            sim.set_property_values(self.task.action_var, actions[idx])
+        # run simulator for one step
+        for _ in range(self.agent_interaction_steps):
+            for sim in self.sims:
+                sim.run()
+        # call task.step for extra process
         self.task.step(self, actions)
+
+        next_observation = self.get_observation()
 
         rewards = np.zeros(self.num_aircrafts)
         for agent_id in range(self.num_aircrafts):
@@ -84,8 +99,8 @@ class SingleCombatEnv(BaseEnv):
             (OrderedDict): the same format as self.observation_space
         """
         next_observation = []
-        for agent_id in range(self.num_aircrafts):
-            next_observation.append(self.sims[agent_id].get_property_values(self.task.state_var))
+        for sim in self.jsbsims.values():
+            next_observation.append(sim.get_property_values(self.task.state_var))
         next_observation = self.task.normalize_observation(self, next_observation)
         return next_observation
 
@@ -94,20 +109,25 @@ class SingleCombatEnv(BaseEnv):
 
         Environments automatically close() when garbage collected or when the program exits.
         """
-        for agent_id in range(self.num_aircrafts):
-            if self.sims[agent_id]:
-                self.sims[agent_id].close()
+        for sim in self.sims:
+            sim.close()
 
-    def render(self, mode="human"):
-        # TODO: real time rendering [Use FlightGear]
-        render_list = []
-        for agent_id in range(self.num_aircrafts):
-            # flight
-            render_list.append(np.array(self.sims[agent_id].get_property_values(self.task.render_var)))
-            # missile
-            if getattr(self.task, 'missile_lists', None) is not None:
-                render_list.extend(self.task.get_missile_trajectory(self, agent_id))
-        return np.hstack(render_list)
+    def render(self, mode="txt", filepath='./JSBSimRecording.txt.acmi'):
+        if mode == "txt":
+            if not self._create_records:
+                with open(filepath, mode='w', encoding='utf-8-sig') as f:
+                    f.write("FileType=text/acmi/tacview\n")
+                    f.write("FileVersion=2.1\n")
+                    f.write("0,ReferenceTime=2020-04-01T00:00:00Z\n")
+                self._create_records = True
+            with open(filepath, mode='a', encoding='utf-8-sig') as f:
+                timestamp = self.current_step * self.agent_interaction_steps / self.jsbsim_freq
+                f.write(f"#{timestamp:.2f}\n")
+                for sim in self.sims:
+                    f.write(sim.log() + "\n")
+        # TODO: real time rendering [Use FlightGear, etc.]
+        else:
+            raise NotImplementedError
 
     def seed(self, seed):
         # TODO: random seed

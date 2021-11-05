@@ -27,8 +27,8 @@ class S_Agent:
 
     def get_action(self, env, task):
         step_list = np.array([1,2,3,4]) * self.seconds_per_turn * STEPS_PER_SECOND
-        ego_obs_list = env.sims[0].get_property_values(task.state_var)
-        enm_obs_list = env.sims[1].get_property_values(task.state_var)
+        ego_obs_list = env.jsbsims[0].get_property_values(task.state_var)
+        enm_obs_list = env.jsbsims[1].get_property_values(task.state_var)
         delta_heading = 0
 
         if not task.missile_lists[1].missile_info[0]['launched']:

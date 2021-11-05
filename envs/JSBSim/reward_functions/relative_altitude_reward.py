@@ -28,8 +28,9 @@ class RelativeAltitudeReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_aircrafts
-        ego_z = env.sims[ego_idx].get_position()[-1] / 1000    # unit: km
-        enm_z = env.sims[enm_idx].get_position()[-1] / 1000    # unit: km
+        ego_uid = list(env.jsbsims.keys())[agent_id]
+        enm_uid = list(env.jsbsims.keys())[(agent_id + 1) % self.num_aircrafts]
+        ego_z = env.jsbsims[ego_uid].get_position()[-1] / 1000    # unit: km
+        enm_z = env.jsbsims[enm_uid].get_position()[-1] / 1000    # unit: km
         new_reward = min(self.KH - np.abs(ego_z - enm_z), 0)
         return self._process(new_reward, agent_id)

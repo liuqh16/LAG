@@ -58,7 +58,7 @@ def get_AO_TA_R(ego_feature, enemy_feature, return_side=False):
     """Get AO & TA angles and relative distance between two agent.
 
     Args:
-        ego_feature & enemy_feature (tuple): (north, east, down, vn, ve, vd), unit: km, mh
+        ego_feature & enemy_feature (tuple): (north, east, down, vn, ve, vd)
 
     Returns:
         (tuple): ego_AO, ego_TA, R

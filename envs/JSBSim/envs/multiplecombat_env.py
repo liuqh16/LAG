@@ -1,7 +1,6 @@
 import numpy as np
 from .env_base import BaseEnv
 from ..core.catalog import Catalog
-from ..core.simulatior import AircraftSimulator
 from ..tasks import SingleCombatTask
 
 

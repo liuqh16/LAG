@@ -28,15 +28,16 @@ class UnreachHeadingAndAltitude(BaseTerminationCondition):
         """
         done = False
         success = False
-        check_time = env.sims[agent_id].get_property_value(c.heading_check_time)
-        if env.sims[agent_id].get_property_value(c.simulation_sim_time_sec) >= check_time:
-            if math.fabs(env.sims[agent_id].get_property_value(c.delta_altitude)) >= 300:
+        ego_uid = list(env.jsbsims.keys())[agent_id]
+        check_time = env.jsbsims[ego_uid].get_property_value(c.heading_check_time)
+        if env.jsbsims[ego_uid].get_property_value(c.simulation_sim_time_sec) >= check_time:
+            if math.fabs(env.jsbsims[ego_uid].get_property_value(c.delta_altitude)) >= 300:
                 done = True
                 print(info)
                 print(f'INFO: agent[{agent_id}] unreached attitude!')
                 info[f'agent{agent_id}_end_reason'] = 1
 
-            if math.fabs(env.sims[agent_id].get_property_value(c.delta_heading)) > 10:
+            if math.fabs(env.jsbsims[ego_uid].get_property_value(c.delta_heading)) > 10:
                 done = True
                 print(f'INFO: agent[{agent_id}] unreached heading!')
                 print(info)
@@ -45,17 +46,17 @@ class UnreachHeadingAndAltitude(BaseTerminationCondition):
             # Change target angle every check_interval seconds
             angle = random.choice([30., 60., 90., 120., 150., 180.])
             sign = random.choice([+1.0, -1.0])
-            new_heading = env.sims[agent_id].get_property_value(c.target_heading_deg) + sign * angle
+            new_heading = env.jsbsims[ego_uid].get_property_value(c.target_heading_deg) + sign * angle
             new_heading = (new_heading + 360) % 360
-            env.sims[agent_id].set_property_value(c.target_heading_deg, new_heading)
+            env.jsbsims[ego_uid].set_property_value(c.target_heading_deg, new_heading)
 
             # Change target altitude every check_interval seconds
             alt = random.choice([1000, 2000, 3000, 4000])
             sign = random.choice([+1.0, -1.0])
-            new_alt = env.sims[agent_id].get_property_value(c.target_altitude_ft) + sign * alt
+            new_alt = env.jsbsims[ego_uid].get_property_value(c.target_altitude_ft) + sign * alt
             new_alt = max(new_alt, 15000)
-            env.sims[agent_id].set_property_value(c.target_altitude_ft, new_alt)
-            env.sims[agent_id].set_property_value(c.heading_check_time, check_time + self.check_interval)
+            env.jsbsims[ego_uid].set_property_value(c.target_altitude_ft, new_alt)
+            env.jsbsims[ego_uid].set_property_value(c.heading_check_time, check_time + self.check_interval)
 
             info[f'time{check_time}_target_heading'] = new_heading
             info[f'time{check_time}_target_altitude'] = new_alt

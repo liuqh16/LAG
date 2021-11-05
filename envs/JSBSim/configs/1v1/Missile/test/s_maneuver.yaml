@@ -14,8 +14,8 @@ acceleration_limit_z: 10.0
 
 # aircraft config
 aircraft_config: {
-  0: {
-    team: 0,
+  A0100: {
+    team: Red,
     model: f16,
     init_state: {
       ic_long_gc_deg: 120.0,
@@ -25,8 +25,8 @@ aircraft_config: {
       ic_u_fps: 800.0,
     },
   },
-  1: {
-    team: 1,
+  B0100: {
+    team: Blue,
     model: f16,
     init_state: {
       ic_h_sl_ft: 20000,

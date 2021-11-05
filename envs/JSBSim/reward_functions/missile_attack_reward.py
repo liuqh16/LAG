@@ -1,8 +1,4 @@
-import numpy as np
-from collections import OrderedDict
 from .reward_function_base import BaseRewardFunction
-from ..utils.utils import get_AO_TA_R
-from ..utils.missile_utils import Missile3D
 
 
 class MissileAttackReward(BaseRewardFunction):
@@ -36,7 +32,6 @@ class MissileAttackReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_aircrafts
         # How to calculate missile reward?
         # (1) invoke Missile3D.missile_info to calculate
         # if info['mask_enm']:
@@ -50,5 +45,4 @@ class MissileAttackReward(BaseRewardFunction):
         #         reward_fn.reward_scale = self.all_reward_scales[i]
         #     new_reward = 0.0
         # (2) use task.blood directly
-        new_reward = 100 - task.bloods[ego_idx]
-        return self._process(new_reward, agent_id)
+        return self._process(task.bloods[agent_id], agent_id)

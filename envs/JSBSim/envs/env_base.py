@@ -15,15 +15,15 @@ class BaseEnv(gym.Env):
     aircraft control task with its own specific observation/action space and
     variables and agent_reward calculation.
     """
-    metadata = {"render.modes": ["human", "csv"]}
+    metadata = {"render.modes": ["human", "txt"]}
 
     def __init__(self, config_name: str):
         self.config = parse_config(config_name)
         self.aircraft_configs = self.config.aircraft_config     # type: dict
         self.num_aircrafts = len(self.aircraft_configs.keys())
-        self.max_steps = getattr(self.config, 'max_steps', 100)
-        self.jsbsim_freq = getattr(self.config, 'jsbsim_freq', 60)
-        self.agent_interaction_steps = getattr(self.config, 'agent_interaction_steps', 12)
+        self.max_steps = getattr(self.config, 'max_steps', 100)   # type: int
+        self.jsbsim_freq = getattr(self.config, 'jsbsim_freq', 60)   # type: int
+        self.agent_interaction_steps = getattr(self.config, 'agent_interaction_steps', 12)  # type: int
         self.load()
 
     @property
@@ -46,13 +46,13 @@ class BaseEnv(gym.Env):
             getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0))
 
     def load_simulator(self):
-        self.sims = [
-            AircraftSimulator(aircraft_model=self.aircraft_configs[key].get("model", "f16"),
-                              init_state=self.aircraft_configs[key].get("init_state", {}),
-                              battle_field_center=(self.center_lon, self.center_lat, self.center_alt),
-                              jsbsim_freq=self.jsbsim_freq,
-                              agent_interaction_steps=self.agent_interaction_steps)
-        for key in self.aircraft_configs.keys()]
+        self.jsbsims = dict([(uid, AircraftSimulator(
+            uid=uid,
+            team=self.aircraft_configs[uid].get("team", "Red"),
+            model=self.aircraft_configs[uid].get("model", "f16"),
+            init_state=self.aircraft_configs[uid].get("init_state", {}),
+            origin=(self.center_lon, self.center_lat, self.center_alt),
+            jsbsim_freq=self.jsbsim_freq)) for uid in self.aircraft_configs.keys()])
 
     def reset(self):
         """Resets the state of the environment and returns an initial observation.
@@ -61,7 +61,7 @@ class BaseEnv(gym.Env):
             init_conditions (np.array): the initial observation of the space.
         """
         self.current_step = 0
-        for sim in self.sims:
+        for sim in self.jsbsims.values():
             sim.reload()
         next_observation = self.get_observation()
         self.task.reset(self)
@@ -86,28 +86,17 @@ class BaseEnv(gym.Env):
         self.current_step += 1
         info = {}
 
-        next_observation = self.make_step(actions)
+        # take actions
+        for _ in range(self.agent_interaction_steps):
+            for idx, sim in enumerate(self.jsbsims.values()):
+                sim.set_property_values(self.task.action_var, actions[idx])
+                sim.run()
 
+        next_observation = self.get_observation()
         reward, info = self.task.get_reward(self, 0, info)
         done, info = self.task.get_termination(self, 0, info)
 
         return next_observation, reward, done, info
-
-    def make_step(self, actions: list):
-        """Calculates new state.
-
-        Args:
-            actions (np.array): agents' last action.
-
-        Returns:
-            (np.array): agents' observation of the environment state
-        """
-        # take actions
-        for agent_id in range(self.num_aircrafts):
-            self.sims[agent_id].set_property_values(self.task.action_var, actions[agent_id])
-            self.sims[agent_id].run()
-
-        return self.get_observation()
 
     def get_observation(self):
         """get state observation from sim.
@@ -116,20 +105,16 @@ class BaseEnv(gym.Env):
             (np.array): the first state observation of the episode
         """
         next_observation = []
-        for agent_id in range(self.num_aircrafts):
-            next_observation.append(self.sims[agent_id].get_property_values(self.task.state_var))
+        for sim in self.jsbsims.values():
+            next_observation.append(sim.get_property_values(self.task.state_var))
         return np.array(next_observation)
-
-    def get_sim_time(self):
-        """ Gets the simulation time from sim, a float. """
-        return self.sims[0].get_sim_time()
 
     def close(self):
         """Cleans up this environment's objects
         Environments automatically close() when garbage collected or when the
         program exits.
         """
-        for sim in self.sims:
+        for sim in self.jsbsims.values():
             if sim:
                 sim.close()
 
@@ -143,7 +128,7 @@ class BaseEnv(gym.Env):
         if mode is:
 
         - human: print on the terminal
-        - csv: output to cvs files
+        - txt: output to txt.acmi files
 
         Note:
 

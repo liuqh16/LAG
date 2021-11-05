@@ -16,7 +16,6 @@ class SingleCombatTask(BaseTask):
         self.use_baseline = getattr(self.config, 'use_baseline', False)
         if self.use_baseline:
             self.baseline_agent = load_agent(self.config.baseline_type)
-        self.bloods = [100 for _ in range(self.num_aircrafts)]
 
         self.reward_functions = [
             AltitudeReward(self.config),
@@ -85,8 +84,8 @@ class SingleCombatTask(BaseTask):
             # (0) extract feature: [north(km), east(km), down(km), v_n(mh), v_e(mh), v_d(mh)]
             ego_cur_ned = LLA2NEU(*ego_obs_list[:3], env.center_lon, env.center_lat, env.center_alt)
             enm_cur_ned = LLA2NEU(*enm_obs_list[:3], env.center_lon, env.center_lat, env.center_alt)
-            ego_feature = np.array([*(ego_cur_ned / 1000), *(ego_obs_list[6:9] / 340)])
-            enm_feature = np.array([*(enm_cur_ned / 1000), *(enm_obs_list[6:9] / 340)])
+            ego_feature = np.array([*ego_cur_ned, *(ego_obs_list[6:9])])
+            enm_feature = np.array([*enm_cur_ned, *(enm_obs_list[6:9])])
             observation = np.zeros(18)
             # (1) ego info normalization
             observation[0] = ego_obs_list[2] / 5000             #  0. ego altitude  (unit: 5km)
@@ -102,7 +101,7 @@ class SingleCombatTask(BaseTask):
             observation[10] = ego_obs_list[12]                  # 10. ego_down_ng   (unit: 5G)
             # (2) relative info w.r.t enm state
             ego_AO, ego_TA, R, side_flag = get_AO_TA_R(ego_feature, enm_feature, return_side=True)
-            observation[11] = R / 10                            # 11. relative distance (unit: 10km)
+            observation[11] = R / 10000                         # 11. relative distance (unit: 10km)
             observation[12] = ego_AO                            # 12. ego_AO        (unit: rad)
             observation[13] = ego_TA                            # 13. ego_TA        (unit: rad)
             observation[14] = side_flag                         # 14. enm_delta_heading: 1 or 0 or -1
@@ -187,25 +186,27 @@ class SingleControlAgent:
             side_flag = np.sign(np.cross([ego_vx, ego_vy], [delta_x, delta_y]))
             return - ego_AO * side_flag
 
-        ego_obs_list = np.array(env.sims[1].get_property_values(task.state_var))
-        enm_obs_list = np.array(env.sims[0].get_property_values(task.state_var))
+        import pdb; pdb.set_trace()
+        ego_uid, enm_uid = list(env.jsbsims.keys())[1], list(env.jsbsims.keys())[0]
+        ego_x, ego_y, ego_z = env.jsbsims[ego_uid].get_position()
+        ego_vx, ego_vy, ego_vz = env.jsbsims[ego_uid].get_velocity()
+        enm_x, enm_y, enm_z = env.jsbsims[enm_uid].get_position()
+        enm_vx, enm_vy, enm_vz = env.jsbsims[enm_uid].get_velocity()
 
-        ego_cur_ned = LLA2NEU(*ego_obs_list[:3], env.center_lon, env.center_lat, env.center_alt)
-        enm_cur_ned = LLA2NEU(*enm_obs_list[:3], env.center_lon, env.center_lat, env.center_alt)
-        ego_feature = np.array([*(ego_cur_ned[:2] / 1000), *(ego_obs_list[6:8] / 340)])
-        enm_feature = np.array([*(enm_cur_ned[:2] / 1000), *(enm_obs_list[6:8] / 340)])
+        ego_feature = np.array([ego_x, ego_y, ego_vx, ego_vy])
+        enm_feature = np.array([enm_x, enm_y, enm_vx, enm_vy])
         ego_AO = get_delta_heading(ego_feature, enm_feature)
 
         observation = np.zeros(8)
-        observation[0] = (enm_obs_list[2] - ego_obs_list[2]) / 1000 #  0. ego delta altitude  (unit: 1km)
-        observation[1] = in_range_rad(ego_AO)                       #  1. ego delta heading   (unit rad)
-        observation[2] = ego_obs_list[3]                            #  2. ego_roll      (unit: rad)
-        observation[3] = ego_obs_list[4]                            #  3. ego_pitch     (unit: rad)
-        observation[4] = ego_obs_list[6] / 340                      #  4. ego_v_north   (unit: mh)
-        observation[5] = ego_obs_list[7] / 340                      #  5. ego_v_east    (unit: mh)
-        observation[6] = ego_obs_list[8] / 340                      #  6. ego_v_down    (unit: mh)
-        observation[7] = ego_obs_list[9] / 340                      #  7. ego_vc        (unit: mh)
-        observation = np.expand_dims(observation, axis=0)           # dim: (1,8)
+        observation[0] = (enm_z - ego_z) / 1000             #  0. ego delta altitude  (unit: 1km)
+        observation[1] = in_range_rad(ego_AO)               #  1. ego delta heading   (unit rad)
+        observation[2] = env.jsbsims[ego_uid].get_rpy()[0]  #  2. ego_roll      (unit: rad)
+        observation[3] = env.jsbsims[ego_uid].get_rpy()[1]  #  3. ego_pitch     (unit: rad)
+        observation[4] = ego_vx / 340                       #  4. ego_v_north   (unit: mh)
+        observation[5] = ego_vy / 340                       #  5. ego_v_east    (unit: mh)
+        observation[6] = ego_vz / 340                       #  6. ego_v_down    (unit: mh)
+        observation[7] = env.jsbsims[ego_uid].get_property_value(c.velocities_vc_mps) / 340
+        observation = np.expand_dims(observation, axis=0)   # dim: (1,8)
 
         _action, _, self.rnn_states = self.actor(observation, self.rnn_states, deterministic=True)
         action = _action.detach().cpu().numpy().squeeze()
