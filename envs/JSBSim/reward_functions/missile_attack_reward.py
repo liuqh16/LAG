@@ -50,5 +50,5 @@ class MissileAttackReward(BaseRewardFunction):
         #         reward_fn.reward_scale = self.all_reward_scales[i]
         #     new_reward = 0.0
         # (2) use task.blood directly
-        new_reward = 100 - task.bloods[ego_idx]
+        new_reward = task.bloods[agent_id]
         return self._process(new_reward, agent_id)

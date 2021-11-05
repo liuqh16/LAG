@@ -20,9 +20,10 @@ class MissilePostureReward(BaseRewardFunction):
         assert self.num_fighters == 2, \
             "PostureReward only support one-to-one environments but current env has more than 2 agents!"
         self.orientation_version = getattr(self.config, f'{self.__class__.__name__}_orientation_version', 'v2')
-        self.target_dist = getattr(self.config, f'{self.__class__.__name__}_target_dist', 3.0)
+        self.range_version = getattr(self.config, f'{self.__class__.__name__}_range_version', 'v0')
 
         self.orientation_fn = self.get_orientation_function(self.orientation_version)
+        self.range_fn = self.get_range_funtion(self.range_version)
         self.reward_item_names = [self.__class__.__name__ + item for item in ['', '_orn', '_range']]
 
     def get_reward(self, task, env, agent_id):
@@ -38,7 +39,7 @@ class MissilePostureReward(BaseRewardFunction):
         """
         ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_fighters
         if not task.missile_lists[enm_idx].missile_info[0]['flying']:
-            return 0
+            return self._process(0, agent_id, (0, 0))
         else:
             # feature: (north, east, down, vn, ve, vd) unit: km, mh
             ego_feature = np.hstack([env.sims[ego_idx].get_position() / 1000, env.sims[ego_idx].get_velocity() / 340])
@@ -48,8 +49,9 @@ class MissilePostureReward(BaseRewardFunction):
 
             AO, TA, R = get_AO_TA_R(ego_feature, enm_missile_feature)
             orientation_reward = self.orientation_fn(AO, TA)
-            new_reward = orientation_reward
-            return self._process(new_reward, agent_id)
+            range_reward = self.range_fn(R)
+            new_reward = orientation_reward * range_reward
+            return self._process(new_reward, agent_id, (orientation_reward, range_reward))
 
     def get_orientation_function(self, version):
         if version == 'v0':
@@ -63,3 +65,9 @@ class MissilePostureReward(BaseRewardFunction):
                 + min((np.arctanh(1. - max(2 * TA / np.pi, 1e-4))) / (2 * np.pi), 0.) + 0.5
         else:
             raise NotImplementedError(f"Unknown orientation function version: {version}")
+    
+    def get_range_funtion(self, version):
+        if version == 'v0':
+            return lambda R: np.arctan(0.5 * R) / np.pi * 2
+        else:
+            raise NotImplementedError(f"Unknown range function version: {version}")

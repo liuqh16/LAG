@@ -73,4 +73,4 @@ class BaseRewardFunction(ABC):
         if len(self.reward_item_names) == 1:
             return {self.reward_item_names[0]: np.array(self.reward_trajectory)}
         else:
-            return dict(zip(self.reward_item_names, np.array(self.reward_trajectory).transpose(1, 0, 2)))
+            return dict(zip(self.reward_item_names, np.array(self.reward_trajectory).transpose(2, 0, 1)))

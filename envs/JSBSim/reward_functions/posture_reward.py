@@ -20,7 +20,7 @@ class PostureReward(BaseRewardFunction):
         assert self.num_fighters == 2, \
             "PostureReward only support one-to-one environments but current env has more than 2 agents!"
         self.orientation_version = getattr(self.config, f'{self.__class__.__name__}_orientation_version', 'v2')
-        self.range_version = getattr(self.config, f'{self.__class__.__name__}_range_version', 'v2')
+        self.range_version = getattr(self.config, f'{self.__class__.__name__}_range_version', 'v3')
         self.target_dist = getattr(self.config, f'{self.__class__.__name__}_target_dist', 3.0)
 
         self.orientation_fn = self.get_orientation_function(self.orientation_version)
@@ -70,5 +70,7 @@ class PostureReward(BaseRewardFunction):
         elif version == 'v2':
             return lambda R: max(np.clip(1.2 * np.min([np.exp(-(R - self.target_dist) * 0.21), 1]) / \
                 (1. + np.exp(-(R - self.target_dist + 1) * 0.8)), 0.3, 1), np.sign(7 - R))
+        elif version == 'v3':
+            return lambda R: 1*(R<5) + (R>=5)*np.clip(-0.032*R**2+0.284*R+0.38,0,1) + np.clip(np.exp(-0.16*R),0,0.2)
         else:
             raise NotImplementedError(f"Unknown range function version: {version}")
