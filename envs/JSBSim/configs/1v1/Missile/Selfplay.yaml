@@ -13,7 +13,7 @@ acceleration_limit_y: 10.0
 acceleration_limit_z: 10.0
 
 # aircraft config
-aircraft_config: {
+aircraft_configs: {
   A0100: {
     team: Red,
     model: f16,
@@ -24,6 +24,7 @@ aircraft_config: {
       ic_psi_true_deg: 0.0,
       ic_u_fps: 800.0,
     },
+    missile: 1,
   },
   B0100: {
     team: Blue,
@@ -35,6 +36,7 @@ aircraft_config: {
       ic_psi_true_deg: 180.0,
       ic_u_fps: 800.0,
     },
+    missile: 1,
   }
 }
 

@@ -15,7 +15,7 @@ acceleration_limit_z: 10.0
 # aircraft config
 use_baseline: true
 baseline_type: control
-aircraft_config: {
+aircraft_configs: {
   A0100: {
     team: Red,
     model: f16,

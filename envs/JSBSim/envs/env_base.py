@@ -19,7 +19,7 @@ class BaseEnv(gym.Env):
 
     def __init__(self, config_name: str):
         self.config = parse_config(config_name)
-        self.aircraft_configs = self.config.aircraft_config     # type: dict
+        self.aircraft_configs = self.config.aircraft_configs     # type: dict
         self.num_aircrafts = len(self.aircraft_configs.keys())
         self.max_steps = getattr(self.config, 'max_steps', 100)   # type: int
         self.jsbsim_freq = getattr(self.config, 'jsbsim_freq', 60)   # type: int
@@ -29,6 +29,10 @@ class BaseEnv(gym.Env):
     @property
     def num_agents(self):
         return self.task.num_agents
+
+    @property
+    def time_interval(self):
+        return self.agent_interaction_steps / self.jsbsim_freq
 
     def load(self):
         self.load_task()

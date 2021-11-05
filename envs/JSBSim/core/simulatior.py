@@ -4,7 +4,7 @@ from typing import Literal
 import numpy as np
 import jsbsim
 from .catalog import Property, Catalog
-from ..utils.utils import get_root_dir, LLA2NEU, NEU2LLA
+from ..utils.utils import get_root_dir, LLA2NEU, NEU2LLA, in_range_rad
 
 TeamColors = Literal["Red", "Blue", "Green", "Violet", "Orange"]
 
@@ -22,11 +22,16 @@ class BaseSimulator(ABC):
         self._uid = uid
         self._color = color
         self._dt = dt
+        self._parent_uid = ""
         self.model = ""
         self._geodetic = np.zeros(3)
         self._position = np.zeros(3)
         self._poseture = np.zeros(3)
         self._velocity = np.zeros(3)
+
+    @property
+    def uid(self) -> str:
+        return self._uid
 
     @property
     def dt(self) -> float:
@@ -257,7 +262,7 @@ class AircraftSimulator(BaseSimulator):
 class MissileSimulator(BaseSimulator):
 
     @classmethod
-    def create(parent: AircraftSimulator, target: AircraftSimulator, uid: str, missile_model: str):
+    def create(cls, parent: AircraftSimulator, target: AircraftSimulator, uid: str, missile_model: str = "AIM-9L"):
         assert parent.dt == target.dt, "integration timestep must be same!"
         missile = MissileSimulator(uid, parent._color, missile_model, parent.dt)
         missile.launch(parent)
@@ -267,7 +272,7 @@ class MissileSimulator(BaseSimulator):
     def __init__(self,
                  uid="A0101",
                  team="Red",
-                 model="AIM-9X",
+                 model="AIM-9L",
                  dt=1 / 12):
         super().__init__(uid, team, dt)
         self._status = ""
@@ -276,20 +281,40 @@ class MissileSimulator(BaseSimulator):
         self.target_aircraft = None  # type: AircraftSimulator
         self.render_explosion = False
 
-        # missile parameters
-        self._t_max = 30    # time limitation
-        self._Tmax = 10000  # maximum thrust, unit: N
-        self._S = 0.025     # cross-sectional area, unit: m^2
-        self._m0 = 150      # mass, unit: kg
-        self._dm = 4        # mass loss rate, unit: kg/s
-        self._CD = 0.1      # aerodynamic drag factor
+        # missile parameters (for AIM-9L)
         self._g = 9.81      # gravitational acceleration
+        self._t_max = 20    # time limitation
+        self._v_min = 50    # minimun velocity
+        self._Tmax = 10000  # maximum thrust, unit: N
+        self._S = 1         # cross-sectional area, unit: m^2
+        self._CD = 20       # aerodynamic drag factor
+        self._m0 = 84       # mass, unit: kg
+        self._m1 = 20       # net mass (exclude fuel), unit: kg
+        self._dm = 1.5      # mass loss rate, unit: kg/s
         self._K = 3         # proportionality constant of proportional navigation
-        self._n_max = 40    # max overload
-        self._Rc = 300      # available distance
+        self._nyz_max = 5   # max overload
+        self._Rc = 300      # radius of explosion, unit: m
+        self._Momentum = 40000  # total momentum of missile engine
+
+    @property
+    def is_alive(self):
+        return self._status == "Launched"
+
+    @property
+    def is_success(self):
+        return self._status == "Hit"
+
+    @property
+    def is_deleted(self):
+        return self._status == "Inactive"
+
+    @property
+    def K(self):
+        return max(self._K * (self._t_max - self._t) / self._t_max, 1)
 
     def launch(self, parent: AircraftSimulator):
         # inherit kinetic parameters from parent aricraft
+        self._parent_uid = parent.uid
         self._geodetic[:] = parent.get_geodetic()
         self._position[:] = parent.get_position()
         self._velocity[:] = parent.get_velocity()
@@ -299,7 +324,9 @@ class MissileSimulator(BaseSimulator):
         # init status
         self._t = 0
         self._m = self._m0
+        self._I = self._Momentum
         self._status = "Launched"
+        self._left_t = int(1 / self.dt)
 
     def target(self, target: AircraftSimulator):
         self.target_aircraft = target  # TODO: change target?
@@ -309,15 +336,20 @@ class MissileSimulator(BaseSimulator):
         action, is_hit = self._guidance()
         if is_hit:
             self._status = "Hit"
-        elif self._t > self._t_max:
-            self._status = "Inactive"
+        elif (self._t > self._t_max) and np.linalg.norm(self.get_velocity()) < self._v_min:
+            self._status = "Miss"
         else:
             self._state_trans(action)
+        # delete missile & release memory
+        if self._status == "Hit" or self._status == "Miss":
+            self._left_t -= 1
+            if self._left_t <= 0:
+                self._status = "Inactive"
 
     def log(self):
         if self._status == "Launched":
             log_msg = super().log()
-        elif (self._status == "Hit" or "Inactive") and (not self.render_explosion):
+        elif (self._status == "Hit" or "Miss") and (not self.render_explosion):
             self.render_explosion = True
             # remove missile model
             log_msg = f"-{self._uid}\n"
@@ -326,6 +358,8 @@ class MissileSimulator(BaseSimulator):
             roll, pitch, yaw = self.get_rpy() * 180 / np.pi
             log_msg += f"{self._uid}F,T={lon}|{lat}|{alt}|{roll}|{pitch}|{yaw},"
             log_msg += f"Type=Misc+Explosion,Color={self._color},Radius={self._Rc}"
+        else:
+            log_msg = None
         return log_msg
 
     def close(self):
@@ -349,10 +383,10 @@ class MissileSimulator(BaseSimulator):
         dbeta = ((dy_t - dy_m) * (x_t - x_m) - (dx_t - dx_m) * (y_t - y_m)) / Rxy**2
         deps = ((dz_t - dz_m) * Rxy**2 - (z_t - z_m) * (
             (x_t - x_m) * (dx_t - dx_m) + (y_t - y_m) * (dy_t - dy_m))) / (Rxyz**2 * Rxy)
-        ny = self._K * v_m / self._g * np.cos(theta_m) * dbeta
-        nz = self._K * v_m / self._g * deps + np.cos(theta_m)
+        ny = self.K * v_m / self._g * np.cos(theta_m) * dbeta
+        nz = self.K * v_m / self._g * deps + np.cos(theta_m)
         hit_flag = Rxyz < self._Rc
-        return np.clip([ny, nz], -self._n_max, self._n_max), hit_flag
+        return np.clip([ny, nz], -self._nyz_max, self._nyz_max), hit_flag
 
     @property
     def qbar(self):
@@ -375,8 +409,10 @@ class MissileSimulator(BaseSimulator):
         v = np.linalg.norm(self.get_velocity())
         theta, phi = self.get_rpy()[1:]
         D = self._CD * self._S * self.qbar
-        nx = (self._Tmax - D) / (self._m * self._g)
+        thrust = self._Tmax if self._I > 0 else 0
+        nx = (thrust - D) / (self._m * self._g)
         ny, nz = action
+        # ny = np.abs(ny) * np.sign(self.target_aircraft.get_rpy()[-1] - in_range_rad(self.get_rpy()[-1]))
 
         dv = self._g * (nx - np.sin(theta))
         dphi = self._g / v * (ny * np.cos(theta))
@@ -385,12 +421,14 @@ class MissileSimulator(BaseSimulator):
         v += self.dt * dv
         phi += self.dt * dphi
         theta += self.dt * dtheta
-
-        self._velocity[:] = np.array([
+        new_velocity = np.array([
             v * np.cos(theta) * np.cos(phi),
             v * np.cos(theta) * np.sin(phi),
             v * np.sin(theta)
         ])
+        self._I -= np.abs(new_velocity[0] - self._velocity[0]) * self._m
+        self._velocity[:] = new_velocity
         self._poseture[:] = np.array([0, theta, phi])
         # update mass
-        self._m -= self.dt * self._dm
+        self._m = max(self._m - self.dt * self._dm, self._m1)
+        print(f"T={self._t:.2f}, {int(v)}, {self._m}, {np.rad2deg(self.get_rpy()[-1]):.2f}, {np.rad2deg(self.target_aircraft.get_rpy()[-1]):.2f}")

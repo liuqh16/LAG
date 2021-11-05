@@ -3,7 +3,7 @@ from typing import List
 from .env_base import BaseEnv
 from ..core.catalog import Catalog
 from ..core.simulatior import BaseSimulator
-from ..tasks import SingleCombatTask, SingleCombatWithMissileTask, SingleCombatWithArtilleryTask, SingleCombatWithAvoidMissileTask
+from ..tasks import SingleCombatTask, SingleCombatWithMissileTask, SingleCombatWithArtilleryTask
 
 
 class SingleCombatEnv(BaseEnv):
@@ -25,8 +25,6 @@ class SingleCombatEnv(BaseEnv):
             self.task = SingleCombatTask(self.config)
         elif taskname == 'singlecombat_with_missile':
             self.task = SingleCombatWithMissileTask(self.config)
-        elif taskname == 'singlecombat_with_avoid_missile':
-            self.task = SingleCombatWithAvoidMissileTask(self.config)
         elif taskname == 'singlecombat_with_artillery':
             self.task = SingleCombatWithArtilleryTask(self.config)
         else:
@@ -121,10 +119,12 @@ class SingleCombatEnv(BaseEnv):
                     f.write("0,ReferenceTime=2020-04-01T00:00:00Z\n")
                 self._create_records = True
             with open(filepath, mode='a', encoding='utf-8-sig') as f:
-                timestamp = self.current_step * self.agent_interaction_steps / self.jsbsim_freq
+                timestamp = self.current_step * self.time_interval
                 f.write(f"#{timestamp:.2f}\n")
                 for sim in self.sims:
-                    f.write(sim.log() + "\n")
+                    log_msg = sim.log()
+                    if log_msg is not None:
+                        f.write(log_msg + "\n")
         # TODO: real time rendering [Use FlightGear, etc.]
         else:
             raise NotImplementedError

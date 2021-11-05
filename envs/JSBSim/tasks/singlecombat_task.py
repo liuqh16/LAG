@@ -11,7 +11,7 @@ from ..utils.utils import in_range_rad, get_AO_TA_R, LLA2NEU, get_root_dir
 class SingleCombatTask(BaseTask):
     def __init__(self, config):
         self.config = config
-        self.num_aircrafts = len(getattr(self.config, 'aircraft_config', {}).keys())
+        self.num_aircrafts = len(getattr(self.config, 'aircraft_configs', {}).keys())
         assert self.num_aircrafts == 2, 'Only support one-to-one air combat!'
         self.use_baseline = getattr(self.config, 'use_baseline', False)
         if self.use_baseline:
