@@ -28,20 +28,21 @@ class UnreachHeading(BaseTerminationCondition):
         """
         done = False
         success = False
-        check_time = env.sims[agent_id].get_property_value(c.heading_check_time)
+        ego_uid = list(env.jsbsims.keys())[agent_id]
+        check_time = env.jsbsims[ego_uid].get_property_value(c.heading_check_time)
         # check heading when simulation_time exceed check_time
-        if env.sims[agent_id].get_property_value(c.simulation_sim_time_sec) >= check_time:
-            if math.fabs(env.sims[agent_id].get_property_value(c.delta_heading)) > 10:
+        if env.jsbsims[ego_uid].get_property_value(c.simulation_sim_time_sec) >= check_time:
+            if math.fabs(env.jsbsims[ego_uid].get_property_value(c.delta_heading)) > 10:
                 done = True
             # if current target heading is reached, random generate a new taget heading
             angle = random.choice([30., 60., 90., 120., 150., 180.])
             sign = random.choice([+1.0, -1.0])
-            new_heading = env.sims[agent_id].get_property_value(c.target_heading_deg) + sign * angle
+            new_heading = env.jsbsims[ego_uid].get_property_value(c.target_heading_deg) + sign * angle
             new_heading = (new_heading + 360) % 360
 
             info[f'time{check_time}_target_heading'] = new_heading
-            env.sims[agent_id].set_property_value(c.target_heading_deg, new_heading)
-            env.sims[agent_id].set_property_value(c.heading_check_time, check_time + self.check_interval)
+            env.jsbsims[ego_uid].set_property_value(c.target_heading_deg, new_heading)
+            env.jsbsims[ego_uid].set_property_value(c.heading_check_time, check_time + self.check_interval)
 
         if done:
             print(info) 

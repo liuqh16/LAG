@@ -1,11 +1,8 @@
 # ignore files
 test.py
-deprecated
 results
-test_agent.py
-rewards.png
-plot.py
 *.npy
+*.acmi
 
 # vscode config
 .vscode

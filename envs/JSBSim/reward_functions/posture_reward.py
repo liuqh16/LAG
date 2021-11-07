@@ -1,9 +1,6 @@
 import numpy as np
-from numpy.core.numeric import array_equal
-from numpy.lib.arraypad import pad
 from .reward_function_base import BaseRewardFunction
 from ..utils.utils import get_AO_TA_R
-from ..core.catalog import Catalog
 
 
 class PostureReward(BaseRewardFunction):
@@ -17,7 +14,7 @@ class PostureReward(BaseRewardFunction):
     """
     def __init__(self, config):
         super().__init__(config)
-        assert self.num_fighters == 2, \
+        assert self.num_aircrafts == 2, \
             "PostureReward only support one-to-one environments but current env has more than 2 agents!"
         self.orientation_version = getattr(self.config, f'{self.__class__.__name__}_orientation_version', 'v2')
         self.range_version = getattr(self.config, f'{self.__class__.__name__}_range_version', 'v3')
@@ -38,13 +35,14 @@ class PostureReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_fighters
-        # feature: (north, east, down, vn, ve, vd) unit: km, mh
-        ego_feature = np.hstack([env.sims[ego_idx].get_position() / 1000, env.sims[ego_idx].get_velocity() / 340])
-        enm_feature = np.hstack([env.sims[enm_idx].get_position() / 1000, env.sims[enm_idx].get_velocity() / 340])
+        ego_uid = list(env.jsbsims.keys())[agent_id]
+        enm_uid = list(env.jsbsims.keys())[(agent_id + 1) % self.num_aircrafts]
+        # feature: (north, east, down, vn, ve, vd)
+        ego_feature = np.hstack([env.jsbsims[ego_uid].get_position(), env.jsbsims[ego_uid].get_velocity()])
+        enm_feature = np.hstack([env.jsbsims[enm_uid].get_position(), env.jsbsims[enm_uid].get_velocity()])
         AO, TA, R = get_AO_TA_R(ego_feature, enm_feature)
         orientation_reward = self.orientation_fn(AO, TA)
-        range_reward = self.range_fn(R)
+        range_reward = self.range_fn(R / 1000)
         new_reward = orientation_reward * range_reward
         return self._process(new_reward, agent_id, (orientation_reward, range_reward))
 

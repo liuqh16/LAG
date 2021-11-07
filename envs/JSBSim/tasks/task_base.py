@@ -18,6 +18,10 @@ class BaseTask(ABC):
         self.load_observation_space()
         self.load_action_space()
 
+    @property
+    def num_agents(self):
+        return 1
+
     @abstractmethod
     def load_variables(self):
         self.state_var = [

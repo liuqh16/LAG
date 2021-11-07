@@ -1,24 +1,21 @@
 import numpy as np
 from gym import spaces
 import torch
-from torch._C import device
 from .task_base import BaseTask
 from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, PostureReward, RelativeAltitudeReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout
-from ..utils.utils import in_range_rad, get_AO_TA_R, LLA2NEU
+from ..utils.utils import in_range_rad, get_AO_TA_R, LLA2NEU, get_root_dir
 
 
 class SingleCombatTask(BaseTask):
     def __init__(self, config):
         self.config = config
-        self.num_fighters = getattr(self.config, 'num_fighters', 2)
-        assert self.num_fighters == 2, 'Only support one-to-one fighter combat!'
-        self.bloods = [100 for _ in range(self.num_fighters)]
+        self.num_aircrafts = len(getattr(self.config, 'aircraft_configs', {}).keys())
+        assert self.num_aircrafts == 2, 'Only support one-to-one air combat!'
         self.use_baseline = getattr(self.config, 'use_baseline', False)
-        self.num_agents = self.num_fighters - self.use_baseline  # output obs/act space
-        self.which_baseline = getattr(self.config, 'which_baseline', 0)
-        self.baseline_model_path = getattr(self.config, 'baseline_model_path', None)
+        if self.use_baseline:
+            self.baseline_agent = load_agent(self.config.baseline_type)
 
         self.reward_functions = [
             AltitudeReward(self.config),
@@ -35,14 +32,10 @@ class SingleCombatTask(BaseTask):
         self.load_variables()
         self.load_observation_space()
         self.load_action_space()
-        if self.use_baseline:
-            if self.which_baseline == 'control':
-                self.baseline_agent = SingleControlAgent(self.baseline_model_path)
-            elif self.which_baseline == 'straight':
-                self.baseline_agent = StraightFlyAgent()
-            elif self.which_baseline == 'straight_continuous':
-                self.baseline_agent = StraightFlyContinuousAgent()
-            
+
+    @property
+    def num_agents(self):
+        return 2 if not self.use_baseline else 1
 
     def load_variables(self):
         self.state_var = [
@@ -86,13 +79,13 @@ class SingleCombatTask(BaseTask):
         """Convert simulation states into the format of observation_space
         """
         def _normalize(agent_id):
-            ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_fighters
+            ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_aircrafts
             ego_obs_list, enm_obs_list = np.array(observations[ego_idx]), np.array(observations[enm_idx])
             # (0) extract feature: [north(km), east(km), down(km), v_n(mh), v_e(mh), v_d(mh)]
-            ego_cur_ned = LLA2NEU(*ego_obs_list[:3], env.init_longitude, env.init_latitude)
-            enm_cur_ned = LLA2NEU(*enm_obs_list[:3], env.init_longitude, env.init_latitude)
-            ego_feature = np.array([*(ego_cur_ned / 1000), *(ego_obs_list[6:9] / 340)])
-            enm_feature = np.array([*(enm_cur_ned / 1000), *(enm_obs_list[6:9] / 340)])
+            ego_cur_ned = LLA2NEU(*ego_obs_list[:3], env.center_lon, env.center_lat, env.center_alt)
+            enm_cur_ned = LLA2NEU(*enm_obs_list[:3], env.center_lon, env.center_lat, env.center_alt)
+            ego_feature = np.array([*ego_cur_ned, *(ego_obs_list[6:9])])
+            enm_feature = np.array([*enm_cur_ned, *(enm_obs_list[6:9])])
             observation = np.zeros(18)
             # (1) ego info normalization
             observation[0] = ego_obs_list[2] / 5000             #  0. ego altitude  (unit: 5km)
@@ -108,7 +101,7 @@ class SingleCombatTask(BaseTask):
             observation[10] = ego_obs_list[12]                  # 10. ego_down_ng   (unit: 5G)
             # (2) relative info w.r.t enm state
             ego_AO, ego_TA, R, side_flag = get_AO_TA_R(ego_feature, enm_feature, return_side=True)
-            observation[11] = R / 10                            # 11. relative distance (unit: 10km)
+            observation[11] = R / 10000                         # 11. relative distance (unit: 10km)
             observation[12] = ego_AO                            # 12. ego_AO        (unit: rad)
             observation[13] = ego_TA                            # 13. ego_TA        (unit: rad)
             observation[14] = side_flag                         # 14. enm_delta_heading: 1 or 0 or -1
@@ -117,8 +110,8 @@ class SingleCombatTask(BaseTask):
             observation[17] = enm_obs_list[8]                   # 17. enm_v_down    (unit: mh)
             return observation
 
-        norm_obs = np.zeros((self.num_fighters, 18))
-        for agent_id in range(self.num_fighters):
+        norm_obs = np.zeros((self.num_aircrafts, 18))
+        for agent_id in range(self.num_aircrafts):
             norm_obs[agent_id] = _normalize(agent_id)
         return norm_obs
 
@@ -133,10 +126,13 @@ class SingleCombatTask(BaseTask):
             action_norm[3] = action[3] * 0.5 / (self.action_space[0].nvec[3] - 1.) + 0.4
             return action_norm
 
-        norm_act = np.zeros((self.num_fighters, 4))
-        for agent_id in range(self.num_fighters):
-            norm_act[agent_id] = _normalize(actions[agent_id])
-
+        norm_act = np.zeros((self.num_aircrafts, 4))
+        if self.use_baseline:
+            norm_act[0] = _normalize(actions[0])
+            norm_act[1] = _normalize(self.baseline_agent.get_action(env, self))
+        else:
+            for agent_id in range(self.num_aircrafts):
+                norm_act[agent_id] = _normalize(actions[agent_id])
         return norm_act
 
     def reset(self, env):
@@ -146,46 +142,17 @@ class SingleCombatTask(BaseTask):
             self.baseline_agent.reset()
         return super().reset(env)
 
-    def get_reward(self, env, agent_id, info={}):
-        """
-        Must call it after `env.get_observation()`
-        """
-        return super().get_reward(env, agent_id, info)
 
-    def get_termination(self, env, agent_id, info={}):
-        return super().get_termination(env, agent_id, info)
-
-
-class SingleCombatContinuousTask(SingleCombatTask):
-    '''
-    Combat task with continuous action space
-    '''
-    def __init__(self, config):
-        super().__init__(config)
-    
-    def load_action_space(self):
-        # aileron, elevator, rudder, throttle
-        self.action_space = [spaces.Box(
-                                        low=np.array([-1.0, -1.0, -1.0, 0.4]), 
-                                        high=np.array([1.0, 1.0, 1.0, 0.9])
-                                         ) for _ in range(self.num_agents)]
-
-    def normalize_action(self, env, actions: list):
-        """Clip continuous value into proper value.
-        """
-        def _normalize(action):
-            return np.clip(action, [-1.0, -1.0, -1.0, 0.4], [1.0, 1.0, 1.0, 0.9])
-
-        norm_act = np.zeros((self.num_fighters, 4))
-        for agent_id in range(self.num_fighters):
-            norm_act[agent_id] = _normalize(actions[agent_id])
-        return norm_act
+def load_agent(name):
+    if name == 'control':
+        return SingleControlAgent()
+    elif name == 'straight':
+        return StraightFlyAgent()
+    else:
+        raise NotImplementedError
 
 
 class StraightFlyAgent:
-    def __init__(self):
-        pass
-
     def get_action(self, env, task):
         return np.array([20, 18.6, 20, 0])
 
@@ -193,24 +160,13 @@ class StraightFlyAgent:
         pass
 
 
-class StraightFlyContinuousAgent:
-    def __init__(self) -> None:
-        pass
-
-    def get_action(self, env, task):
-        return np.array([0., -0.07 ,0., 0.4])
-    
-    def reset(self):
-        pass
-
-
 class SingleControlAgent:
-    def __init__(self, model_path=None):
-        self.model_path = model_path
-        self.restore()
-        self.prep_rollout()
+    def __init__(self):
+        self.model_path = get_root_dir() + '/model/singlecontrol_baseline.pth'
+        self.actor = torch.load(str(self.model_path))
+        self.actor.eval()
         self.reset()
-    
+
     def reset(self):
         self.rnn_states = np.zeros((1, 1, 128)) # hard code
 
@@ -230,33 +186,28 @@ class SingleControlAgent:
             side_flag = np.sign(np.cross([ego_vx, ego_vy], [delta_x, delta_y]))
             return - ego_AO * side_flag
 
-        ego_id, enm_id= 1, 0
-        ego_obs_list = np.array(env.sims[1].get_property_values(task.state_var))
-        enm_obs_list = np.array(env.sims[0].get_property_values(task.state_var))
+        import pdb; pdb.set_trace()
+        ego_uid, enm_uid = list(env.jsbsims.keys())[1], list(env.jsbsims.keys())[0]
+        ego_x, ego_y, ego_z = env.jsbsims[ego_uid].get_position()
+        ego_vx, ego_vy, ego_vz = env.jsbsims[ego_uid].get_velocity()
+        enm_x, enm_y, enm_z = env.jsbsims[enm_uid].get_position()
+        enm_vx, enm_vy, enm_vz = env.jsbsims[enm_uid].get_velocity()
 
-        ego_cur_ned = LLA2NEU(*ego_obs_list[:3], env.init_longitude, env.init_latitude)
-        enm_cur_ned = LLA2NEU(*enm_obs_list[:3], env.init_longitude, env.init_latitude)
-        ego_feature = np.array([*(ego_cur_ned[:2] / 1000), *(ego_obs_list[6:8] / 340)])
-        enm_feature = np.array([*(enm_cur_ned[:2] / 1000), *(enm_obs_list[6:8] / 340)])
+        ego_feature = np.array([ego_x, ego_y, ego_vx, ego_vy])
+        enm_feature = np.array([enm_x, enm_y, enm_vx, enm_vy])
         ego_AO = get_delta_heading(ego_feature, enm_feature)
 
         observation = np.zeros(8)
-        observation[0] = (enm_obs_list[2] - ego_obs_list[2]) / 1000 #  0. ego delta altitude  (unit: 1km)
-        observation[1] = in_range_rad(ego_AO)                       #  1. ego delta heading   (unit rad)
-        observation[2] = ego_obs_list[3]                            #  2. ego_roll      (unit: rad)
-        observation[3] = ego_obs_list[4]                            #  3. ego_pitch     (unit: rad)
-        observation[4] = ego_obs_list[6] / 340                      #  4. ego_v_north   (unit: mh)
-        observation[5] = ego_obs_list[7] / 340                      #  5. ego_v_east    (unit: mh)
-        observation[6] = ego_obs_list[8] / 340                      #  6. ego_v_down    (unit: mh)
-        observation[7] = ego_obs_list[9] / 340                      #  7. ego_vc        (unit: mh)
-        observation = np.expand_dims(observation, axis=0)           # dim: (1,8)
+        observation[0] = (enm_z - ego_z) / 1000             #  0. ego delta altitude  (unit: 1km)
+        observation[1] = in_range_rad(ego_AO)               #  1. ego delta heading   (unit rad)
+        observation[2] = env.jsbsims[ego_uid].get_rpy()[0]  #  2. ego_roll      (unit: rad)
+        observation[3] = env.jsbsims[ego_uid].get_rpy()[1]  #  3. ego_pitch     (unit: rad)
+        observation[4] = ego_vx / 340                       #  4. ego_v_north   (unit: mh)
+        observation[5] = ego_vy / 340                       #  5. ego_v_east    (unit: mh)
+        observation[6] = ego_vz / 340                       #  6. ego_v_down    (unit: mh)
+        observation[7] = env.jsbsims[ego_uid].get_property_value(c.velocities_vc_mps) / 340
+        observation = np.expand_dims(observation, axis=0)   # dim: (1,8)
 
         _action, _, self.rnn_states = self.actor(observation, self.rnn_states, deterministic=True)
         action = _action.detach().cpu().numpy().squeeze()
-        return  action
-
-    def restore(self):
-        self.actor = torch.load(str(self.model_path))
-
-    def prep_rollout(self):
-        self.actor.eval()
+        return action

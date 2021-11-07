@@ -27,7 +27,8 @@ class Overload(BaseTerminationCondition):
         Returns:
             (tuple): (done, success, info)
         """
-        done = self._judge_overload(env.sims[agent_id])
+        ego_uid = list(env.jsbsims.keys())[agent_id]
+        done = self._judge_overload(env.jsbsims[ego_uid])
         if done:
             print(f'INFO: agent[{agent_id}] acceleration is too high!')
             info[f'agent{agent_id}_end_reason'] = 1  # crash

@@ -1,5 +1,5 @@
 # task config
-task: singlecombat_with_avoid_missile
+task: singlecombat_with_missile
 
 # simulation config
 jsbsim_freq: 60
@@ -12,24 +12,32 @@ acceleration_limit_x: 10.0
 acceleration_limit_y: 10.0
 acceleration_limit_z: 10.0
 
-# init config
-num_fighters: 2
-init_config: {
-  0: {
-    aircraft_name: f16,
-    ic_h_sl_ft: 20000,
-    ic_lat_geod_deg: 60.0,
-    ic_long_gc_deg: 120.0,
-    ic_psi_true_deg: 0,
-    ic_u_fps: 800.0,
+# aircraft config
+# A0100 and B0100 are opposite
+aircraft_configs: {
+  A0100: {
+    team: Red,
+    model: f16,
+    init_state: {
+      ic_long_gc_deg: 120.0,
+      ic_lat_geod_deg: 60.0,
+      ic_h_sl_ft: 20000,
+      ic_psi_true_deg: 0.0,
+      ic_u_fps: 800.0,
+    },
+    missile: 0,
   },
-  1: {
-    aircraft_name: f16,
-    ic_h_sl_ft: 20000,
-    ic_lat_geod_deg: 60.07,
-    ic_long_gc_deg: 120.0,
-    ic_psi_true_deg: 180,
-    ic_u_fps: 800.0,
+  B0100: {
+    team: Blue,
+    model: f16,
+    init_state: {
+      ic_h_sl_ft: 20000,
+      ic_lat_geod_deg: 60.07,
+      ic_long_gc_deg: 120.0,
+      ic_psi_true_deg: 180.0,
+      ic_u_fps: 800.0,
+    },
+    missile: 1,
   }
 }
 

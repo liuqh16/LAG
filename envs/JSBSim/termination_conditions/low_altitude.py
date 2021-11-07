@@ -24,7 +24,8 @@ class LowAltitude(BaseTerminationCondition):
         Returns:
             (tuple): (done, success, info)
         """
-        done = env.sims[agent_id].get_property_value(c.position_h_sl_m) <= self.altitude_limit
+        ego_uid = list(env.jsbsims.keys())[agent_id]
+        done = env.jsbsims[ego_uid].get_property_value(c.position_h_sl_m) <= self.altitude_limit
         if done:
             print(f'INFO: agent[{agent_id}] altitude is too low. Total Steps={env.current_step}')
             info[f'agent{agent_id}_end_reason'] = 1  # crash
