@@ -70,13 +70,7 @@ def main(args):
          / all_args.env_name / all_args.scenario_name / all_args.algorithm_name / all_args.experiment_name
     if not run_dir.exists():
         os.makedirs(str(run_dir))
-        curr_run = 'render1'
-    else:
-        exst_run_nums = [int(str(folder.name).split('render')[1]) for folder in run_dir.iterdir() if str(folder.name).startswith('render')]
-        if len(exst_run_nums) == 0:
-            curr_run = 'render1'
-        else:
-            curr_run = 'render%i' % (max(exst_run_nums) + 1)
+    curr_run = 'render'
     run_dir = run_dir / curr_run
     if not run_dir.exists():
         os.makedirs(str(run_dir))

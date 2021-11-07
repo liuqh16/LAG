@@ -18,12 +18,16 @@ class BaseTask(ABC):
         self.load_observation_space()
         self.load_action_space()
 
+    @property
+    def num_agents(self):
+        return 1
+
     @abstractmethod
     def load_variables(self):
         self.state_var = [
             c.position_long_gc_deg,
             c.position_lat_geod_deg,
-            c.position_h_sl_ft,
+            c.position_h_sl_m,
         ]
         self.action_var = [
             c.fcs_aileron_cmd_norm,

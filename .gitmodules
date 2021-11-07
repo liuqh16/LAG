@@ -1,3 +1,3 @@
-[submodule "envs/slimevolley"]
-	path = envs/slimevolley
-	url = https://github.com/liuqh16/slimevolleygym.git
+[submodule "envs/JSBSim/data"]
+	path = envs/JSBSim/data
+	url = https://github.com/JSBSim-Team/jsbsim.git

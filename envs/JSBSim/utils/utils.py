@@ -1,6 +1,6 @@
 import os
-import math
 import yaml
+import pymap3d
 import numpy as np
 
 
@@ -26,28 +26,39 @@ def get_root_dir():
     return os.path.join(os.path.split(os.path.realpath(__file__))[0], '..')
 
 
-def lonlat2dis(lon, lat, init_lon, init_lat):
-    """Convert longitude&latitude into xy distance
+def LLA2NEU(lon, lat, alt, lon0=120.0, lat0=60.0, alt0=0):
+    """Convert from Geodetic Coordinate System to NEU Coordinate System.
 
     Args:
-        lon (float): lontitude of current point
-        lat (float): latitude of current point
-        init_lon (float): lontitude of original point
-        init_lat (float): latitude of original point
+        lon, lat, alt (float): target geodetic lontitude(°), latitude(°), altitude(m)
+        lon, lat, alt (float): observer geodetic lontitude(°), latitude(°), altitude(m); Default=`(120°E, 60°N, 0m)`
 
     Returns:
-        (np.array): (east, north), unit: m
+        (np.array): (North, East, Up), unit: m
     """
-    east = (np.deg2rad(lon) - np.deg2rad(init_lon)) * np.cos(np.deg2rad(init_lat)) * 6371 * 1.734
-    north = (np.deg2rad(lat) - np.deg2rad(init_lat)) * 6371 * 11.1319 / 11.11949266
-    return np.array([east, north]) * 1000
+    n, e, d = pymap3d.geodetic2ned(lat, lon, alt, lat0, lon0, alt0)
+    return np.array([n, e, -d])
+
+
+def NEU2LLA(n, e, u, lon0=120.0, lat0=60.0, alt0=0):
+    """Convert from NEU Coordinate System to Geodetic Coordinate System.
+
+    Args:
+        n, e, u (float): target relative position w.r.t. North, East, Down
+        lon, lat, alt (float): observer geodetic lontitude(°), latitude(°), altitude(m); Default=`(120°E, 60°N, 0m)`
+
+    Returns:
+        (np.array): (lon, lat, alt), unit: °, °, m
+    """
+    lat, lon, h = pymap3d.ned2geodetic(n, e, -u, lat0, lon0, alt0)
+    return np.array([lon, lat, h])
 
 
 def get_AO_TA_R(ego_feature, enemy_feature, return_side=False):
     """Get AO & TA angles and relative distance between two agent.
 
     Args:
-        ego_feature & enemy_feature (tuple): (north, east, down, vn, ve, vd), unit: km, mh
+        ego_feature & enemy_feature (tuple): (north, east, down, vn, ve, vd)
 
     Returns:
         (tuple): ego_AO, ego_TA, R
@@ -88,34 +99,17 @@ def in_range_rad(angle):
     return angle
 
 
-def unit_converse(x, left: str, right: str):
-    if left == 'ft' and right == 'm':
-        return x * 0.3048
-    elif left == 'm' and right == 'ft':
-        return x * 3.2808
-    else:
-        raise NotImplementedError
+if __name__ == "__main__":
+    p1 = (120.05, 59.9)
+    p2 = (120.1, 60.05)
+    o = (120.0, 60.0)
+    from pyproj import Geod, Proj, Transformer
+    print(Geod(ellps="WGS84").line_length(*list(zip(p1, p2))))
+    print(Geod(ellps="clrk66").line_length(*list(zip(p1, p2))))
 
-
-def shortest_ac_dist(x, y, x1, y1, x2, y2):
-    """
-    Compute the shortest distance (in m) between aircraft coord (lat, lon) and the line between two points (lat1,lon1) and (lat2, lon2)
-    >>> round(shortest_ac_dist(40.759809, -73.976264, 40.758492, -73.975105, 40.759752, -73.974215))
-    160
-    >>> round(shortest_ac_dist(40.759168, -73.976741, 40.758492, -73.975105, 40.759752, -73.974215))
-    160
-    """
-    # print(x, y, x1, y1, x2, y2)
-    # equation of line (lat1,lon1) -> (lat2, lon2): y = s*x + m
-    # slope
-    s = (y2 - y1) / (x2 - x1 + 0.00000000001)
-    # find m: m = y - s*x
-    m = y1 - s * x1
-    # coeff of line equation ay + bx + c = 0
-    a = -1
-    b = s
-    c = m
-    # compute shortest distance between aircarft and the line = abs(a*x0 + b*y0 + c) / sqrt(a²+b²))
-    s_ac_dist = math.fabs(a * x + b * y + c) / math.sqrt(a ** 2 + b ** 2)
-    # print("s_ac_dist", s_ac_dist)
-    return s_ac_dist
+    print("***" * 10)
+    print(NEU2LLA(*LLA2NEU(*p1, 4000)))
+    print("***" * 10)
+    print(LLA2NEU(*o, 4000))
+    print("***" * 10)
+    print(np.linalg.norm(LLA2NEU(*p1, 4000) - LLA2NEU(*p2, 4000)))

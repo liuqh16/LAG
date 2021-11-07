@@ -1,5 +1,0 @@
-include LICENSE.txt
-recursive-include . *.h*
-include *.pyx
-include *.pxd
-include src/simgear/xml/xmltok_*.c

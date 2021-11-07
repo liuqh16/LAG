@@ -1,8 +1,9 @@
 import numpy as np
+from typing import List
 from .env_base import BaseEnv
 from ..core.catalog import Catalog
-from ..core.simulation import Simulation
-from ..tasks import SingleCombatTask, SingleCombatWithMissileTask, SingleCombatContinuousTask, SingleCombatWithArtilleryTask
+from ..core.simulatior import BaseSimulator
+from ..tasks import SingleCombatTask, SingleCombatWithMissileTask, SingleCombatWithArtilleryTask
 
 
 class SingleCombatEnv(BaseEnv):
@@ -11,12 +12,12 @@ class SingleCombatEnv(BaseEnv):
     """
     def __init__(self, config_name: str):
         super().__init__(config_name)
-        # NOTE: num_fighters denote num of the simulated aircrafts
-        #       num_agents denote num of the aircraft controlled by RL
-        self.use_baseline = getattr(self.config, 'use_baseline', False)
-        self.num_agents = self.num_fighters - self.use_baseline
-        # specify the aircraft models to be simulated
-        self.aircraft_names = [self.config.init_config[idx]['aircraft_name'] for idx in range(self.num_fighters)]
+        # Env-Specific initialization here!
+        self._create_records = False
+
+    @property
+    def sims(self) -> List[BaseSimulator]:
+        return list(self.jsbsims.values()) + list(self.other_sims.values())
 
     def load_task(self):
         taskname = getattr(self.config, 'task', None)
@@ -26,8 +27,6 @@ class SingleCombatEnv(BaseEnv):
             self.task = SingleCombatWithMissileTask(self.config)
         elif taskname == 'singlecombat_with_artillery':
             self.task = SingleCombatWithArtilleryTask(self.config)
-        elif taskname == 'continuous_singlecombat':
-            self.task = SingleCombatContinuousTask(self.config)
         else:
             raise NotImplementedError(f"Unknown taskname: {taskname}")
         self.observation_space = self.task.observation_space
@@ -35,41 +34,16 @@ class SingleCombatEnv(BaseEnv):
 
     def reset(self):
         self.current_step = 0
-        self.close()
-        self.reset_conditions()
-        # recreate simulation
-        self.sims = [Simulation(
-            aircraft_name=self.aircraft_names[idx],
-            init_conditions=self.init_conditions[idx],
-            origin_point=(self.init_longitude, self.init_latitude),
-            jsbsim_freq=self.jsbsim_freq,
-            agent_interaction_steps=self.agent_interaction_steps) for idx in range(self.num_fighters)]
+        self.reset_simulators()
         next_observation = self.get_observation()
         self.task.reset(self)
         return self._mask(next_observation)
 
-    def reset_conditions(self):
-        # Origin point of Combat Field [geodesic longitude&latitude (deg)]
-        self.init_longitude, self.init_latitude = 120.0, 60.0
-        # Initial setting of each agent
-        self.init_conditions = [{
-            Catalog.ic_h_sl_ft: self.config.init_config[idx]['ic_h_sl_ft'],             # 1.1  altitude above mean sea level [ft]
-            Catalog.ic_terrain_elevation_ft: 0,                                         # +    default
-            Catalog.ic_long_gc_deg: self.config.init_config[idx]['ic_long_gc_deg'],     # 1.2  geodesic longitude [deg]
-            Catalog.ic_lat_geod_deg: self.config.init_config[idx]['ic_lat_geod_deg'],   # 1.3  geodesic latitude  [deg]
-            Catalog.ic_psi_true_deg: self.config.init_config[idx]['ic_psi_true_deg'],   # 5.   initial (true) heading [deg]   (0, 360)
-            Catalog.ic_u_fps: self.config.init_config[idx]['ic_u_fps'],                 # 2.1  body frame x-axis velocity [ft/s]  (-2200, 2200)
-            Catalog.ic_v_fps: 0,                                                        # 2.2  body frame y-axis velocity [ft/s]  (-2200, 2200)
-            Catalog.ic_w_fps: 0,                                                        # 2.3  body frame z-axis velocity [ft/s]  (-2200, 2200)
-            Catalog.ic_p_rad_sec: 0,                                                    # 3.1  roll rate  [rad/s]     (-2 * math.pi, 2 * math.pi)
-            Catalog.ic_q_rad_sec: 0,                                                    # 3.2  pitch rate [rad/s]     (-2 * math.pi, 2 * math.pi)
-            Catalog.ic_r_rad_sec: 0,                                                    # 3.3  yaw rate   [rad/s]     (-2 * math.pi, 2 * math.pi)
-            Catalog.ic_roc_fpm: 0,                                                      # 4.   initial rate of climb [ft/min]
-            Catalog.fcs_throttle_cmd_norm: 0.,                                          # 6.
-        } for idx in range(self.num_fighters)]
-        # TODO: randomization
-        np.random.shuffle(self.init_conditions)
-        
+    def reset_simulators(self):
+        # Assign new initial condition here!
+        for sim in self.jsbsims.values():
+            sim.reload()
+        self.other_sims = {}  # type: dict[str, BaseSimulator]
 
     def step(self, actions: list):
         """Run one timestep of the environment's dynamics. When end of
@@ -88,28 +62,30 @@ class SingleCombatEnv(BaseEnv):
                 info: auxiliary information
         """
         self.current_step += 1
-        info = {}
-        if self.use_baseline:
-            # (1,dim) => (dim,) => (2,dim)
-            actions = np.array(actions).squeeze()
-            baseline_action = self.task.baseline_agent.get_action(self, self.task) # 
-            actions = np.stack((actions, baseline_action))
-        actions = self.task.normalize_action(self, actions)
+        info = {"current_step": self.current_step}
 
-        # run JSBSim for one step
-        next_observation = self.make_step(actions)
-        # call task.step for extra simulation
+        # apply action
+        actions = self.task.normalize_action(self, actions)
+        for idx, sim in enumerate(self.jsbsims.values()):
+            sim.set_property_values(self.task.action_var, actions[idx])
+        # run simulator for one step
+        for _ in range(self.agent_interaction_steps):
+            for sim in self.sims:
+                sim.run()
+        # call task.step for extra process
         self.task.step(self, actions)
 
-        rewards = np.zeros(self.num_fighters)
-        for agent_id in range(self.num_fighters):
+        next_observation = self.get_observation()
+
+        rewards = np.zeros(self.num_aircrafts)
+        for agent_id in range(self.num_aircrafts):
             rewards[agent_id], info = self.task.get_reward(self, agent_id, info)
 
         done = False
-        for agent_id in range(self.num_fighters):
+        for agent_id in range(self.num_aircrafts):
             agent_done, info = self.task.get_termination(self, agent_id, info)
             done = agent_done or done
-        dones = done * np.ones(self.num_fighters)
+        dones = done * np.ones(self.num_aircrafts)
 
         return self._mask(next_observation), self._mask(rewards), self._mask(dones), info
 
@@ -121,8 +97,8 @@ class SingleCombatEnv(BaseEnv):
             (OrderedDict): the same format as self.observation_space
         """
         next_observation = []
-        for agent_id in range(self.num_fighters):
-            next_observation.append(self.sims[agent_id].get_property_values(self.task.state_var))
+        for sim in self.jsbsims.values():
+            next_observation.append(sim.get_property_values(self.task.state_var))
         next_observation = self.task.normalize_observation(self, next_observation)
         return next_observation
 
@@ -131,20 +107,31 @@ class SingleCombatEnv(BaseEnv):
 
         Environments automatically close() when garbage collected or when the program exits.
         """
-        for agent_id in range(self.num_fighters):
-            if self.sims[agent_id]:
-                self.sims[agent_id].close()
+        for sim in self.sims:
+            sim.close()
 
-    def render(self, mode="human"):
-        # TODO: real time rendering
-        render_list = []
-        for agent_id in range(self.num_fighters):
-            render_list.append(np.array(self.sims[agent_id].get_property_values(self.task.render_var)))
-        return np.hstack(render_list)
+    def render(self, mode="txt", filepath='./JSBSimRecording.txt.acmi'):
+        if mode == "txt":
+            if not self._create_records:
+                with open(filepath, mode='w', encoding='utf-8-sig') as f:
+                    f.write("FileType=text/acmi/tacview\n")
+                    f.write("FileVersion=2.1\n")
+                    f.write("0,ReferenceTime=2020-04-01T00:00:00Z\n")
+                self._create_records = True
+            with open(filepath, mode='a', encoding='utf-8-sig') as f:
+                timestamp = self.current_step * self.time_interval
+                f.write(f"#{timestamp:.2f}\n")
+                for sim in self.sims:
+                    log_msg = sim.log()
+                    if log_msg is not None:
+                        f.write(log_msg + "\n")
+        # TODO: real time rendering [Use FlightGear, etc.]
+        else:
+            raise NotImplementedError
 
     def seed(self, seed):
         # TODO: random seed
         return super().seed(seed=seed)
 
     def _mask(self, data):
-        return np.expand_dims(data[0], axis=0) if self.use_baseline else data
+        return np.expand_dims(data[0], axis=0) if self.task.use_baseline else data
