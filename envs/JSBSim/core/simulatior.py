@@ -431,4 +431,4 @@ class MissileSimulator(BaseSimulator):
         self._poseture[:] = np.array([0, theta, phi])
         # update mass
         self._m = max(self._m - self.dt * self._dm, self._m1)
-        print(f"T={self._t:.2f}, {int(v)}, {self._m}, {np.rad2deg(self.get_rpy()[-1]):.2f}, {np.rad2deg(self.target_aircraft.get_rpy()[-1]):.2f}")
+        # print(f"T={self._t:.2f}, {int(v)}, {self._m}, {np.rad2deg(self.get_rpy()[-1]):.2f}, {np.rad2deg(self.target_aircraft.get_rpy()[-1]):.2f}")

@@ -11,7 +11,8 @@ import matplotlib.pyplot as plt
 
 def test_env():
     # env = SingleCombatEnv(config_name='1v1/NoWeapon/Selfplay')
-    env = SingleCombatEnv(config_name='1v1/NoWeapon/vsBaseline')
+    # env = SingleCombatEnv(config_name='1v1/NoWeapon/vsBaseline')
+    env = SingleCombatEnv(config_name='1v1/Missile/vsStraight')
     act_space = env.action_space[0]
     trajectory_list = []
     env.reset()
