@@ -76,9 +76,7 @@ def test_parallel_env():
     envs.close()
 
 def test_heading_env():
-    env = SingleControlEnv(config_name='heading_task')
-    # env = SelfPlayEnv(config='selfplay_with_missile_task')
-    act_space = env.action_space
+    env = SingleControlEnv(config_name='single/heading')
     trajectory_list = []
     env.reset()
     trajectory_list.append(env.render())
@@ -97,12 +95,12 @@ def test_heading_env():
         if done:
             print(env_info)
             #reward_render = env.task.reward_functions[0].get_reward_trajectory()
-            print(env.jsbsims[0].get_property_value(c.simulation_sim_time_sec))
+            print(env.jsbsims['A0100'].get_property_value(c.simulation_sim_time_sec))
             break
     print(time.time() - start_time)
     # print(reward_render)
     # np.save('save_trajectories.npy', np.asarray(trajectory_list))
 
-test_env()
+# test_env()
 # test_parallel_env()
-# test_heading_env()
+test_heading_env()

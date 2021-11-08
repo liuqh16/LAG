@@ -1,8 +1,9 @@
 import numpy as np
+from typing import List
 from .env_base import BaseEnv
 from ..core.catalog import Catalog
-from ..tasks import HeadingTask, HeadingAndAltitudeTask, HeadingContinuousTask
-
+from ..core.simulatior import BaseSimulator
+from ..tasks import HeadingTask
 
 class SingleControlEnv(BaseEnv):
     """
@@ -12,14 +13,14 @@ class SingleControlEnv(BaseEnv):
         super().__init__(config_name)
         assert self.num_aircrafts == 1, "only support one fighter"
 
+    @property
+    def sims(self) -> List[BaseSimulator]:
+        return list(self.jsbsims.values())
+
     def load_task(self):
-        taskname = getattr(self.config, 'task', 'heading_task')
-        if taskname == 'heading_task':
+        taskname = getattr(self.config, 'task', 'heading')
+        if taskname == 'heading':
             self.task = HeadingTask(self.config)
-        elif taskname == 'heading_altitude_task':
-            self.task = HeadingAndAltitudeTask(self.config)
-        elif taskname == 'heading_continuous_task':
-            self.task = HeadingContinuousTask(self.config)
         else:
             raise NotImplementedError(f'Unknown taskname: {taskname}')
         self.observation_space = self.task.observation_space
@@ -33,7 +34,8 @@ class SingleControlEnv(BaseEnv):
         return next_observation
 
     def reset_conditions(self):
-        new_init_state = self.aircraft_configs[0].get('init_state', {})  # type: dict
+        uid = list(self.aircraft_configs.keys())[0]
+        new_init_state = self.aircraft_configs[uid].get('init_state', {})  # type: dict
         new_init_state.update({
             'ic_psi_true_deg': np.random.uniform(0, 360),
             'ic_u_fps': np.random.uniform(500, 1000),
@@ -45,7 +47,7 @@ class SingleControlEnv(BaseEnv):
         })
         self.sims[0].reload(new_init_state)
 
-    def step(self, action: list):
+    def step(self, actions: list):
         """Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`
         to reset this environment's state. Accepts an action and 
@@ -62,21 +64,28 @@ class SingleControlEnv(BaseEnv):
                 info: auxiliary information
         """
         self.current_step += 1
-        info = {}
-        action = self.task.normalize_action(self, action)
-        # run JSBSim for one step
-        next_observation = self.make_step(action)
+        info = {"current_step": self.current_step}
+        
+        actions = self.task.normalize_action(self, actions)
+        for idx, sim in enumerate(self.jsbsims.values()):
+            sim.set_property_values(self.task.action_var, actions[idx])
+        # run simulator for one step
+        for _ in range(self.agent_interaction_steps):
+            for sim in self.sims:
+                sim.run()
 
-        reward = np.zeros(self.num_aircrafts)
+        next_observation = self.get_observation()
+        rewards = np.zeros(self.num_aircrafts)
         for agent_id in range(self.num_aircrafts):
-            reward[agent_id], info = self.task.get_reward(self, agent_id, info)
+            rewards[agent_id], info = self.task.get_reward(self, agent_id, info)
 
         done = False
         for agent_id in range(self.num_aircrafts):
             agent_done, info = self.task.get_termination(self, agent_id, info)
             done = agent_done or done
+        dones = done * np.ones(self.num_aircrafts)
 
-        return next_observation, reward, done, info
+        return next_observation, rewards, dones, info
 
     def get_observation(self):
         """

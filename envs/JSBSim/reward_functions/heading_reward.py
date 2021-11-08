@@ -35,5 +35,5 @@ class HeadingReward(BaseRewardFunction):
         speed_error_scale = 16  # fps (~5%)
         speed_r = math.exp(-(((env.jsbsims[ego_uid].get_property_value(c.velocities_u_fps) - 800) / speed_error_scale) ** 2))
 
-        reward = (heading_r * alt_r  * roll_r * speed_r) ** (1 / 5)
+        reward = (heading_r * alt_r  * roll_r * speed_r) ** (1 / 4)
         return self._process(reward)

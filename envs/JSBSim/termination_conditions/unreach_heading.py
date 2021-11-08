@@ -1,7 +1,9 @@
+from numpy.lib.function_base import angle
 from .termination_condition_base import BaseTerminationCondition
 from ..core.catalog import Catalog as c
 import math
 import random
+import numpy as np
 
 
 class UnreachHeading(BaseTerminationCondition):
@@ -12,7 +14,8 @@ class UnreachHeading(BaseTerminationCondition):
 
     def __init__(self, config):
         super().__init__(config)
-        self.check_interval = self.config.init_config[0]['heading_check_interval']
+        self.target_angles = np.array([30., 60., 90., 120., 150., 180.])
+        self.check_interval = np.array([2.5, 5., 7.5, 10., 12.5, 15])
 
     def get_termination(self, task, env, agent_id=0, info={}):
         """
@@ -35,14 +38,15 @@ class UnreachHeading(BaseTerminationCondition):
             if math.fabs(env.jsbsims[ego_uid].get_property_value(c.delta_heading)) > 10:
                 done = True
             # if current target heading is reached, random generate a new taget heading
-            angle = random.choice([30., 60., 90., 120., 150., 180.])
+            index = np.random.randint(0, 6)
+            angle = self.target_angles[index]
             sign = random.choice([+1.0, -1.0])
             new_heading = env.jsbsims[ego_uid].get_property_value(c.target_heading_deg) + sign * angle
             new_heading = (new_heading + 360) % 360
 
             info[f'time{check_time}_target_heading'] = new_heading
             env.jsbsims[ego_uid].set_property_value(c.target_heading_deg, new_heading)
-            env.jsbsims[ego_uid].set_property_value(c.heading_check_time, check_time + self.check_interval)
+            env.jsbsims[ego_uid].set_property_value(c.heading_check_time, check_time + self.check_interval[index])
 
         if done:
             print(info) 

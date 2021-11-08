@@ -3,7 +3,7 @@ from gym import spaces
 from .task_base import BaseTask
 from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, HeadingReward
-from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout, UnreachHeading, UnreachHeadingAndAltitude
+from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout, UnreachHeading
 
 
 class HeadingTask(BaseTask):
@@ -78,49 +78,8 @@ class HeadingTask(BaseTask):
         """Convert discrete action index into continuous value.
         """
         norm_act = np.zeros((1, 4))
-        norm_act[0, 0] = action[0] * 2. / (self.action_space[0].nvec[0] - 1.) - 1.
-        norm_act[0, 1] = action[1] * 2. / (self.action_space[0].nvec[1] - 1.) - 1.
-        norm_act[0, 2] = action[2] * 2. / (self.action_space[0].nvec[2] - 1.) - 1.
-        norm_act[0, 3] = action[3] * 0.5 / (self.action_space[0].nvec[3] - 1.) + 0.4
+        norm_act[0, 0] = action[0][0] * 2. / (self.action_space[0].nvec[0] - 1.) - 1.
+        norm_act[0, 1] = action[0][1] * 2. / (self.action_space[0].nvec[1] - 1.) - 1.
+        norm_act[0, 2] = action[0][2] * 2. / (self.action_space[0].nvec[2] - 1.) - 1.
+        norm_act[0, 3] = action[0][3] * 0.5 / (self.action_space[0].nvec[3] - 1.) + 0.4
         return norm_act
-
-
-class HeadingContinuousTask(HeadingTask):
-    '''
-    Control target heading with continuous action space
-    '''
-    def __init__(self, config):
-        super().__init__(config)
-    
-    def load_action_space(self):
-        # aileron, elevator, rudder, throttle
-        self.action_space = [spaces.Box(
-                                        low=np.array([-1.0, -1.0, -1.0, 0.4]), 
-                                        high=np.array([1.0, 1.0, 1.0, 0.9])
-                                         ) for _ in range(self.num_agents)]
-
-    def normalize_action(self, env, actions: list):
-        """Clip continuous value into proper value.
-        """
-        def _normalize(action):
-            return np.clip(action, [-1.0, -1.0, -1.0, 0.4], [1.0, 1.0, 1.0, 0.9])
-
-        norm_act = np.zeros((self.num_fighters, 4))
-        for agent_id in range(self.num_fighters):
-            norm_act[agent_id] = _normalize(actions[agent_id])
-        return norm_act
-
-
-class HeadingAndAltitudeTask(HeadingTask):
-    '''
-    Control target heading and target altitude with discrete action space
-    '''
-    def __init__(self, config):
-        super().__init__(config)
-        self.termination_conditions = [
-            UnreachHeadingAndAltitude(self.config),
-            ExtremeState(self.config),
-            Overload(self.config),
-            LowAltitude(self.config),
-            Timeout(self.config),
-        ]
