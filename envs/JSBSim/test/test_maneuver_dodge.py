@@ -4,6 +4,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))))
 from envs.JSBSim.envs import SingleCombatEnv
 from envs.JSBSim.tasks import SingleCombatWithMissileTask
+from envs.JSBSim.core.simulatior import MissileSimulator
 from envs.JSBSim.utils.utils import in_range_rad, get_root_dir
 import torch 
 import time
@@ -18,7 +19,7 @@ class ManeuverAgent:
         self.restore()
         self.prep_rollout()
         self.step = 0
-        self.seconds_per_turn = 5  # hyperparameter
+        self.seconds_per_turn = 7  # hyperparameter
         self.init_heading = None
         if maneuver == 'l':
             self.target_heading_list = [0, 0, 0, 0]
@@ -40,9 +41,12 @@ class ManeuverAgent:
             self.init_heading = ego_obs_list[5]
         delta_heading = 0
 
-        if task.check_missile_warning(env, self.ego_idx) == 0:
+        missile = task.check_missile_warning(env, self.ego_idx)
+        if missile is None:
             delta_heading = (self.init_heading - ego_obs_list[5])  # ego_obs_list[5] is ego's heading
-        else:
+        elif (np.sum(missile.get_velocity() * env.jsbsims[ego_uid].get_velocity()) >= 0) \
+            and (np.linalg.norm(missile.get_position() - env.jsbsims[ego_uid].get_position()) < 4000) \
+            or (np.sum(missile.get_velocity() * env.jsbsims[ego_uid].get_velocity()) < 0):
             for i, interval in enumerate(step_list):
                 if self.step <= interval:
                     break
@@ -75,22 +79,26 @@ def test_maneuver():
     env = SingleCombatEnv(config_name='1v1/Missile/test/opposite')
     escape_agent = ManeuverAgent(agent_id=0, maneuver='o')
     pursue_agent = ManeuverAgent(agent_id=1, maneuver='l')
+    dt = env.time_interval
     obs = env.reset()
     env.render()
-    cur_step = 0
-    start_time = time.time()
+    missile_data = []
     while True:
-        cur_step += 1
         actions = [
             escape_agent.get_action(env, env.task),
             pursue_agent.get_action(env, env.task),
         ]
         obs, reward, done, env_info = env.step(actions)
+        if "B0101" in env.other_sims.keys():
+            sim = env.other_sims["B0101"]
+            if isinstance(sim, MissileSimulator):
+                missile_data.append((np.linalg.norm(sim.get_velocity()), sim.target_distance))
         env.render()
         if np.array(done).all():
             print(env_info)
             break
-    print(time.time() - start_time)
+    missile_data = np.array(missile_data)
+    # np.save("missile_data_ovl", missile_data)
 
 
 if __name__ == "__main__":

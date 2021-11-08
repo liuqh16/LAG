@@ -83,14 +83,13 @@ class SingleCombatWithMissileTask(SingleCombatTask):
                 elif sim.is_deleted:
                     env.other_sims.pop(sim.uid)
 
-    def check_missile_warning(self, env, agent_id):
+    def check_missile_warning(self, env, agent_id) -> MissileSimulator:
         ego_uid = list(env.jsbsims.keys())[agent_id]
-        num_missile_warning = 0
         for sim in env.other_sims.values():
             if isinstance(sim, MissileSimulator):
                 if sim.target_aircraft.uid == ego_uid:
-                    num_missile_warning += 1
-        return num_missile_warning
+                    return sim
+        return None
 
     def get_termination(self, env, agent_id, info={}):
         done = False
