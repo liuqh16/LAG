@@ -283,18 +283,18 @@ class MissileSimulator(BaseSimulator):
 
         # missile parameters (for AIM-9L)
         self._g = 9.81      # gravitational acceleration
-        self._t_max = 20    # time limitation
-        self._v_min = 50    # minimun velocity
-        self._Tmax = 10000  # maximum thrust, unit: N
-        self._S = 1         # cross-sectional area, unit: m^2
-        self._CD = 20       # aerodynamic drag factor
+        self._t_max = 60    # time limitation of missile life
+        self._t_thrust = 3  # time limitation of engine
+        self._Isp = 120     # average specific impulse
+        self._Length = 2.87
+        self._Diameter = 0.127
+        self._cD = 0.4      # aerodynamic drag factor
         self._m0 = 84       # mass, unit: kg
-        self._m1 = 20       # net mass (exclude fuel), unit: kg
-        self._dm = 1.5      # mass loss rate, unit: kg/s
+        self._dm = 6        # mass loss rate, unit: kg/s
         self._K = 3         # proportionality constant of proportional navigation
-        self._nyz_max = 5   # max overload
+        self._nyz_max = 30  # max overload
         self._Rc = 300      # radius of explosion, unit: m
-        self._Momentum = 40000  # total momentum of missile engine
+        self._v_min = 150   # minimun velocity, unit: m/s
 
     @property
     def is_alive(self):
@@ -309,8 +309,42 @@ class MissileSimulator(BaseSimulator):
         return self._status == "Inactive"
 
     @property
+    def Isp(self):
+        return self._Isp if self._t < self._t_thrust else 0
+
+    @property
     def K(self):
-        return max(self._K * (self._t_max - self._t) / self._t_max, 1)
+        """Proportional Guidance Coefficient"""
+        # return self._K
+        return max(self._K * (self._t_max - self._t) / self._t_max, 0)
+
+    @property
+    def S(self):
+        """Cross-Sectional area, unit m^2"""
+        S0 = np.pi * (self._Diameter / 2)**2
+        S0 += np.linalg.norm([np.sin(self._dtheta), np.sin(self._dphi)]) * self._Diameter * self._Length
+        return S0
+
+    @property
+    def rho(self):
+        """Air Density, unit: kg/m^3"""
+        # approximate expression
+        return 1.225 * np.exp(-self._geodetic[-1] / 9300)
+        # exact expression (Reference: https://www.cnblogs.com/pathjh/p/9127352.html)
+        rho0 = 1.225; T0 = 288.15; h = self._geodetic[-1]
+        if h <= 11000:  # Troposphere
+            T = T0 - 0.0065 * h
+            return rho0 * (T / T0)**4.25588
+        elif h <= 20000:  # Lower Stratosphere
+            T = 216.65
+            return 0.36392 * np.exp((11000 - h) / 6341.62)
+        else: # Upper Stratosphere
+            T = 216.65 + 0.001 * (h-20000)
+            return 0.088035 * (T / 216.65)**(-35.1632)
+
+    @property
+    def target_distance(self) -> float:
+        return np.linalg.norm(self.target_aircraft.get_position() - self.get_position())
 
     def launch(self, parent: AircraftSimulator):
         # inherit kinetic parameters from parent aricraft
@@ -324,9 +358,9 @@ class MissileSimulator(BaseSimulator):
         # init status
         self._t = 0
         self._m = self._m0
-        self._I = self._Momentum
+        self._dtheta, self._dphi = 0, 0
         self._status = "Launched"
-        self._left_t = int(1 / self.dt)
+        self._left_t = int(1 / self.dt)  # remove missile 1s after its destroying
 
     def target(self, target: AircraftSimulator):
         self.target_aircraft = target  # TODO: change target?
@@ -336,7 +370,7 @@ class MissileSimulator(BaseSimulator):
         action, is_hit = self._guidance()
         if is_hit:
             self._status = "Hit"
-        elif (self._t > self._t_max) and np.linalg.norm(self.get_velocity()) < self._v_min:
+        elif (self._t > self._t_max) or (np.linalg.norm(self.get_velocity()) < self._v_min):
             self._status = "Miss"
         else:
             self._state_trans(action)
@@ -388,16 +422,6 @@ class MissileSimulator(BaseSimulator):
         hit_flag = Rxyz < self._Rc
         return np.clip([ny, nz], -self._nyz_max, self._nyz_max), hit_flag
 
-    @property
-    def qbar(self):
-        """
-        Air pressure, qbar = 0.5 * rho * v**2
-        """
-        rho0 = 1.225e-3
-        rho = rho0 * np.exp(-self._position[-1] / 9300)
-        qbar = 0.5 * rho * np.linalg.norm(self._velocity)**2
-        return qbar
-
     def _state_trans(self, action):
         """
         State transition function
@@ -408,27 +432,24 @@ class MissileSimulator(BaseSimulator):
         # update velocity & posture
         v = np.linalg.norm(self.get_velocity())
         theta, phi = self.get_rpy()[1:]
-        D = self._CD * self._S * self.qbar
-        thrust = self._Tmax if self._I > 0 else 0
-        nx = (thrust - D) / (self._m * self._g)
+        T = self._g * self.Isp * self._dm
+        D = 0.5 * self._cD * self.S * self.rho * v**2
+        nx = (T - D) / (self._m * self._g)
         ny, nz = action
-        # ny = np.abs(ny) * np.sign(self.target_aircraft.get_rpy()[-1] - in_range_rad(self.get_rpy()[-1]))
 
         dv = self._g * (nx - np.sin(theta))
-        dphi = self._g / v * (ny * np.cos(theta))
-        dtheta = self._g / v * (nz - np.cos(theta))
+        self._dphi = self._g / v * (ny / np.cos(theta))
+        self._dtheta = self._g / v * (nz - np.cos(theta))
 
         v += self.dt * dv
-        phi += self.dt * dphi
-        theta += self.dt * dtheta
-        new_velocity = np.array([
+        phi += self.dt * self._dphi
+        theta += self.dt * self._dtheta
+        self._velocity[:] = np.array([
             v * np.cos(theta) * np.cos(phi),
             v * np.cos(theta) * np.sin(phi),
             v * np.sin(theta)
         ])
-        self._I -= np.abs(new_velocity[0] - self._velocity[0]) * self._m
-        self._velocity[:] = new_velocity
         self._poseture[:] = np.array([0, theta, phi])
         # update mass
-        self._m = max(self._m - self.dt * self._dm, self._m1)
-        print(f"T={self._t:.2f}, {int(v)}, {self._m}, {np.rad2deg(self.get_rpy()[-1]):.2f}, {np.rad2deg(self.target_aircraft.get_rpy()[-1]):.2f}")
+        if self._t < self._t_thrust:
+            self._m = self._m - self.dt * self._dm
