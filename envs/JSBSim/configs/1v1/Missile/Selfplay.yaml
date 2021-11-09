@@ -41,6 +41,10 @@ aircraft_configs: {
 }
 
 # reward config
+MissileAttackReward_potential: true
+
+MissilePostureReward_scale: 30 
+
 PostureReward_scale: 15.0
 PostureReward_potential: true
 PostureReward_orientation_version: v2

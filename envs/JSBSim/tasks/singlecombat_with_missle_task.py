@@ -1,8 +1,10 @@
 import numpy as np
 from collections import deque
 from gym import spaces
+
 from .singlecombat_task import SingleCombatTask
-from ..reward_functions import AltitudeReward, MissileAttackReward, PostureReward, RelativeAltitudeReward
+from ..reward_functions import AltitudeReward, MissileAttackReward, PostureReward, \
+                                RelativeAltitudeReward, MissilePostureReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, ShootDown, Timeout
 from ..core.simulatior import MissileSimulator
 from ..utils.utils import NEU2LLA, LLA2NEU, get_AO_TA_R
@@ -17,6 +19,7 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             AltitudeReward(self.config),
             PostureReward(self.config),
             RelativeAltitudeReward(self.config),
+            MissilePostureReward(self.config)
         ]
 
         self.termination_conditions = [
@@ -107,7 +110,7 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             ego_uid, enm_uid = list(env.jsbsims.keys())[ego_idx], list(env.jsbsims.keys())[enm_idx]
             # [Rule-based missile launch]
             max_attack_angle = 22.5
-            max_attack_distance = 8000
+            max_attack_distance = 6000
             target = env.jsbsims[enm_uid].get_position() - env.jsbsims[ego_uid].get_position()
             heading = env.jsbsims[ego_uid].get_velocity()
             distance = np.linalg.norm(target)

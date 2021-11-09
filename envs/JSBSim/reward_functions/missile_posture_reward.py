@@ -1,34 +1,28 @@
-import numpy as np
-from numpy.core.numeric import array_equal
-from numpy.lib.arraypad import pad
 from .reward_function_base import BaseRewardFunction
-from ..utils.utils import get_AO_TA_R
-from ..core.catalog import Catalog
-
+import numpy as np
 
 class MissilePostureReward(BaseRewardFunction):
     """
-    PostureReward = Orientation * Range
-    - Orientation: Encourage not to be pointed at by missile.
-    - Range: TODO: Encourage to far away from missile
+    MissilePostureReward = v_reward + d_reward:
+    v_reward: [-1,0], the bigger missile velocity, the less reward
+    d_reward: [-1,0], the longer distance between flighter and missile, the more reward
 
     NOTE:
     - Only support one-to-one environments.
+    - MissileAttackReward will block other reward functions, so must be placed on top!
     """
     def __init__(self, config):
         super().__init__(config)
-        assert self.num_fighters == 2, \
-            "PostureReward only support one-to-one environments but current env has more than 2 agents!"
-        self.orientation_version = getattr(self.config, f'{self.__class__.__name__}_orientation_version', 'v2')
-        self.range_version = getattr(self.config, f'{self.__class__.__name__}_range_version', 'v0')
-
-        self.orientation_fn = self.get_orientation_function(self.orientation_version)
-        self.range_fn = self.get_range_funtion(self.range_version)
-        self.reward_item_names = [self.__class__.__name__ + item for item in ['', '_orn', '_range']]
+        assert self.num_aircrafts == 2, \
+            "MissileVelocityReward only support one-to-one environments but current env has more than 2 agents!"
+        # self.all_reward_scales = []
+        self.v_fn = lambda v: np.exp(-v/200) - 1 
+        self.d_fn = lambda d: -np.exp(-d/1000)
+        self.reward_item_names = [self.__class__.__name__ + item for item in ['', '_v', '_d']]
 
     def get_reward(self, task, env, agent_id):
         """
-        Reward is a complex function of AO, TA and R in the last timestep.
+        Reward is the sum of all the punishments.
 
         Args:
             task: task instance
@@ -37,37 +31,10 @@ class MissilePostureReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_fighters
-        if not task.missile_lists[enm_idx].missile_info[0]['flying']:
-            return self._process(0, agent_id, (0, 0))
-        else:
-            # feature: (north, east, down, vn, ve, vd) unit: km, mh
-            ego_feature = np.hstack([env.sims[ego_idx].get_position() / 1000, env.sims[ego_idx].get_velocity() / 340])
-            enm_missile_feature = task.missile_lists[enm_idx].missile_info[0]['current_state'] # get missile state TODO: if there are multi missiles
-            enm_missile_feature = task.missile_lists[enm_idx].simulator.transfer2raw(enm_missile_feature) # transform coordinate system
-            enm_missile_feature = np.array([*(enm_missile_feature[:3]/1000), *(enm_missile_feature[3:6]/340)]) # transform unit
-
-            AO, TA, R = get_AO_TA_R(ego_feature, enm_missile_feature)
-            orientation_reward = self.orientation_fn(AO, TA)
-            range_reward = self.range_fn(R)
-            new_reward = orientation_reward * range_reward
-            return self._process(new_reward, agent_id, (orientation_reward, range_reward))
-
-    def get_orientation_function(self, version):
-        if version == 'v0':
-            return lambda AO, TA: (1. - np.tanh(9 * (AO - np.pi / 9))) / 3. + 1 / 3. \
-                + min((np.arctanh(1. - max(2 * TA / np.pi, 1e-4))) / (2 * np.pi), 0.) + 0.5
-        elif version == 'v1':
-            return lambda AO, TA: (1. - np.tanh(2 * (AO - np.pi / 2))) / 2. \
-                * (np.arctanh(1. - max(2 * TA / np.pi, 1e-4))) / (2 * np.pi) + 0.5
-        elif version == 'v2':
-            return lambda AO, TA: 1 / (50 * AO / np.pi + 2) + 1 / 2 \
-                + min((np.arctanh(1. - max(2 * TA / np.pi, 1e-4))) / (2 * np.pi), 0.) + 0.5
-        else:
-            raise NotImplementedError(f"Unknown orientation function version: {version}")
-    
-    def get_range_funtion(self, version):
-        if version == 'v0':
-            return lambda R: np.arctan(0.5 * R) / np.pi * 2
-        else:
-            raise NotImplementedError(f"Unknown range function version: {version}")
+        reward, v_reward, d_reward = 0, 0, 0
+        missile_sim = task.check_missile_warning(env, agent_id)
+        if missile_sim != None:
+           v_reward = self.v_fn(np.linalg.norm(missile_sim.get_velocity()))
+           d_reward = self.d_fn(missile_sim.target_distance)
+           reward = v_reward + d_reward
+        return self._process(reward, agent_id, (v_reward, d_reward))
