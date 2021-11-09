@@ -107,7 +107,7 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             ego_uid, enm_uid = list(env.jsbsims.keys())[ego_idx], list(env.jsbsims.keys())[enm_idx]
             # [Rule-based missile launch]
             max_attack_angle = 22.5
-            max_attack_distance = 6000
+            max_attack_distance = 8000
             target = env.jsbsims[enm_uid].get_position() - env.jsbsims[ego_uid].get_position()
             heading = env.jsbsims[ego_uid].get_velocity()
             distance = np.linalg.norm(target)
@@ -135,14 +135,13 @@ class SingleCombatWithMissileTask(SingleCombatTask):
                 elif sim.is_deleted:
                     env.other_sims.pop(sim.uid)
 
-    def check_missile_warning(self, env, agent_id):
+    def check_missile_warning(self, env, agent_id) -> MissileSimulator:
         ego_uid = list(env.jsbsims.keys())[agent_id]
-        num_missile_warning = 0
         for sim in env.other_sims.values():
             if isinstance(sim, MissileSimulator):
                 if sim.target_aircraft.uid == ego_uid:
-                    num_missile_warning += 1
-        return num_missile_warning
+                    return sim
+        return None
 
     def get_termination(self, env, agent_id, info={}):
         done = False
