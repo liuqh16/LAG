@@ -1,6 +1,7 @@
 import time
 import numpy as np
 import torch
+import os
 
 from .base_runner import Runner, ReplayBuffer
 
@@ -11,6 +12,7 @@ class JSBSimRunner(Runner):
     def __init__(self, config):
         super(JSBSimRunner, self).__init__(config)
         self.episode_length = self.all_args.episode_length
+        self.total_num_steps = 0
 
     def load(self):
         assert len(self.envs.observation_space) == self.num_agents, f'{len(self.envs.observation_space)}, {self.num_agents}'
@@ -31,6 +33,15 @@ class JSBSimRunner(Runner):
 
         if self.model_dir is not None:
             self.restore()
+
+    def save(self):
+        policy_actor = self.trainer.policy.actor
+        save_dir = str(self.save_dir) + f"/{self.total_num_steps}"
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        torch.save(policy_actor, save_dir + "/actor.pth")
+        policy_critic = self.trainer.policy.critic
+        torch.save(policy_critic, save_dir + "/critic.pth")
 
     def run(self):
         self.warmup()
@@ -57,7 +68,7 @@ class JSBSimRunner(Runner):
             train_infos = self.train()
             
             # post process
-            total_num_steps = (episode + 1) * self.buffer_size * self.n_rollout_threads
+            self.total_num_steps = (episode + 1) * self.buffer_size * self.n_rollout_threads
 
             # save model
             if (episode % self.save_interval == 0 or episode == episodes - 1):
@@ -72,17 +83,17 @@ class JSBSimRunner(Runner):
                                 self.experiment_name,
                                 episode,
                                 episodes,
-                                total_num_steps,
+                                self.total_num_steps,
                                 self.num_env_steps,
-                                int(total_num_steps / (end - start))))
+                                int(self.total_num_steps / (end - start))))
 
                 train_infos["average_episode_rewards"] = np.mean(self.buffer.rewards) * self.episode_length
                 print("average episode rewards is {}".format(train_infos["average_episode_rewards"]))
-                self.log_info(train_infos, total_num_steps)
+                self.log_info(train_infos, self.total_num_steps)
 
             # eval
             if episode % self.eval_interval == 0 and self.use_eval:
-                self.eval(total_num_steps)
+                self.eval(self.total_num_steps)
 
     def warmup(self):
         # reset env
@@ -148,13 +159,9 @@ class JSBSimRunner(Runner):
     @torch.no_grad()
     def render(self):
         render_episode_rewards, trajectory_data = 0, []
-        observation_data = []
-        action_data = []
-        rnn_states_data = []
         render_obs = self.envs.reset()
-        observation_data.append(render_obs)
         render_rnn_states = np.zeros((1, *self.buffer.rnn_states_actor.shape[2:]), dtype=np.float32)
-        rnn_states_data.append(render_rnn_states)
+        self.envs.render(mode='txt', filepath=f'{self.run_dir}/Recording_{self.experiment_name}.txt.acmi')
         while True:
             self.trainer.prep_rollout()
             render_actions, render_rnn_states = self.trainer.policy.act(np.concatenate(render_obs),
@@ -166,18 +173,10 @@ class JSBSimRunner(Runner):
             # Obser reward and next obs
             render_obs, render_rewards, render_dones, render_infos = self.envs.step(render_actions)
             render_episode_rewards += render_rewards
-            trajectory_data.append(self.envs.render(mode='rgb_array'))
-            observation_data.append(render_obs)
-            action_data.append(render_actions)
-            rnn_states_data.append(render_rnn_states)
+            self.envs.render(mode='txt', filepath=f'{self.run_dir}/Recording_{self.experiment_name}.txt.acmi')
             if render_dones.any():
                 break
 
         render_infos = {}
         render_infos['render_episode_reward'] = render_episode_rewards
         print("render episode reward of agent: " + str(render_infos['render_episode_reward']))
-        trajectory_data = np.asarray(trajectory_data).squeeze() # dim: (n_time, n_state)
-        np.save(f'{self.run_dir}/render', trajectory_data)
-        np.save(f'{self.run_dir}/observation', observation_data)
-        np.save(f'{self.run_dir}/action', action_data)
-        np.save(f'{self.run_dir}/rnn_state', rnn_states_data)
