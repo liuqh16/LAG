@@ -44,8 +44,6 @@ class SingleCombatWithMissileTask(SingleCombatTask):
         """
         def _normalize(agent_id):
             ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_aircrafts
-            ego_uid, enm_uid = list(env.jsbsims.keys())[ego_idx], list(env.jsbsims.keys())[enm_idx]
-            enm_missile_uid = hex(int(enm_uid, 16) + 1).lstrip("0x").upper()
 
             ego_obs_list, enm_obs_list = np.array(observations[ego_idx]), np.array(observations[enm_idx])
             # (0) extract feature: [north(km), east(km), down(km), v_n(mh), v_e(mh), v_d(mh)]
@@ -76,8 +74,9 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             observation[16] = np.linalg.norm(enm_feature[3:])   # 16. enm_v         (unit: mh)
             observation[17] = enm_feature[5]                  # 17. enm_v_down    (unit: mh)
             # (3) missile info
-            if enm_missile_uid in env.other_sims.keys():
-                enm_missile_feature = np.array([*(env.other_sims[enm_missile_uid].get_position()/1000), *(env.other_sims[enm_missile_uid].get_velocity()/340)])
+            enm_missile_sim = self.check_missile_warning(env, agent_id)
+            if enm_missile_sim is not None:
+                enm_missile_feature = np.array([*(enm_missile_sim.get_position()/1000), *(enm_missile_sim.get_velocity()/340)])
                 ego_AO, ego_TA, R, side_flag = get_AO_TA_R(ego_feature, enm_missile_feature, return_side=True)
                 observation[18] = R / 10                            # 11. relative distance (unit: 10km)
                 observation[19] = ego_AO                            # 12. ego_AO        (unit: rad)
