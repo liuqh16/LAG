@@ -18,7 +18,7 @@ from envs.env_wrappers import DummyVecEnv
 def make_test_env(all_args):
     def get_env_fn(rank):
         def init_env():
-            if all_args.env_name == "JSBSim":
+            if all_args.env_name == "SingleCombat":
                 env = SingleCombatEnv(all_args.scenario_name)
             elif all_args.env_name == "SingleControl":
                 env = SingleControlEnv(all_args.scenario_name)

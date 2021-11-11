@@ -10,9 +10,7 @@ import matplotlib.pyplot as plt
 
 
 def test_env():
-    # env = SingleCombatEnv(config_name='1v1/NoWeapon/Selfplay')
-    # env = SingleCombatEnv(config_name='1v1/NoWeapon/vsBaseline')
-    env = SingleCombatEnv(config_name='1v1/Missile/vsStraight')
+    env = SingleCombatEnv(config_name='1v1/Missile/HierarchyVsStraight')
     act_space = env.action_space[0]
     trajectory_list = []
     env.reset()
@@ -23,17 +21,16 @@ def test_env():
     while True:
         cur_step += 1
         # flying straight forward
-        actions = [np.array([20, 18.6, 20, 0]) for _ in range(env.num_agents)]
+        actions = [np.array([3, 1]) for _ in range(env.num_agents)]
         # random fly
         # actions = [act_space.sample() for _ in range(env.num_agents)]
         next_obs, reward, done, env_info = env.step(actions)
         env.render()
         episode_reward += reward
-        print(episode_reward)
         if np.array(done).all():
             print(env_info)
             break
-    print(time.time() - start_time)
+    print(episode_reward, "time=", time.time() - start_time)
     # show reward trajectory
     # for rf in env.task.reward_functions:
     #     if rf.__class__.__name__ != "PostureReward":

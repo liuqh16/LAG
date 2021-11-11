@@ -1,13 +1,13 @@
-import numpy as np
 from collections import deque
+import torch
+import numpy as np
 from gym import spaces
 
 from .singlecombat_task import SingleCombatTask
-from ..reward_functions import AltitudeReward, MissileAttackReward, PostureReward, \
-                                RelativeAltitudeReward, MissilePostureReward
+from ..reward_functions import AltitudeReward, MissileAttackReward, PostureReward, RelativeAltitudeReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, ShootDown, Timeout
 from ..core.simulatior import MissileSimulator
-from ..utils.utils import NEU2LLA, LLA2NEU, get_AO_TA_R
+from ..utils.utils import LLA2NEU, get_AO_TA_R, get_root_dir
 
 
 class SingleCombatWithMissileTask(SingleCombatTask):
@@ -19,7 +19,6 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             AltitudeReward(self.config),
             PostureReward(self.config),
             RelativeAltitudeReward(self.config),
-            MissilePostureReward(self.config)
         ]
 
         self.termination_conditions = [
@@ -33,7 +32,6 @@ class SingleCombatWithMissileTask(SingleCombatTask):
 
     def load_observation_space(self):
         self.observation_space = [spaces.Box(low=-10, high=10., shape=(25,)) for _ in range(self.num_agents)]
-        # TODO: add extra obs_space for missile information here!
 
     def load_action_space(self):
         # aileron, elevator, rudder, throttle
@@ -55,7 +53,7 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             # (1) ego info normalization
             observation[0] = ego_obs_list[2] / 5000             #  0. ego altitude  (unit: 5km)
             observation[1] = np.linalg.norm(ego_feature[3:])    #  1. ego_v         (unit: mh)
-            observation[2] = ego_obs_list[8] / 340                  #  2. ego_v_down    (unit: mh)
+            observation[2] = ego_obs_list[8] / 340              #  2. ego_v_down    (unit: mh)
             observation[3] = np.sin(ego_obs_list[3])            #  3. ego_roll_sin
             observation[4] = np.cos(ego_obs_list[3])            #  4. ego_roll_cos
             observation[5] = np.sin(ego_obs_list[4])            #  5. ego_pitch_sin
@@ -66,25 +64,25 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             observation[10] = ego_obs_list[12]                  # 10. ego_down_ng   (unit: 5G)
             # (2) relative info w.r.t enm state
             ego_AO, ego_TA, R, side_flag = get_AO_TA_R(ego_feature, enm_feature, return_side=True)
-            observation[11] = R / 10                         # 11. relative distance (unit: 10km)
-            observation[12] = ego_AO                            # 12. ego_AO        (unit: rad)
-            observation[13] = ego_TA                            # 13. ego_TA        (unit: rad)
+            observation[11] = R / 10                            # 11. relative distance (unit: 10km)
+            observation[12] = ego_AO                            # 12. ego_enm_AO        (unit: rad)
+            observation[13] = ego_TA                            # 13. ego_enm_TA        (unit: rad)
             observation[14] = side_flag                         # 14. enm_delta_heading: 1 or 0 or -1
-            observation[15] = enm_feature[2] / 5            # 15. enm_altitude  (unit: 5km)
+            observation[15] = enm_feature[2] / 5                # 15. enm_altitude  (unit: 5km)
             observation[16] = np.linalg.norm(enm_feature[3:])   # 16. enm_v         (unit: mh)
-            observation[17] = enm_feature[5]                  # 17. enm_v_down    (unit: mh)
+            observation[17] = enm_feature[5]                    # 17. enm_v_down    (unit: mh)
             # (3) missile info
             enm_missile_sim = self.check_missile_warning(env, agent_id)
             if enm_missile_sim is not None:
                 enm_missile_feature = np.array([*(enm_missile_sim.get_position()/1000), *(enm_missile_sim.get_velocity()/340)])
                 ego_AO, ego_TA, R, side_flag = get_AO_TA_R(ego_feature, enm_missile_feature, return_side=True)
-                observation[18] = R / 10                            # 11. relative distance (unit: 10km)
-                observation[19] = ego_AO                            # 12. ego_AO        (unit: rad)
-                observation[20] = ego_TA                            # 13. ego_TA        (unit: rad)
-                observation[21] = side_flag                         # 14. enm_delta_heading: 1 or 0 or -1
-                observation[22] = enm_missile_feature[2] / 5            # 15. enm_altitude  (unit: 5km)
-                observation[23] = np.linalg.norm(enm_missile_feature[3:])   # 16. enm_v         (unit: mh)
-                observation[24] = enm_missile_feature[5]                   # 17. enm_v_down    (unit: mh)
+                observation[18] = R / 10                                  # 18. relative distance (unit: 10km)
+                observation[19] = ego_AO                                  # 19. ego_missile_AO        (unit: rad)
+                observation[20] = ego_TA                                  # 20. ego_missile_TA        (unit: rad)
+                observation[21] = side_flag                               # 21. missile_delta_heading: 1 or 0 or -1
+                observation[22] = enm_missile_feature[2] / 5              # 22. missile_altitude  (unit: 5km)
+                observation[23] = np.linalg.norm(enm_missile_feature[3:]) # 23. missile_v         (unit: mh)
+                observation[24] = enm_missile_feature[5]                  # 24. missile_v_down    (unit: mh)
             return observation
 
         norm_obs = np.zeros((self.num_aircrafts, 25))
@@ -160,3 +158,66 @@ class SingleCombatWithMissileTask(SingleCombatTask):
                         return False, info
             done = done or d
         return done, info
+
+
+class SingleCombatWithMissileHierarchicalTask(SingleCombatWithMissileTask):
+
+    def __init__(self, config: str):
+        super().__init__(config)
+        self.norm_delta_altitude = [-0.2, -0.1, -0.05, 0, 0.05, 0.1, 0.2]
+        self.norm_delta_heading = [-90, 0, 90]
+        assert len(self.norm_delta_altitude) == self.action_space[0].nvec[0]
+        assert len(self.norm_delta_heading) == self.action_space[0].nvec[1]
+        # low-level policy: Input(18) Output(4)
+        self.lowlevel_policy = torch.load((get_root_dir() + '/model/singlecontrol_baseline.pth'))
+        self.lowlevel_policy.eval()
+        self._rnn_states = np.zeros((self.num_agents, 1, 1, 128))
+
+    def load_action_space(self):
+        self.action_space = [spaces.MultiDiscrete([7, 3]) for _ in range(self.num_agents)]
+
+    def normalize_action(self, env, actions):
+        """Convert high-level action into low value.
+        """
+        def _convert(action, observation, rnn_states):
+            input_obs = np.zeros(8)
+            input_obs[0] = self.norm_delta_altitude[action[0]]                  # 0. ego delta altitude  (unit: 1km)
+            input_obs[1] = self.norm_delta_heading[action[1]] / 180 * np.pi     # 1. ego delta heading   (unit rad)
+            input_obs[2] = observation[3]           # 2. ego_roll       (unit: rad)
+            input_obs[3] = observation[4]           # 3. ego_pitch      (unit: rad)
+            input_obs[4] = observation[6] / 340     # 4. ego_v_north   (unit: mh)
+            input_obs[5] = observation[7] / 340     # 5. ego_v_east    (unit: mh)
+            input_obs[6] = observation[8] / 340     # 6. ego_v_down    (unit: mh)
+            input_obs[7] = observation[9] / 340     # 7. ego_vc        (unit: mh)
+            input_obs = np.expand_dims(input_obs, axis=0)
+            _action, _, _rnn_states = self.lowlevel_policy(input_obs, rnn_states, deterministic=True)
+            action = _action.detach().cpu().numpy()
+            rnn_states = _rnn_states.detach().cpu().numpy()
+            return action, rnn_states
+
+        def _normalize(action):
+            action_norm = np.zeros(4)
+            action_norm[0] = action[0] / 20 - 1.
+            action_norm[1] = action[1] / 20 - 1.
+            action_norm[2] = action[2] / 20 - 1.
+            action_norm[3] = action[3] * 0.5 / 29 + 0.4
+            return action_norm
+
+        observations = env.get_observation(normalize=False)
+        low_level_actions = np.zeros((self.num_agents, 4))
+        for agent_id in range(self.num_agents):
+            low_level_actions[agent_id], self._rnn_states[agent_id] = \
+                _convert(actions[agent_id], observations[agent_id], self._rnn_states[agent_id])
+
+        norm_act = np.zeros((self.num_aircrafts, 4))
+        if self.use_baseline:
+            norm_act[0] = _normalize(low_level_actions[0])
+            norm_act[1] = _normalize(self.baseline_agent.get_action(env, self))
+        else:
+            for agent_id in range(self.num_aircrafts):
+                norm_act[agent_id] = _normalize(low_level_actions[agent_id])
+        return norm_act
+
+    def reset(self, env):
+        self._rnn_states = np.zeros((self.num_agents, 1, 1, 128))
+        return super().reset(env)

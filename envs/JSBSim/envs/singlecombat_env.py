@@ -3,7 +3,7 @@ from typing import List
 from .env_base import BaseEnv
 from ..core.catalog import Catalog
 from ..core.simulatior import BaseSimulator
-from ..tasks import SingleCombatTask, SingleCombatWithMissileTask, SingleCombatWithArtilleryTask
+from ..tasks import SingleCombatTask, SingleCombatWithMissileTask, SingleCombatWithArtilleryTask, SingleCombatWithMissileHierarchicalTask
 
 
 class SingleCombatEnv(BaseEnv):
@@ -25,6 +25,8 @@ class SingleCombatEnv(BaseEnv):
             self.task = SingleCombatTask(self.config)
         elif taskname == 'singlecombat_with_missile':
             self.task = SingleCombatWithMissileTask(self.config)
+        elif taskname == 'singlecombat_with_missile_hierarchical':
+            self.task = SingleCombatWithMissileHierarchicalTask(self.config)
         elif taskname == 'singlecombat_with_artillery':
             self.task = SingleCombatWithArtilleryTask(self.config)
         else:
@@ -89,7 +91,7 @@ class SingleCombatEnv(BaseEnv):
 
         return self._mask(next_observation), self._mask(rewards), self._mask(dones), info
 
-    def get_observation(self):
+    def get_observation(self, normalize=True):
         """
         get state observation from sim.
 
@@ -99,7 +101,10 @@ class SingleCombatEnv(BaseEnv):
         next_observation = []
         for sim in self.jsbsims.values():
             next_observation.append(sim.get_property_values(self.task.state_var))
-        next_observation = self.task.normalize_observation(self, next_observation)
+        if normalize:
+            next_observation = self.task.normalize_observation(self, next_observation)
+        else:
+            next_observation = np.array(next_observation)
         return next_observation
 
     def close(self):
