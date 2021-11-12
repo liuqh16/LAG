@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Literal
 import numpy as np
 import jsbsim
+from collections import deque
 from .catalog import Property, Catalog
 from ..utils.utils import get_root_dir, LLA2NEU, NEU2LLA, in_range_rad
 
@@ -103,8 +104,13 @@ class AircraftSimulator(BaseSimulator):
         self.model = model
         self.init_state = init_state
         self.lon0, self.lat0, self.alt0 = origin
+        self._status = "Alive"
         # initialize simulator
         self.reload()
+
+    @property
+    def is_alive(self):
+        return self._status == "Alive"
 
     def reload(self, new_state=None, new_origin=None):
         """Reload aircraft simulator
@@ -164,11 +170,14 @@ class AircraftSimulator(BaseSimulator):
         Returns:
             (bool): False if sim has met JSBSim termination criteria else True.
         """
-        result = self.jsbsim_exec.run()
-        if not result:
-            raise RuntimeError("JSBSim failed.")
-        self._update_properties()
-        return result
+        if self._status == "Alive":
+            result = self.jsbsim_exec.run()
+            if not result:
+                raise RuntimeError("JSBSim failed.")
+            self._update_properties()
+            return result
+        else:
+            return True
 
     def close(self):
         """ Closes the simulation and any plots. """
@@ -360,6 +369,8 @@ class MissileSimulator(BaseSimulator):
         self._m = self._m0
         self._dtheta, self._dphi = 0, 0
         self._status = "Launched"
+        self._distance_pre = np.inf
+        self._distance_increment = deque(maxlen=int(5 / self.dt))  # 5s of distance increment -- can't hit
         self._left_t = int(1 / self.dt)  # remove missile 1s after its destroying
 
     def target(self, target: AircraftSimulator):
@@ -367,10 +378,14 @@ class MissileSimulator(BaseSimulator):
 
     def run(self, **kwargs):
         self._t += self.dt
-        action, is_hit = self._guidance()
-        if is_hit:
+        action, distance = self._guidance()
+        self._distance_increment.append(distance > self._distance_pre)
+        self._distance_pre = distance
+        if distance < self._Rc:
             self._status = "Hit"
-        elif (self._t > self._t_max) or (np.linalg.norm(self.get_velocity()) < self._v_min):
+            self.target_aircraft._status = "Crash"
+        elif (self._t > self._t_max) or (np.linalg.norm(self.get_velocity()) < self._v_min) \
+            or np.sum(self._distance_increment) >= self._distance_increment.maxlen:
             self._status = "Miss"
         else:
             self._state_trans(action)
@@ -419,8 +434,7 @@ class MissileSimulator(BaseSimulator):
             (x_t - x_m) * (dx_t - dx_m) + (y_t - y_m) * (dy_t - dy_m))) / (Rxyz**2 * Rxy)
         ny = self.K * v_m / self._g * np.cos(theta_m) * dbeta
         nz = self.K * v_m / self._g * deps + np.cos(theta_m)
-        hit_flag = Rxyz < self._Rc
-        return np.clip([ny, nz], -self._nyz_max, self._nyz_max), hit_flag
+        return np.clip([ny, nz], -self._nyz_max, self._nyz_max), Rxyz
 
     def _state_trans(self, action):
         """
