@@ -13,8 +13,6 @@ acceleration_limit_y: 10.0
 acceleration_limit_z: 10.0
 
 # aircraft config
-use_baseline: true
-baseline_type: control
 aircraft_configs: {
   A0100: {
     team: Red,
@@ -23,10 +21,10 @@ aircraft_configs: {
       ic_long_gc_deg: 120.0,
       ic_lat_geod_deg: 60.0,
       ic_h_sl_ft: 20000,
-      ic_psi_true_deg: 0,
+      ic_psi_true_deg: 0.0,
       ic_u_fps: 800.0,
     },
-    missile: 0
+    missile: 1
   },
   B0100: {
     team: Blue,

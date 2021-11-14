@@ -76,13 +76,13 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             if enm_missile_sim is not None:
                 enm_missile_feature = np.array([*(enm_missile_sim.get_position()/1000), *(enm_missile_sim.get_velocity()/340)])
                 ego_AO, ego_TA, R, side_flag = get_AO_TA_R(ego_feature, enm_missile_feature, return_side=True)
-                observation[18] = R / 10                                  # 18. relative distance (unit: 10km)
-                observation[19] = ego_AO                                  # 19. ego_missile_AO        (unit: rad)
-                observation[20] = ego_TA                                  # 20. ego_missile_TA        (unit: rad)
-                observation[21] = side_flag                               # 21. missile_delta_heading: 1 or 0 or -1
-                observation[22] = enm_missile_feature[2] / 5              # 22. missile_altitude  (unit: 5km)
-                observation[23] = np.linalg.norm(enm_missile_feature[3:]) # 23. missile_v         (unit: mh)
-                observation[24] = enm_missile_feature[5]                  # 24. missile_v_down    (unit: mh)
+                observation[18] = R / 10                                    # 11. relative distance (unit: 10km)
+                observation[19] = ego_AO                                    # 12. ego_missile_AO        (unit: rad)
+                observation[20] = ego_TA                                    # 13. ego_missile_TA        (unit: rad)
+                observation[21] = side_flag                                 # 14. missile_delta_heading: 1 or 0 or -1
+                observation[22] = enm_missile_feature[2] / 5                # 15. missile_altitude  (unit: 5km)
+                observation[23] = np.linalg.norm(enm_missile_feature[3:])   # 16. missile_v         (unit: mh)
+                observation[24] = enm_missile_feature[5]                    # 17. missile_v_down    (unit: mh)
             return observation
 
         norm_obs = np.zeros((self.num_aircrafts, 25))
@@ -147,16 +147,16 @@ class SingleCombatWithMissileTask(SingleCombatTask):
         done = False
         for condition in self.termination_conditions:
             d, _, info = condition.get_termination(self, env, agent_id, info)
+            done = done or d
             # force terminate if time is out
             if d and isinstance(condition, Timeout):
                 return True, info
             # otherwise(ego crash) wait until there is no ego-missile alive
-            elif done or d:
+            elif done:
                 for sim in env.other_sims.values():
-                    if isinstance(sim, MissileSimulator) and sim.is_alive and \
+                    if isinstance(sim, MissileSimulator) and sim.is_alive and sim.target_aircraft.is_alive and \
                         sim._parent_uid == env.jsbsims[list(env.jsbsims.keys())[agent_id]].uid:
                         return False, info
-            done = done or d
         return done, info
 
 

@@ -23,7 +23,7 @@ aircraft_configs: {
       ic_long_gc_deg: 120.0,
       ic_lat_geod_deg: 60.0,
       ic_h_sl_ft: 20000,
-      ic_psi_true_deg: 180,
+      ic_psi_true_deg: 0,
       ic_u_fps: 800.0,
     },
     missile: 0
@@ -38,7 +38,7 @@ aircraft_configs: {
       ic_psi_true_deg: 180.0,
       ic_u_fps: 800.0,
     },
-    missile: 0,
+    missile: 1,
   }
 }
 # (lontitude, latitude, altitude)
