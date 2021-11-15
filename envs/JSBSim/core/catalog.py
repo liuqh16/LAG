@@ -310,9 +310,7 @@ class ExtraCatalog(Property, Enum):
             sim.get_property_value(JsbsimCatalog.velocities_vc_fps) * 0.3048))
 
     def update_delta_altitude(sim):
-        value = sim.get_property_value(ExtraCatalog.target_altitude_ft) - sim.get_property_value(
-            JsbsimCatalog.position_h_sl_ft
-        ) * 0.3048
+        value = (sim.get_property_value(ExtraCatalog.target_altitude_ft) - sim.get_property_value(JsbsimCatalog.position_h_sl_ft)) * 0.3048
         sim.set_property_value(ExtraCatalog.delta_altitude, value)
 
     def update_delta_heading(sim):
