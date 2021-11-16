@@ -184,7 +184,7 @@ class SingleControlAgent:
             ego_AO = np.arccos(np.clip(proj_dist / (R * ego_v + 1e-8), -1, 1))
 
             side_flag = np.sign(np.cross([ego_vx, ego_vy], [delta_x, delta_y]))
-            return - ego_AO * side_flag
+            return ego_AO * side_flag
 
         ego_uid, enm_uid = list(env.jsbsims.keys())[1], list(env.jsbsims.keys())[0]
         ego_x, ego_y, ego_z = env.jsbsims[ego_uid].get_position()
