@@ -107,7 +107,7 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             ego_uid, enm_uid = list(env.jsbsims.keys())[ego_idx], list(env.jsbsims.keys())[enm_idx]
             # [Rule-based missile launch]
             max_attack_angle = 22.5
-            max_attack_distance = 6000
+            max_attack_distance = 12000
             target = env.jsbsims[enm_uid].get_position() - env.jsbsims[ego_uid].get_position()
             heading = env.jsbsims[ego_uid].get_velocity()
             distance = np.linalg.norm(target)
