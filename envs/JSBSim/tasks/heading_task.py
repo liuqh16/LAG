@@ -33,10 +33,10 @@ class HeadingTask(BaseTask):
             c.delta_heading,                    #  1.           (unit: °)
             c.attitude_roll_rad,                #  2. roll      (unit: rad)
             c.attitude_pitch_rad,               #  3. pitch     (unit: rad)
-            c.velocities_v_north_fps,           #  4. v_north   (unit: fps)
-            c.velocities_v_east_fps,            #  5. v_east    (unit: fps)
-            c.velocities_v_down_fps,            #  6. v_down    (unit: fps)
-            c.velocities_vc_fps,                #  7. vc        (unit: fps)
+            c.velocities_v_north_mps,           #  6. v_north   (unit: m/s)
+            c.velocities_v_east_mps,            #  7. v_east    (unit: m/s)
+            c.velocities_v_down_mps,            #  8. v_down    (unit: m/s)
+            c.velocities_vc_mps,                #  9. vc        (unit: m/s)
         ]
         self.action_var = [
             c.fcs_aileron_cmd_norm,             # [-1., 1.]
