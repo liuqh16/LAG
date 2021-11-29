@@ -33,7 +33,7 @@ aircraft_configs: {
     model: f16,
     init_state: {
       ic_h_sl_ft: 20000,
-      ic_lat_geod_deg: 60.05,
+      ic_lat_geod_deg: 60.17,
       ic_long_gc_deg: 120.0,
       ic_psi_true_deg: 180.0,
       ic_u_fps: 800.0,

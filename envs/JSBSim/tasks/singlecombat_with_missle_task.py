@@ -17,7 +17,7 @@ class SingleCombatWithMissileTask(SingleCombatTask):
         self.reward_functions = [
             MissileAttackReward(self.config),
             AltitudeReward(self.config),
-            PostureReward(self.config),
+            # PostureReward(self.config),
             RelativeAltitudeReward(self.config),
         ]
 
@@ -29,6 +29,9 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             Timeout(self.config),
         ]
         self.bloods, self.remaining_missiles, self.lock_duration = None, None, None
+        self.pursue_use_baseline = True
+        if self.pursue_use_baseline:
+            self.pursue_baseline_agent = self.load_agent('control', agent_id=0)
 
     def load_observation_space(self):
         self.observation_space = [spaces.Box(low=-10, high=10., shape=(25,)) for _ in range(self.num_agents)]
@@ -91,7 +94,24 @@ class SingleCombatWithMissileTask(SingleCombatTask):
         return norm_obs
 
     def normalize_action(self, env, actions):
-        return super().normalize_action(env, actions)
+        def _normalize(action):
+            action_norm = np.zeros(4)
+            action_norm[0] = action[0] * 2. / (self.action_space[0].nvec[0] - 1.) - 1.
+            action_norm[1] = action[1] * 2. / (self.action_space[0].nvec[1] - 1.) - 1.
+            action_norm[2] = action[2] * 2. / (self.action_space[0].nvec[2] - 1.) - 1.
+            action_norm[3] = action[3] * 0.5 / (self.action_space[0].nvec[3] - 1.) + 0.4
+            return action_norm
+
+        norm_act = np.zeros((self.num_aircrafts, 4))            
+        if self.pursue_use_baseline and self.check_missile_warning(env, agent_id=0) is None:
+            norm_act[0] = _normalize(self.pursue_baseline_agent.get_action(env, self))
+        else:
+            norm_act[0] = _normalize(actions[0])
+        if self.use_baseline:
+            norm_act[1] = _normalize(self.baseline_agent.get_action(env, self))
+        else:
+            norm_act[1] = _normalize(actions[1])
+        return norm_act
 
     def reset(self, env):
         """Reset fighter blood & missile status
@@ -107,7 +127,7 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             ego_uid, enm_uid = list(env.jsbsims.keys())[ego_idx], list(env.jsbsims.keys())[enm_idx]
             # [Rule-based missile launch]
             max_attack_angle = 22.5
-            max_attack_distance = 12000
+            max_attack_distance = np.random.randint(10000, 14000)
             target = env.jsbsims[enm_uid].get_position() - env.jsbsims[ego_uid].get_position()
             heading = env.jsbsims[ego_uid].get_velocity()
             distance = np.linalg.norm(target)

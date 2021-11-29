@@ -15,7 +15,7 @@ class SingleCombatTask(BaseTask):
         assert self.num_aircrafts == 2, 'Only support one-to-one air combat!'
         self.use_baseline = getattr(self.config, 'use_baseline', False)
         if self.use_baseline:
-            self.baseline_agent = load_agent(self.config.baseline_type)
+            self.baseline_agent = self.load_agent(self.config.baseline_type, agent_id=1)
 
         self.reward_functions = [
             AltitudeReward(self.config),
@@ -143,13 +143,13 @@ class SingleCombatTask(BaseTask):
         return super().reset(env)
 
 
-def load_agent(name):
-    if name == 'control':
-        return SingleControlAgent()
-    elif name == 'straight':
-        return StraightFlyAgent()
-    else:
-        raise NotImplementedError
+    def load_agent(self, name, agent_id):
+        if name == 'control':
+            return SingleControlAgent(agent_id)
+        elif name == 'straight':
+            return StraightFlyAgent()
+        else:
+            raise NotImplementedError
 
 
 class StraightFlyAgent:
@@ -161,11 +161,12 @@ class StraightFlyAgent:
 
 
 class SingleControlAgent:
-    def __init__(self):
+    def __init__(self, agent_id):
         self.model_path = get_root_dir() + '/model/singlecontrol_baseline.pth'
         self.actor = torch.load(str(self.model_path))
         self.actor.eval()
         self.reset()
+        self.agent_id = agent_id
 
     def reset(self):
         self.rnn_states = np.zeros((1, 1, 128)) # hard code
@@ -186,7 +187,7 @@ class SingleControlAgent:
             side_flag = np.sign(np.cross([ego_vx, ego_vy], [delta_x, delta_y]))
             return ego_AO * side_flag
 
-        ego_uid, enm_uid = list(env.jsbsims.keys())[1], list(env.jsbsims.keys())[0]
+        ego_uid, enm_uid = list(env.jsbsims.keys())[self.agent_id], list(env.jsbsims.keys())[(self.agent_id+1)%2]
         ego_x, ego_y, ego_z = env.jsbsims[ego_uid].get_position()
         ego_vx, ego_vy, ego_vz = env.jsbsims[ego_uid].get_velocity()
         enm_x, enm_y, enm_z = env.jsbsims[enm_uid].get_position()

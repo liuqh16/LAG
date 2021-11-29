@@ -31,7 +31,7 @@ aircraft_configs: {
     model: f16,
     init_state: {
       ic_h_sl_ft: 20000,
-      ic_lat_geod_deg: 60.05,
+      ic_lat_geod_deg: 60.17,
       ic_long_gc_deg: 120.0,
       ic_psi_true_deg: 180.0,
       ic_u_fps: 800.0,
@@ -44,8 +44,6 @@ battle_field_center: [120.0, 60.0, 0.0]
 
 # reward config
 MissileAttackReward_potential: true
-
-MissilePostureReward_scale: 30 
 
 PostureReward_scale: 15.0
 PostureReward_potential: true

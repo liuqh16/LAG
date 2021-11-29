@@ -76,10 +76,11 @@ class ManeuverAgent:
         self.actor.eval()
 
 class BaselineAgent:
-    def __init__(self):
+    def __init__(self, ego_id):
         self.model_path = get_root_dir() + '/model/singlecontrol_baseline.pth'
         self.actor = torch.load(str(self.model_path))
         self.actor.eval()
+        self.ego_id = ego_id
         self.reset()
 
     def reset(self):
@@ -101,7 +102,7 @@ class BaselineAgent:
             side_flag = np.sign(np.cross([ego_vx, ego_vy], [delta_x, delta_y]))
             return ego_AO * side_flag
 
-        ego_uid, enm_uid = list(env.jsbsims.keys())[1], list(env.jsbsims.keys())[0]
+        ego_uid, enm_uid = list(env.jsbsims.keys())[self.ego_id], list(env.jsbsims.keys())[(self.ego_id+1)%2]
         ego_x, ego_y, ego_z = env.jsbsims[ego_uid].get_position()
         ego_vx, ego_vy, ego_vz = env.jsbsims[ego_uid].get_velocity()
         enm_x, enm_y, enm_z = env.jsbsims[enm_uid].get_position()
@@ -131,8 +132,9 @@ def test_maneuver():
     env = SingleCombatEnv(config_name='1v1/Missile/test/opposite')
     env.reset()
     env.render()
-    agent0 = ManeuverAgent(agent_id=0, maneuver='r')
-    agent1 = BaselineAgent()
+    # agent0 = ManeuverAgent(agent_id=0, maneuver='r')
+    agent0 = BaselineAgent(0)
+    agent1 = BaselineAgent(1)
     reward_list = []
     while True:
         actions = [agent0.get_action(env, env.task), agent1.get_action(env, env.task)]
