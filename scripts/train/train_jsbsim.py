@@ -19,7 +19,7 @@ from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
 def make_train_env(all_args):
     def get_env_fn(rank):
         def init_env():
-            if all_args.env_name == "JSBSim":
+            if all_args.env_name == "SingleCombat":
                 env = SingleCombatEnv(all_args.scenario_name)
             elif all_args.env_name == "SingleControl":
                 env = SingleControlEnv(all_args.scenario_name)
@@ -38,11 +38,11 @@ def make_train_env(all_args):
 def parse_args(args, parser):
     group = parser.add_argument_group("JSBSim Env parameters")
     group.add_argument('--episode-length', type=int, default=900,
-                        help="the max length of an episode")
+                       help="the max length of an episode")
     group.add_argument('--scenario-name', type=str, default='singlecombat_simple',
-                        help="Which scenario to run on")
+                       help="Which scenario to run on")
     group.add_argument('--num-agents', type=int, default=2,
-                        help="number of fighters controlled by RL policy")
+                       help="number of fighters controlled by RL policy")
     all_args = parser.parse_known_args(args)[0]
     return all_args
 
@@ -71,7 +71,7 @@ def main(args):
 
     # run dir
     run_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/results") \
-         / all_args.env_name / all_args.scenario_name / all_args.algorithm_name / all_args.experiment_name
+        / all_args.env_name / all_args.scenario_name / all_args.algorithm_name / all_args.experiment_name
     if not run_dir.exists():
         os.makedirs(str(run_dir))
 
@@ -99,8 +99,7 @@ def main(args):
         if not run_dir.exists():
             os.makedirs(str(run_dir))
 
-    setproctitle.setproctitle(str(all_args.algorithm_name) + "-" + \
-        str(all_args.env_name) + "-" + str(all_args.experiment_name) + "@" + str(all_args.user_name))
+    setproctitle.setproctitle(str(all_args.algorithm_name) + "-" + str(all_args.env_name) + "-" + str(all_args.experiment_name) + "@" + str(all_args.user_name))
 
     # env init
     envs = make_train_env(all_args)
@@ -118,12 +117,13 @@ def main(args):
 
     runner = Runner(config)
     runner.run()
-    
+
     # post process
     envs.close()
 
     if all_args.use_wandb:
         run.finish()
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])

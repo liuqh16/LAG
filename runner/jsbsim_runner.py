@@ -4,8 +4,10 @@ import torch
 
 from .base_runner import Runner, ReplayBuffer
 
+
 def _t2n(x):
     return x.detach().cpu().numpy()
+
 
 class JSBSimRunner(Runner):
     def __init__(self, config):
@@ -55,7 +57,7 @@ class JSBSimRunner(Runner):
             # compute return and update network
             self.compute()
             train_infos = self.train()
-            
+
             # post process
             total_num_steps = (episode + 1) * self.buffer_size * self.n_rollout_threads
 
@@ -67,16 +69,19 @@ class JSBSimRunner(Runner):
             if episode % self.log_interval == 0:
                 end = time.time()
                 print("\n Scenario {} Algo {} Exp {} updates {}/{} episodes, total num timesteps {}/{}, FPS {}.\n"
-                        .format(self.all_args.scenario_name,
-                                self.algorithm_name,
-                                self.experiment_name,
-                                episode,
-                                episodes,
-                                total_num_steps,
-                                self.num_env_steps,
-                                int(total_num_steps / (end - start))))
+                      .format(self.all_args.scenario_name,
+                              self.algorithm_name,
+                              self.experiment_name,
+                              episode,
+                              episodes,
+                              total_num_steps,
+                              self.num_env_steps,
+                              int(total_num_steps / (end - start))))
 
-                train_infos["average_episode_rewards"] = np.mean(self.buffer.rewards) * self.episode_length
+                done_splits = np.where(self.buffer._cast(self.buffer.dones) == True)[0] + 1
+                sum_rewards = self.buffer._cast(self.buffer.rewards)[slice(*done_splits[[0, -1]])].sum()
+
+                train_infos["average_episode_rewards"] = sum_rewards / (len(done_splits) - 1)
                 print("average episode rewards is {}".format(train_infos["average_episode_rewards"]))
                 self.log_info(train_infos, total_num_steps)
 
@@ -115,7 +120,7 @@ class JSBSimRunner(Runner):
 
     @torch.no_grad()
     def eval(self, total_num_steps):
-        total_episodes, eval_episode_rewards, trajectory_data = 0, [], []
+        total_episodes, eval_episode_rewards = 0, []
         eval_cumulative_rewards = np.zeros((self.n_rollout_threads, *self.buffer.rewards.shape[2:]), dtype=np.float32)
 
         eval_obs = self.envs.reset()
@@ -124,8 +129,8 @@ class JSBSimRunner(Runner):
         while total_episodes < self.eval_episodes:
             self.trainer.prep_rollout()
             eval_actions, eval_rnn_states = self.trainer.policy.act(np.concatenate(eval_obs),
-                                                                   np.concatenate(eval_rnn_states),
-                                                                   deterministic=True)
+                                                                    np.concatenate(eval_rnn_states),
+                                                                    deterministic=True)
             eval_actions = np.array(np.split(_t2n(eval_actions), self.n_rollout_threads))
             eval_rnn_states = np.array(np.split(_t2n(eval_rnn_states), self.n_rollout_threads))
 
@@ -143,7 +148,6 @@ class JSBSimRunner(Runner):
         eval_infos['eval_average_episode_rewards'] = np.array(eval_episode_rewards).mean()
         print("eval average episode rewards of agent: " + str(np.mean(eval_infos['eval_average_episode_rewards'])))
         self.log_info(eval_infos, total_num_steps)
-        
 
     @torch.no_grad()
     def render(self):
@@ -158,8 +162,8 @@ class JSBSimRunner(Runner):
         while True:
             self.trainer.prep_rollout()
             render_actions, render_rnn_states = self.trainer.policy.act(np.concatenate(render_obs),
-                                                                   np.concatenate(render_rnn_states),
-                                                                   deterministic=True)
+                                                                        np.concatenate(render_rnn_states),
+                                                                        deterministic=True)
             render_actions = np.expand_dims(_t2n(render_actions), axis=0)
             render_rnn_states = np.expand_dims(_t2n(render_rnn_states), axis=0)
 
@@ -176,7 +180,7 @@ class JSBSimRunner(Runner):
         render_infos = {}
         render_infos['render_episode_reward'] = render_episode_rewards
         print("render episode reward of agent: " + str(render_infos['render_episode_reward']))
-        trajectory_data = np.asarray(trajectory_data).squeeze() # dim: (n_time, n_state)
+        trajectory_data = np.asarray(trajectory_data).squeeze()  # dim: (n_time, n_state)
         np.save(f'{self.run_dir}/render', trajectory_data)
         np.save(f'{self.run_dir}/observation', observation_data)
         np.save(f'{self.run_dir}/action', action_data)
