@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 import gym.spaces
-from mlp import MLPLayer
-from distributions import Categorical, DiagGaussian, Bernoulli
+from .mlp import MLPLayer
+from .distributions import Categorical, DiagGaussian, Bernoulli
 
 
 class ACTLayer(nn.Module):
@@ -99,7 +99,7 @@ class ACTLayer(nn.Module):
                 if active_masks is not None:
                     dist_entropy.append((action_dist.entropy() * active_masks) / active_masks.sum())
                 else:
-                    dist_entropy.append(action_dist.entropy())
+                    dist_entropy.append(action_dist.entropy() / action_log_probs[-1].size(0))
             action_log_probs = torch.cat(action_log_probs, dim=-1).sum(dim=-1, keepdim=True)
             dist_entropy = torch.cat(dist_entropy, dim=-1).sum(dim=-1, keepdim=True)
 
@@ -109,7 +109,7 @@ class ACTLayer(nn.Module):
             if active_masks is not None:
                 dist_entropy = (action_dist.entropy() * active_masks) / active_masks.sum()
             else:
-                dist_entropy = action_dist.entropy()
+                dist_entropy = action_dist.entropy() / action_log_probs.size(0)
         return action_log_probs, dist_entropy
 
     def get_probs(self, x):
@@ -150,21 +150,21 @@ if __name__ == "__main__":
 
     torch.manual_seed(0)
     torch.cuda.manual_seed_all(0)
-    input_dim, batch_size = 5, 4
+    num_inputs, num_outputs, batch_size = 10, 5, 4
     act_spaces = [
-        gym.spaces.Discrete(2),
-        gym.spaces.Box(low=-1, high=1, shape=(2,)),
-        gym.spaces.MultiDiscrete([3, 2]),
-        gym.spaces.MultiBinary(2),
+        gym.spaces.Discrete(num_outputs),
+        gym.spaces.Box(low=-1, high=1, shape=(num_outputs,)),
+        gym.spaces.MultiDiscrete(torch.randperm(num_outputs).numpy() + 1),
+        gym.spaces.MultiBinary(num_outputs),
     ]
 
     for act_space in act_spaces:
 
         print(f"\n---------test {act_space.__class__.__name__} action space---------\n")
-        actlayer = ACTLayer(act_space, input_dim, '', 1, gain=0.01)
+        actlayer = ACTLayer(act_space, num_inputs, '', 1, gain=0.01)
 
         print("ONE")
-        x = torch.rand(input_dim)
+        x = torch.rand(num_inputs)
         active_masks = torch.ones(1)
         print(" probs:", actlayer.get_probs(x) if not isinstance(act_space, gym.spaces.Box) else None)
         action, log_probs = actlayer(x)
@@ -174,8 +174,8 @@ if __name__ == "__main__":
             and tuple(log_probs.size()) == (1,)
 
         print("BATCH")
-        bt_x = torch.rand(batch_size, input_dim)
-        active_masks = torch.ones(batch_size, 1)
+        bt_x = torch.rand(batch_size, num_inputs)
+        active_masks = None
         print(" probs:", actlayer.get_probs(bt_x) if not isinstance(act_space, gym.spaces.Box) else None)
         pre_actions = torch.as_tensor([act_space.sample() for _ in range(batch_size)], dtype=torch.float32)
         print(" pre_actions:", pre_actions)

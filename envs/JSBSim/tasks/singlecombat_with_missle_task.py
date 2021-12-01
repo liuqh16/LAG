@@ -15,7 +15,7 @@ class SingleCombatWithMissileTask(SingleCombatTask):
         super().__init__(config)            
 
         self.reward_functions = [
-            MissileAttackReward(self.config),
+            # MissileAttackReward(self.config),
             AltitudeReward(self.config),
             PostureReward(self.config),
             RelativeAltitudeReward(self.config),
@@ -124,9 +124,9 @@ class SingleCombatWithMissileTask(SingleCombatTask):
                     target=env.jsbsims[enm_uid],
                     uid=new_missile_uid)
                 self.remaining_missiles[ego_idx] -= 1
-                print("Aircraft[{}] launched Missile[{}] --> target at Aircraft[{}]".format(
-                    env.jsbsims[ego_uid].uid, new_missile_uid, env.jsbsims[enm_uid].uid
-                ))
+                # print("Aircraft[{}] launched Missile[{}] --> target at Aircraft[{}]".format(
+                #     env.jsbsims[ego_uid].uid, new_missile_uid, env.jsbsims[enm_uid].uid
+                # ))
         active_sim_keys = list(env.other_sims.keys())
         for key in active_sim_keys:
             sim = env.other_sims[key]

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from .ppo_policy import PPOPolicy
 from ..utils.buffer import ReplayBuffer
-from ..utils.util import check, get_gard_norm
+from ..utils.utils import check, get_gard_norm
 
 
 class PPOTrainer():

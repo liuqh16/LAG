@@ -1,17 +1,17 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from ..utils.mlp import MLPBase
 from ..utils.gru import GRULayer
 from ..utils.act import ACTLayer
-from ..utils.util import check
+from ..utils.utils import check
 
 
 class PPOActor(nn.Module):
     def __init__(self, args, obs_space, act_space, device=torch.device("cpu")):
         super(PPOActor, self).__init__()
         # network config
+        self.gain = args.gain
         self.hidden_size = args.hidden_size
         self.act_hidden_size = args.act_hidden_size
         self.activation_id = args.activation_id
@@ -28,11 +28,11 @@ class PPOActor(nn.Module):
             self.rnn = GRULayer(input_size, self.recurrent_hidden_size, self.recurrent_hidden_layers)
             input_size = self.rnn.output_size
         # (3) act module
-        self.act = ACTLayer(act_space, input_size, self.act_hidden_size, self.activation_id)
+        self.act = ACTLayer(act_space, input_size, self.act_hidden_size, self.activation_id, self.gain)
 
         self.to(device)
 
-    def forward(self, obs, rnn_states, deterministic=False):        
+    def forward(self, obs, rnn_states, deterministic=False):
         obs = check(obs).to(**self.tpdv)
         rnn_states = check(rnn_states).to(**self.tpdv)
 

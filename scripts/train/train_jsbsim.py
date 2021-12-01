@@ -8,12 +8,12 @@ import random
 import numpy as np
 from pathlib import Path
 import setproctitle
-# Deal with import error
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 from config import get_config
 from runner.jsbsim_runner import JSBSimRunner as Runner
 from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
+# Deal with import error
 
 
 def make_train_env(all_args):
@@ -32,17 +32,17 @@ def make_train_env(all_args):
     if all_args.n_rollout_threads == 1:
         return DummyVecEnv([get_env_fn(0)])
     else:
-        return SubprocVecEnv([get_env_fn(i) for i in range(all_args.n_rollout_threads)])
+        return DummyVecEnv([get_env_fn(i) for i in range(all_args.n_rollout_threads)])
 
 
 def parse_args(args, parser):
     group = parser.add_argument_group("JSBSim Env parameters")
     group.add_argument('--episode-length', type=int, default=900,
-                        help="the max length of an episode")
+                       help="the max length of an episode")
     group.add_argument('--scenario-name', type=str, default='singlecombat_simple',
-                        help="Which scenario to run on")
+                       help="Which scenario to run on")
     group.add_argument('--num-agents', type=int, default=2,
-                        help="number of fighters controlled by RL policy")
+                       help="number of fighters controlled by RL policy")
     all_args = parser.parse_known_args(args)[0]
     return all_args
 
@@ -71,7 +71,7 @@ def main(args):
 
     # run dir
     run_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/results") \
-         / all_args.env_name / all_args.scenario_name / all_args.algorithm_name / all_args.experiment_name
+        / all_args.env_name / all_args.scenario_name / all_args.algorithm_name / all_args.experiment_name
     if not run_dir.exists():
         os.makedirs(str(run_dir))
 
@@ -99,8 +99,8 @@ def main(args):
         if not run_dir.exists():
             os.makedirs(str(run_dir))
 
-    setproctitle.setproctitle(str(all_args.algorithm_name) + "-" + \
-        str(all_args.env_name) + "-" + str(all_args.experiment_name) + "@" + str(all_args.user_name))
+    setproctitle.setproctitle(str(all_args.algorithm_name) + "-" +
+                              str(all_args.env_name) + "-" + str(all_args.experiment_name) + "@" + str(all_args.user_name))
 
     # env init
     envs = make_train_env(all_args)
@@ -117,16 +117,14 @@ def main(args):
     # run experiments
 
     runner = Runner(config)
-    try:
-        runner.run()
-    except:
-        import pdb; pdb.set_trace()
-    
+    runner.run()
+
     # post process
     envs.close()
 
     if all_args.use_wandb:
         run.finish()
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])

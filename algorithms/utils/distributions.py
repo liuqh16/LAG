@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from utils import init
+from .utils import init
 
 """
 Modify standard PyTorch distributions so they are compatible with this code.
@@ -65,10 +65,10 @@ class Categorical(nn.Module):
         def init_(m):
             return init(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), gain)
 
-        self.linear = init_(nn.Linear(num_inputs, num_outputs))
+        self.logits_net = init_(nn.Linear(num_inputs, num_outputs))
 
     def forward(self, x):
-        x = self.linear(x)
+        x = self.logits_net(x)
         return FixedCategorical(logits=x)
 
     @property
@@ -83,13 +83,13 @@ class DiagGaussian(nn.Module):
         def init_(m):
             return init(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), gain)
 
-        self.fc_mean = init_(nn.Linear(num_inputs, num_outputs))
-        self.logstd = nn.Parameter(torch.zeros(num_outputs))
+        self.mu_net = init_(nn.Linear(num_inputs, num_outputs))
+        self.log_std = nn.Parameter(torch.zeros(num_outputs))
         self._num_outputs = num_outputs
 
     def forward(self, x):
-        action_mean = self.fc_mean(x)
-        return FixedNormal(action_mean, self.logstd.exp())
+        action_mean = self.mu_net(x)
+        return FixedNormal(action_mean, self.log_std.exp())
 
     @property
     def output_size(self) -> int:
@@ -103,11 +103,11 @@ class Bernoulli(nn.Module):
         def init_(m):
             return init(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), gain)
 
-        self.linear = init_(nn.Linear(num_inputs, num_outputs))
+        self.logits_net = init_(nn.Linear(num_inputs, num_outputs))
         self._num_outputs = num_outputs
 
     def forward(self, x):
-        x = self.linear(x)
+        x = self.logits_net(x)
         return FixedBernoulli(logits=x)
 
     @property

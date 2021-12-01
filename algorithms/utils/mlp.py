@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from flatten import build_flattener
+from .flatten import build_flattener
 
 
 class MLPLayer(nn.Module):
@@ -18,7 +17,7 @@ class MLPLayer(nn.Module):
             ]
         self.fc = nn.Sequential(*fc_h)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         x = self.fc(x)
         return x
 
@@ -41,14 +40,14 @@ class MLPBase(nn.Module):
             self.feature_norm = nn.LayerNorm(input_dim)
         self.mlp = MLPLayer(input_dim, self._hidden_size, self._activation_id)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         if self._use_feature_normalization:
             x = self.feature_norm(x)
         x = self.mlp(x)
         return x
 
     @property
-    def output_size(self):
+    def output_size(self) -> int:
         return self.mlp.output_size
 
 

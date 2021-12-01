@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from typing import Union
 from abc import ABC, abstractmethod
-from .util import get_shape_from_space
+from .utils import get_shape_from_space
 
 
 class BaseBuffer(ABC):
@@ -76,10 +76,10 @@ class ReplayBuffer(BaseBuffer):
             rnn_states_actor:   ha_{t+1}
             rnn_states_critic:  hc_{t+1}
         """
-        self.obs[self.step + 1] = obs.copy()
-        self.actions[self.step] = actions.copy()
-        self.rewards[self.step] = rewards.copy()
-        self.dones[self.step] = dones.copy()
+        self.obs[self.step + 1] = obs.copy().reshape(self.obs.shape[1:])
+        self.actions[self.step] = actions.copy().reshape(self.actions.shape[1:])
+        self.rewards[self.step] = rewards.copy().reshape(self.rewards.shape[1:])
+        self.dones[self.step] = dones.copy().reshape(self.dones.shape[1:])
         self.action_log_probs[self.step] = action_log_probs.copy()
         self.value_preds[self.step] = value_preds.copy()
         self.rnn_states_actor[self.step + 1] = rnn_states_actor.copy()

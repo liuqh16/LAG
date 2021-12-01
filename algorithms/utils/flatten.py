@@ -7,7 +7,7 @@ def build_flattener(space):
     if isinstance(space, gym.spaces.Dict):
         return DictFlattener(space)
     elif isinstance(space, gym.spaces.Box) \
-        or isinstance(space, gym.spaces.MultiDiscrete):
+            or isinstance(space, gym.spaces.MultiDiscrete):
         return BoxFlattener(space)
     elif isinstance(space, gym.spaces.Discrete):
         return DiscreteFlattener(space)
