@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .flatten import build_flattener
+from flatten import build_flattener
 
 
 class MLPLayer(nn.Module):
@@ -23,7 +23,7 @@ class MLPLayer(nn.Module):
         return x
 
     @property
-    def output_size(self):
+    def output_size(self) -> int:
         return self._size[-1]
 
 

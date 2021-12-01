@@ -37,8 +37,8 @@ class PPOTrainer():
         # Reshape to do in a single forward pass for all steps
         values, action_log_probs, dist_entropy = \
             self.policy.evaluate_actions(obs_batch,
-                                         rnn_states_actor_batch, 
-                                         rnn_states_critic_batch, 
+                                         rnn_states_actor_batch,
+                                         rnn_states_critic_batch,
                                          actions_batch)
 
         mask_tensor = torch.sign(torch.max(torch.abs(check(obs_batch).to(**self.tpdv)), dim=-1, keepdim=True)[0])
