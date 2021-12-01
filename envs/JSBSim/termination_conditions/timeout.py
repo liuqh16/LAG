@@ -25,7 +25,7 @@ class Timeout(BaseTerminationCondition):
         """
         done = env.current_step >= self.max_steps
         if done:
-            print(f"INFO: agent[{agent_id}] step limits!")
+            print(f"INFO: agent[{agent_id}] step limits! Total Steps={env.current_step}")
             info[f'agent{agent_id}_end_reason'] = 0  # normal
         success = False
         return done, success, info

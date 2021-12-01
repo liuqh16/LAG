@@ -26,7 +26,7 @@ class ExtremeState(BaseTerminationCondition):
         ego_uid = list(env.jsbsims.keys())[agent_id]
         done = bool(env.jsbsims[ego_uid].get_property_value(c.detect_extreme_state))
         if done:
-            print(f'INFO: agent[{agent_id}] is on an extreme state!')
+            print(f'INFO: agent[{agent_id}] is on an extreme state! Total Steps={env.current_step}')
             info[f'agent{agent_id}_end_reason'] = 1  # crash
         success = False
         return done, success, info

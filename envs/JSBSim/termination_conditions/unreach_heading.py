@@ -38,7 +38,7 @@ class UnreachHeading(BaseTerminationCondition):
         if env.jsbsims[ego_uid].get_property_value(c.simulation_sim_time_sec) >= check_time:
             if math.fabs(env.jsbsims[ego_uid].get_property_value(c.delta_heading)) > 10:
                 done = True
-            # if current target heading is reached, random generate a new taget heading
+            # if current target heading is reached, random generate a new target heading
             else:
                 index = np.random.randint(0, 6)
                 angle = self.target_angles[index]
@@ -50,7 +50,7 @@ class UnreachHeading(BaseTerminationCondition):
                 env.jsbsims[ego_uid].set_property_value(c.target_heading_deg, new_heading)
                 env.jsbsims[ego_uid].set_property_value(c.heading_check_time, check_time + self.check_interval)
         if done:
-            print(f'INFO: current step:{cur_step} agent[{agent_id}] unreached heading')
+            print(f'INFO: agent[{agent_id}] unreached heading, Total Steps={env.current_step}')
             info['heading_turns'] = env.heading_turns
             info[f'agent{agent_id}_end_reason'] = 3  # unreach_heading
         success = False

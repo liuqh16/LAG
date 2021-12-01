@@ -48,6 +48,7 @@ class SingleControlEnv(BaseEnv):
             'ic_r_rad_sec': 0,
             'target_heading_deg': 0,
             'target_altitude_ft': 20000,
+            'target_velocities_u_mps': 243, 
             'heading_check_time': 20
         })
         self.sims[0].reload(new_init_state)
