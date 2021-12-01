@@ -6,8 +6,6 @@ algo="ppo"
 exp="test"
 seed=1
 
-# export PYTHONPATH=$PYTHONPATH:$(cd ../ && pwd)
-
 echo "env is ${env}, scenario is ${scenario}, algo is ${algo}, exp is ${exp}, seed is ${seed}"
 CUDA_VISIBLE_DEVICES=0 python train/train_jsbsim.py \
     --env-name ${env} --algorithm-name ${algo} --scenario-name ${scenario} --experiment-name ${exp} --num-agents ${num_agents} \

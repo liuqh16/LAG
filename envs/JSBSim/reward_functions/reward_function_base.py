@@ -26,6 +26,7 @@ class BaseRewardFunction(ABC):
             env: environment instance
         """
         if self.is_potential:
+            self.pre_rewards = [0.0 for _ in range(self.num_aircrafts)]
             for agent_id in range(self.num_aircrafts):
                 self.pre_rewards[agent_id] = self.get_reward(task, env, agent_id)
         self.reward_trajectory = [[] for _ in range(self.num_aircrafts)]
@@ -44,7 +45,7 @@ class BaseRewardFunction(ABC):
         """
         raise NotImplementedError
 
-    def _process(self, new_reward, agent_id=0, render_items=None):
+    def _process(self, new_reward, agent_id=0, render_items=()):
         """Process reward and inner variables.
 
         Args:
@@ -58,10 +59,7 @@ class BaseRewardFunction(ABC):
         reward = new_reward * self.reward_scale
         if self.is_potential:
             reward, self.pre_rewards[agent_id] = reward - self.pre_rewards[agent_id], reward
-        if render_items is None:
-            self.reward_trajectory[agent_id].append(reward)
-        else:
-            self.reward_trajectory[agent_id].append((reward, *render_items))
+        self.reward_trajectory[agent_id].append([reward, *render_items])
         return reward
 
     def get_reward_trajectory(self):
@@ -70,7 +68,4 @@ class BaseRewardFunction(ABC):
         Returns:
             (dict): {reward_name(str): reward_trajectory(np.array)}
         """
-        if len(self.reward_item_names) == 1:
-            return {self.reward_item_names[0]: np.array(self.reward_trajectory)}
-        else:
-            return dict(zip(self.reward_item_names, np.array(self.reward_trajectory).transpose(2, 0, 1)))
+        return dict(zip(self.reward_item_names, np.array(self.reward_trajectory).transpose(2, 0, 1)))
