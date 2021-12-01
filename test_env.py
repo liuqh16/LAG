@@ -1,8 +1,5 @@
-from envs.JSBSim.core.render_tacview import data_replay
-import pdb
 import time
 import numpy as np
-from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
 from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
 from envs.JSBSim.core.catalog import Catalog as c
@@ -12,47 +9,44 @@ import matplotlib.pyplot as plt
 def test_env():
     # env = SingleCombatEnv(config_name='1v1/NoWeapon/Selfplay')
     env = SingleCombatEnv(config_name='1v1/NoWeapon/vsBaseline')
-    act_space = env.action_space[0]
-    trajectory_list = []
     env.reset()
     env.render()
     cur_step = -1
     episode_reward = np.zeros(env.num_agents)
-    start_time = time.time()
-    while True:
+    num_episode = 0
+    while num_episode < 3:
         cur_step += 1
         # flying straight forward
         actions = [np.array([20, 18.6, 20, 0]) for _ in range(env.num_agents)]
         # random fly
-        # actions = [act_space.sample() for _ in range(env.num_agents)]
+        # actions = [env.action_space[0].sample() for _ in range(env.num_agents)]
         next_obs, reward, done, env_info = env.step(actions)
         env.render()
         episode_reward += reward
-        print(episode_reward)
         if np.array(done).all():
-            print(env_info)
-            break
-    print(time.time() - start_time)
-    # show reward trajectory
-    # for rf in env.task.reward_functions:
-    #     if rf.__class__.__name__ != "PostureReward":
-    #         y = rf.get_reward_trajectory()[rf.__class__.__name__][0]
-    #         plt.plot(np.arange(len(y)), y, label=rf.__class__.__name__)
-    #     else:
-    #         data = rf.get_reward_trajectory()
-    #         for k, v in data.items():
-    #             plt.plot(np.arange(len(v[0])), v[0], label=k)
-    # plt.legend()
-    # plt.show()
+            num_episode += 1
+            print(episode_reward)
+            episode_reward = np.zeros(env.num_agents)
+            # show reward trajectory
+            for rf in env.task.reward_functions:
+                y = rf.get_reward_trajectory()[rf.__class__.__name__][0]
+                if rf.is_potential:
+                    y = np.cumsum(y)
+                if rf.__class__.__name__ == "PostureReward":
+                    plt.plot(np.arange(len(y)), y, label=f"{rf.__class__.__name__}#{num_episode}")
+            env.reset()
+    plt.legend()
+    plt.show()
     # np.save("trajectory_data", np.asarray(trajectory_list))
 
 
 def test_parallel_env():
-    
+
     def make_train_env(num_env, config_name='singlecombat_vsbaseline'):
         def env_fn():
             return SingleCombatEnv(config_name=config_name)
         return DummyVecEnv([env_fn for _ in range(num_env)])
+        return SubprocVecEnv([env_fn for _ in range(num_env)])
 
     start_time = time.time()
     num_env = 2
@@ -75,14 +69,13 @@ def test_parallel_env():
     print(f"Collect data finish: total step {n_current_steps}, total episode {n_current_episodes}, timecost: {time.time() - start_time:.2f}s")
     envs.close()
 
+
 def test_heading_env():
     env = SingleControlEnv(config_name='heading_task')
     # env = SelfPlayEnv(config='selfplay_with_missile_task')
-    act_space = env.action_space
     trajectory_list = []
     env.reset()
     trajectory_list.append(env.render())
-    reward_render = {}
     cur_step = 0
     start_time = time.time()
     while True:
@@ -90,18 +83,18 @@ def test_heading_env():
         # flying straight forward
         actions = [np.array([0, -0.05, 0., 0.4])]
         # random fly
-        # actions = act_space.sample()
+        # actions = env.action_space.sample()
         next_obs, reward, done, env_info = env.step(actions)
         trajectory_list.append(env.render())
         print(reward)
         if done:
             print(env_info)
-            #reward_render = env.task.reward_functions[0].get_reward_trajectory()
             print(env.jsbsims[0].get_property_value(c.simulation_sim_time_sec))
             break
     print(time.time() - start_time)
     # print(reward_render)
     # np.save('save_trajectories.npy', np.asarray(trajectory_list))
+
 
 test_env()
 # test_parallel_env()
