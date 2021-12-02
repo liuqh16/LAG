@@ -161,7 +161,7 @@ class StraightFlyAgent:
 
 
 class SingleControlAgent:
-    def __init__(self, agent_id):
+    def __init__(self, agent_id=1):
         self.model_path = get_root_dir() + '/model/singlecontrol_baseline.pth'
         self.actor = torch.load(str(self.model_path))
         self.actor.eval()
