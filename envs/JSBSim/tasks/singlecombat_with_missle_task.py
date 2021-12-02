@@ -17,8 +17,7 @@ class SingleCombatWithMissileTask(SingleCombatTask):
         self.reward_functions = [
             MissileAttackReward(self.config),
             AltitudeReward(self.config),
-            # PostureReward(self.config),
-            RelativeAltitudeReward(self.config),
+            PostureReward(self.config),
         ]
 
         self.termination_conditions = [
@@ -29,9 +28,6 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             Timeout(self.config),
         ]
         self.bloods, self.remaining_missiles, self.lock_duration = None, None, None
-        self.pursue_use_baseline = True
-        if self.pursue_use_baseline:
-            self.pursue_baseline_agent = self.load_agent('control', agent_id=0)
 
     def load_observation_space(self):
         self.observation_space = [spaces.Box(low=-10, high=10., shape=(25,)) for _ in range(self.num_agents)]
@@ -92,26 +88,6 @@ class SingleCombatWithMissileTask(SingleCombatTask):
         for agent_id in range(self.num_aircrafts):
             norm_obs[agent_id] = _normalize(agent_id)
         return norm_obs
-
-    def normalize_action(self, env, actions):
-        def _normalize(action):
-            action_norm = np.zeros(4)
-            action_norm[0] = action[0] * 2. / (self.action_space[0].nvec[0] - 1.) - 1.
-            action_norm[1] = action[1] * 2. / (self.action_space[0].nvec[1] - 1.) - 1.
-            action_norm[2] = action[2] * 2. / (self.action_space[0].nvec[2] - 1.) - 1.
-            action_norm[3] = action[3] * 0.5 / (self.action_space[0].nvec[3] - 1.) + 0.4
-            return action_norm
-
-        norm_act = np.zeros((self.num_aircrafts, 4))            
-        if self.pursue_use_baseline and self.check_missile_warning(env, agent_id=0) is None:
-            norm_act[0] = _normalize(self.pursue_baseline_agent.get_action(env, self))
-        else:
-            norm_act[0] = _normalize(actions[0])
-        if self.use_baseline:
-            norm_act[1] = _normalize(self.baseline_agent.get_action(env, self))
-        else:
-            norm_act[1] = _normalize(actions[1])
-        return norm_act
 
     def reset(self, env):
         """Reset fighter blood & missile status
@@ -184,25 +160,28 @@ class SingleCombatWithMissileHierarchicalTask(SingleCombatWithMissileTask):
 
     def __init__(self, config: str):
         super().__init__(config)
-        self.norm_delta_altitude = [-0.2, -0.1, -0.05, 0, 0.05, 0.1, 0.2]
-        self.norm_delta_heading = [-90, 0, 90]
-        assert len(self.norm_delta_altitude) == self.action_space[0].nvec[0]
-        assert len(self.norm_delta_heading) == self.action_space[0].nvec[1]
+        # self.norm_delta_altitude = [-0.2, -0.1, -0.05, 0, 0.05, 0.1, 0.2]
+        # self.norm_delta_heading = [-90, 0, 90]
+        # assert len(self.norm_delta_altitude) == self.action_space[0].nvec[0]
+        # assert len(self.norm_delta_heading) == self.action_space[0].nvec[1]
         # low-level policy: Input(18) Output(4)
         self.lowlevel_policy = torch.load((get_root_dir() + '/model/singlecontrol_baseline.pth'))
         self.lowlevel_policy.eval()
         self._rnn_states = np.zeros((self.num_agents, 1, 1, 128))
 
     def load_action_space(self):
-        self.action_space = [spaces.MultiDiscrete([7, 3]) for _ in range(self.num_agents)]
+        self.action_space = [spaces.Box(low=np.array([-2, -180]),
+                                        high=np.array([2, 180])) 
+                                        for _ in range(self.num_agents)]
 
     def normalize_action(self, env, actions):
         """Convert high-level action into low value.
         """
         def _convert(action, observation, rnn_states):
+            action = np.clip(action, [-2, -180], [2, 180])
             input_obs = np.zeros(8)
-            input_obs[0] = self.norm_delta_altitude[action[0]]                  # 0. ego delta altitude  (unit: 1km)
-            input_obs[1] = self.norm_delta_heading[action[1]] / 180 * np.pi     # 1. ego delta heading   (unit rad)
+            input_obs[0] = action[0]                  # 0. ego delta altitude  (unit: 1km)
+            input_obs[1] = action[1] / 180 * np.pi     # 1. ego delta heading   (unit rad)
             input_obs[2] = observation[3]           # 2. ego_roll       (unit: rad)
             input_obs[3] = observation[4]           # 3. ego_pitch      (unit: rad)
             input_obs[4] = observation[6] / 340     # 4. ego_v_north   (unit: mh)

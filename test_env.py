@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 
 def test_env():
-    env = SingleCombatEnv(config_name='1v1/Missile/HierarchyVsStraight')
+    env = SingleCombatEnv(config_name='1v1/Missile/HierarchyVsBaseline')
     act_space = env.action_space[0]
     trajectory_list = []
     env.reset()
@@ -21,7 +21,7 @@ def test_env():
     while True:
         cur_step += 1
         # flying straight forward
-        actions = [np.array([3, 1]) for _ in range(env.num_agents)]
+        actions = [np.array([0.2, 30]) for _ in range(env.num_agents)]
         # random fly
         # actions = [act_space.sample() for _ in range(env.num_agents)]
         next_obs, reward, done, env_info = env.step(actions)
