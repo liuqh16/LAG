@@ -3,7 +3,7 @@ from gym import spaces
 from .task_base import BaseTask
 from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, HeadingReward
-from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout, UnreachHeading, UnreachHeadingAndAltitude
+from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout, UnreachHeading
 
 
 class HeadingTask(BaseTask):
@@ -79,40 +79,7 @@ class HeadingTask(BaseTask):
         """
         norm_act = np.zeros(4)
         norm_act[0] = action[0] * 2. / (self.action_space[0].nvec[0] - 1.) - 1.
-        norm_act[1] = action[1] * 2. / (self.action_space[0].nvec[1] - 1.) - 1.
-        norm_act[2] = action[2] * 2. / (self.action_space[0].nvec[2] - 1.) - 1.
-        norm_act[3] = action[3] * 0.5 / (self.action_space[0].nvec[3] - 1.) + 0.4
+        norm_act[1] = action[0] * 2. / (self.action_space[0].nvec[1] - 1.) - 1.
+        norm_act[2] = action[0] * 2. / (self.action_space[0].nvec[2] - 1.) - 1.
+        norm_act[3] = action[0] * 0.5 / (self.action_space[0].nvec[3] - 1.) + 0.4
         return norm_act
-
-
-class HeadingContinuousTask(HeadingTask):
-    '''
-    Control target heading with continuous action space
-    '''
-    def __init__(self, config):
-        super().__init__(config)
-
-    def load_action_space(self):
-        # aileron, elevator, rudder, throttle
-        self.action_space = spaces.Box(low=np.array([-1.0, -1.0, -1.0, 0.4], dtype=np.float32),
-                                       high=np.array([1.0, 1.0, 1.0, 0.9], dtype=np.float32))
-
-    def normalize_action(self, env, action):
-        """Clip continuous value into proper value.
-        """
-        return np.clip(action, self.action_space.low, self.action_space.high)
-
-
-class HeadingAndAltitudeTask(HeadingTask):
-    '''
-    Control target heading and target altitude with discrete action space
-    '''
-    def __init__(self, config):
-        super().__init__(config)
-        self.termination_conditions = [
-            UnreachHeadingAndAltitude(self.config),
-            ExtremeState(self.config),
-            Overload(self.config),
-            LowAltitude(self.config),
-            Timeout(self.config),
-        ]

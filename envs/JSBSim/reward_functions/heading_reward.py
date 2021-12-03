@@ -1,7 +1,7 @@
-import numpy as np
 import math
 from .reward_function_base import BaseRewardFunction
 from ..core.catalog import Catalog as c
+
 
 class HeadingReward(BaseRewardFunction):
     """
@@ -13,7 +13,7 @@ class HeadingReward(BaseRewardFunction):
     def get_reward(self, task, env, agent_id):
         """
         Reward is built as a geometric mean of scaled gaussian rewards for each relevant variable
-        
+
         Args:
             task: task instance
             env: environment instance
@@ -35,5 +35,5 @@ class HeadingReward(BaseRewardFunction):
         speed_error_scale = 16  # fps (~5%)
         speed_r = math.exp(-(((env.jsbsims[ego_uid].get_property_value(c.velocities_u_fps) - 800) / speed_error_scale) ** 2))
 
-        reward = (heading_r * alt_r  * roll_r * speed_r) ** (1 / 5)
+        reward = (heading_r * alt_r * roll_r * speed_r) ** (1 / 4)
         return self._process(reward)

@@ -2,7 +2,8 @@ import numpy as np
 from typing import List
 from .env_base import BaseEnv
 from ..core.simulatior import AircraftSimulator
-from ..tasks.heading_task import HeadingTask, HeadingAndAltitudeTask, HeadingContinuousTask
+from ..core.simulatior import BaseSimulator
+from ..tasks import HeadingTask
 
 
 class SingleControlEnv(BaseEnv):
@@ -19,17 +20,13 @@ class SingleControlEnv(BaseEnv):
         return self.jsbsims[0]
 
     @property
-    def sims(self) -> List[AircraftSimulator]:
-        return self.jsbsims
+    def sims(self) -> List[BaseSimulator]:
+        return list(self.jsbsims.values())
 
     def load_task(self):
-        taskname = getattr(self.config, 'task', None)
-        if taskname == 'heading_task':
+        taskname = getattr(self.config, 'task', 'heading')
+        if taskname == 'heading':
             self.task = HeadingTask(self.config)
-        elif taskname == 'heading_altitude_task':
-            self.task = HeadingAndAltitudeTask(self.config)
-        elif taskname == 'heading_continuous_task':
-            self.task = HeadingContinuousTask(self.config)
         else:
             raise NotImplementedError(f'Unknown taskname: {taskname}')
         self.observation_space = self.task.observation_space
