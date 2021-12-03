@@ -17,7 +17,7 @@ use_baseline: true
 baseline_type: control
 aircraft_configs: {
   A001: {
-    team: Red,
+    color: Red,
     model: f16,
     init_state: {
       ic_long_gc_deg: 120.0,
@@ -28,7 +28,7 @@ aircraft_configs: {
     },
   },
   A002: {
-    team: Red,
+    color: Red,
     model: f16,
     init_state: {
       ic_long_gc_deg: 120.01,
@@ -39,7 +39,7 @@ aircraft_configs: {
     },
   },
   B001: {
-    team: Blue,
+    color: Blue,
     model: f16,
     init_state: {
       ic_h_sl_ft: 20000,
@@ -50,7 +50,7 @@ aircraft_configs: {
     },
   },
   B002: {
-    team: Blue,
+    color: Blue,
     model: f16,
     init_state: {
       ic_h_sl_ft: 20000,

@@ -24,6 +24,7 @@ class BaseEnv(gym.Env):
         self.max_steps = getattr(self.config, 'max_steps', 100)     # type: int
         self.jsbsim_freq = getattr(self.config, 'jsbsim_freq', 60)  # type: int
         self.agent_interaction_steps = getattr(self.config, 'agent_interaction_steps', 12)  # type: int
+        self.center_lon, self.center_lat, self.center_alt = getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0))
         self._ego_team = None
         self._ego_sims = []
         self.load()
@@ -180,6 +181,7 @@ class BaseEnv(gym.Env):
         """
         for sim in self.sims.values():
             sim.close()
+        self.jsbsims = {}
 
     def render(self, mode="human", **kwargs):
         """Renders the environment.

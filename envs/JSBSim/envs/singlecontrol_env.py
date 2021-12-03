@@ -9,7 +9,7 @@ class SingleControlEnv(BaseEnv):
     def __init__(self, config_name: str):
         super().__init__(config_name)
         # Env-Specific initialization here!
-        assert len(self.jsbsims) == 1, f"{self.__class__.__name__} only supports 1 aircraft!"
+        assert len(self.jsbsims.keys()) == 1, f"{self.__class__.__name__} only supports 1 aircraft!"
 
     def load_task(self):
         taskname = getattr(self.config, 'task', None)
@@ -22,12 +22,13 @@ class SingleControlEnv(BaseEnv):
 
     def reset(self):
         self.current_step = 0
+        self.heading_turns = 0
         self.reset_simulators()
         self.task.reset(self)
         return self.get_obs()
 
     def reset_simulators(self):
-        new_init_state = self.jsbsims[0].init_state
+        new_init_state = self.agents[0].init_state
         new_init_state.update({
             'ic_psi_true_deg': 0,
             'ic_u_fps': 800,
@@ -41,7 +42,7 @@ class SingleControlEnv(BaseEnv):
             'target_velocities_u_mps': 243,
             'heading_check_time': 20
         })
-        self.jsbsims[0].reload(new_init_state)
+        self.agents[0].reload(new_init_state)
 
     def step(self, action):
         """Run one timestep of the environment's dynamics. When end of
@@ -71,7 +72,7 @@ class SingleControlEnv(BaseEnv):
 
         obs = self.get_obs()
 
-        reward = self.task.get_reward(self, 0, info)
+        reward, info = self.task.get_reward(self, 0, info)
 
         done, info = self.task.get_termination(self, 0, info)
 

@@ -13,8 +13,6 @@ class MissilePostureReward(BaseRewardFunction):
     """
     def __init__(self, config):
         super().__init__(config)
-        assert self.num_aircrafts == 2, \
-            "MissileVelocityReward only support one-to-one environments but current env has more than 2 agents!"
         # self.all_reward_scales = []
         self.v_fn = lambda v: np.exp(-v/200) - 1 
         self.d_fn = lambda d: -np.exp(-d/1000)

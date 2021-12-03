@@ -16,6 +16,7 @@ class SingleCombatEnv(BaseEnv):
         assert len(self.jsbsims.keys()) == 2, f"{self.__class__.__name__} only supports 1v1 scenarios!"
         self._create_records = False
 
+
     @property
     def sims(self) -> Dict[str, BaseSimulator]:
         sims = {}
@@ -38,8 +39,7 @@ class SingleCombatEnv(BaseEnv):
         self.current_step = 0
         self.reset_simulators()
         self.task.reset(self)
-        next_observation = self.get_observation()
-        return self._mask(next_observation)
+        return self.get_obs()
 
     def reset_simulators(self):
         # switch side
@@ -71,53 +71,33 @@ class SingleCombatEnv(BaseEnv):
         # apply action
         action = self.task.normalize_action(self, action)
         self.agents[0].set_property_values(self.task.action_var, action)
-        for sim in [sim for uid, sim in self.jsbsims.items() if uid[0] != self.ego_team]:
+        for sim in [sim for uid, sim in self.jsbsims.items() if uid[0] != self._ego_team]:
             action = self.task.rollout(self, sim)
-            sim.set_property_values(self.task.action_space, action)
-        # run simulator for one step
+            sim.set_property_values(self.task.action_var, action)
+        # run simulation
         for _ in range(self.agent_interaction_steps):
             for sim in self.sims.values():
                 sim.run()
         # call task.step for extra process
         self.task.step(self, action)
 
-        next_observation = self.get_observation()
+        obs = self.get_obs()
 
-        reward = np.zeros(self.num_agents)
-        for agent_id in range(self.num_agents):
-            rewards[agent_id], info = self.task.get_reward(self, agent_id, info)
+        reward = self.task.get_reward(self, 0, info)
 
-        done = False
-        for agent_id in range(self.num_agents):
-            agent_done, info = self.task.get_termination(self, agent_id, info)
-            done = agent_done or done
-        dones = done * np.ones(self.num_agents)
+        done, info = self.task.get_termination(self, 0, info)
 
-        return self._mask(next_observation), self._mask(rewards), self._mask(dones), info
+        return obs, reward, done, info
 
-    def get_obs_agent(self, agent_id: int):
-        return super().get_obs_agent(agent_id)
-
-    def get_observation(self):
-        """
-        get state observation from sim.
-
-        Returns:
-            (OrderedDict): the same format as self.observation_space
-        """
-        next_observation = []
-        for sim in self.jsbsims.values():
-            next_observation.append(sim.get_property_values(self.task.state_var))
-        next_observation = self.task.normalize_obs(self, next_observation)
-        return next_observation
+    def get_obs(self):
+        obs = self.agents[0].get_property_values(self.task.state_var)
+        enemy_obs = self.agents[0].enemies[0].get_property_values(self.task.state_var)
+        return self.task.normalize_obs(self, obs, enemy_obs)
 
     def close(self):
-        """Cleans up this environment's objects.
-
-        Environments automatically close() when garbage collected or when the program exits.
-        """
-        for sim in self.sims:
-            sim.close()
+        res = super().close()
+        self.other_sims = {}
+        return res
 
     def render(self, mode="txt", filepath='./JSBSimRecording.txt.acmi'):
         if mode == "txt":
@@ -130,13 +110,10 @@ class SingleCombatEnv(BaseEnv):
             with open(filepath, mode='a', encoding='utf-8-sig') as f:
                 timestamp = self.current_step * self.time_interval
                 f.write(f"#{timestamp:.2f}\n")
-                for sim in self.sims:
+                for sim in self.sims.values():
                     log_msg = sim.log()
                     if log_msg is not None:
                         f.write(log_msg + "\n")
         # TODO: real time rendering [Use FlightGear, etc.]
         else:
             raise NotImplementedError
-
-    def _mask(self, data):
-        return np.expand_dims(data[0], axis=0) if self.task.use_baseline else data

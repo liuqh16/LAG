@@ -28,9 +28,8 @@ class AltitudeReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        ego_uid = list(env.jsbsims.keys())[agent_id]
-        ego_z = env.jsbsims[ego_uid].get_position()[-1] / 1000    # unit: km
-        ego_vz = env.jsbsims[ego_uid].get_velocity()[-1] / 340    # unit: mh
+        ego_z = env.agents[agent_id].get_position()[-1] / 1000    # unit: km
+        ego_vz = env.agents[agent_id].get_velocity()[-1] / 340    # unit: mh
         Pv = 0.
         if ego_z <= self.safe_altitude:
             Pv = -np.clip(ego_vz / self.Kv * (self.safe_altitude - ego_z) / self.safe_altitude, 0., 1.)

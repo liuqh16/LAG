@@ -14,8 +14,6 @@ class PostureReward(BaseRewardFunction):
     """
     def __init__(self, config):
         super().__init__(config)
-        assert self.num_aircrafts == 2, \
-            "PostureReward only support one-to-one environments but current env has more than 2 agents!"
         self.orientation_version = getattr(self.config, f'{self.__class__.__name__}_orientation_version', 'v2')
         self.range_version = getattr(self.config, f'{self.__class__.__name__}_range_version', 'v3')
         self.target_dist = getattr(self.config, f'{self.__class__.__name__}_target_dist', 3.0)
@@ -35,11 +33,11 @@ class PostureReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        ego_uid = list(env.jsbsims.keys())[agent_id]
-        enm_uid = list(env.jsbsims.keys())[(agent_id + 1) % self.num_aircrafts]
         # feature: (north, east, down, vn, ve, vd)
-        ego_feature = np.hstack([env.jsbsims[ego_uid].get_position(), env.jsbsims[ego_uid].get_velocity()])
-        enm_feature = np.hstack([env.jsbsims[enm_uid].get_position(), env.jsbsims[enm_uid].get_velocity()])
+        ego_feature = np.hstack([env.agents[agent_id].get_position(),
+                                 env.agents[agent_id].get_velocity()])
+        enm_feature = np.hstack([env.agents[agent_id].enemies[0].get_position(),
+                                 env.agents[agent_id].enemies[0].get_velocity()])
         AO, TA, R = get_AO_TA_R(ego_feature, enm_feature)
         orientation_reward = self.orientation_fn(AO, TA)
         range_reward = self.range_fn(R / 1000)
@@ -63,12 +61,12 @@ class PostureReward(BaseRewardFunction):
         if version == 'v0':
             return lambda R: np.exp(-(R - self.target_dist) ** 2 * 0.004) / (1. + np.exp(-(R - self.target_dist + 2) * 2))
         elif version == 'v1':
-            return lambda R: np.clip(1.2 * np.min([np.exp(-(R - self.target_dist) * 0.21), 1]) / \
-                (1. + np.exp(-(R - self.target_dist + 1) * 0.8)), 0.3, 1)
+            return lambda R: np.clip(1.2 * np.min([np.exp(-(R - self.target_dist) * 0.21), 1]) /
+                                     (1. + np.exp(-(R - self.target_dist + 1) * 0.8)), 0.3, 1)
         elif version == 'v2':
-            return lambda R: max(np.clip(1.2 * np.min([np.exp(-(R - self.target_dist) * 0.21), 1]) / \
-                (1. + np.exp(-(R - self.target_dist + 1) * 0.8)), 0.3, 1), np.sign(7 - R))
+            return lambda R: max(np.clip(1.2 * np.min([np.exp(-(R - self.target_dist) * 0.21), 1]) /
+                                         (1. + np.exp(-(R - self.target_dist + 1) * 0.8)), 0.3, 1), np.sign(7 - R))
         elif version == 'v3':
-            return lambda R: 1*(R<5) + (R>=5)*np.clip(-0.032*R**2+0.284*R+0.38,0,1) + np.clip(np.exp(-0.16*R),0,0.2)
+            return lambda R: 1 * (R < 5) + (R >= 5) * np.clip(-0.032 * R**2 + 0.284 * R + 0.38, 0, 1) + np.clip(np.exp(-0.16 * R), 0, 0.2)
         else:
             raise NotImplementedError(f"Unknown range function version: {version}")

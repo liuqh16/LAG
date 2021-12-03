@@ -11,7 +11,8 @@ class HeadingTask(BaseTask):
     Control target heading with discrete action space
     '''
     def __init__(self, config):
-        self.config = config
+        super().__init__(config)
+
         self.reward_functions = [
             HeadingReward(self.config),
             AltitudeReward(self.config),
@@ -23,9 +24,10 @@ class HeadingTask(BaseTask):
             LowAltitude(self.config),
             Timeout(self.config),
         ]
-        self.load_variables()
-        self.load_observation_space()
-        self.load_action_space()
+
+    @property
+    def num_agents(self):
+        return 1
 
     def load_variables(self):
         self.state_var = [
@@ -82,8 +84,8 @@ class HeadingTask(BaseTask):
         """Convert discrete action index into continuous value.
         """
         norm_act = np.zeros(4)
-        norm_act[0] = action[0] * 2. / (self.action_space[0].nvec[0] - 1.) - 1.
-        norm_act[1] = action[0] * 2. / (self.action_space[0].nvec[1] - 1.) - 1.
-        norm_act[2] = action[0] * 2. / (self.action_space[0].nvec[2] - 1.) - 1.
-        norm_act[3] = action[0] * 0.5 / (self.action_space[0].nvec[3] - 1.) + 0.4
+        norm_act[0] = action[0] * 2. / (self.action_space.nvec[0] - 1.) - 1.
+        norm_act[1] = action[0] * 2. / (self.action_space.nvec[1] - 1.) - 1.
+        norm_act[2] = action[0] * 2. / (self.action_space.nvec[2] - 1.) - 1.
+        norm_act[3] = action[0] * 0.5 / (self.action_space.nvec[3] - 1.) + 0.4
         return norm_act

@@ -1,5 +1,6 @@
 import numpy as np
 from abc import ABC, abstractmethod
+from collections import defaultdict
 
 
 class BaseRewardFunction(ABC):
@@ -13,6 +14,7 @@ class BaseRewardFunction(ABC):
         self.reward_scale = getattr(self.config, f'{self.__class__.__name__}_scale', 1.0)
         self.is_potential = getattr(self.config, f'{self.__class__.__name__}_potential', False)
         self.reward_item_names = [self.__class__.__name__]
+        self.reward_trajectory = defaultdict(list)
 
     def reset(self, task, env):
         """Perform reward function-specific reset after episode reset.
@@ -23,10 +25,10 @@ class BaseRewardFunction(ABC):
             env: environment instance
         """
         if self.is_potential:
-            self.pre_rewards = [0.0 for _ in range(self.num_aircrafts)]
-            for agent_id in range(self.num_aircrafts):
+            self.pre_rewards = [0.0 for _ in range(env.num_agents)]
+            for agent_id in range(env.num_agents):
                 self.pre_rewards[agent_id] = self.get_reward(task, env, agent_id)
-        self.reward_trajectory = [[] for _ in range(self.num_aircrafts)]
+        self.reward_trajectory.clear()
 
     @abstractmethod
     def get_reward(self, task, env, agent_id):
@@ -65,4 +67,4 @@ class BaseRewardFunction(ABC):
         Returns:
             (dict): {reward_name(str): reward_trajectory(np.array)}
         """
-        return dict(zip(self.reward_item_names, np.array(self.reward_trajectory).transpose(2, 0, 1)))
+        return dict(zip(self.reward_item_names, np.array(self.reward_trajectory.values()).transpose(2, 0, 1)))

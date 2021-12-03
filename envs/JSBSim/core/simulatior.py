@@ -1,9 +1,11 @@
-from os import path
+import os
+import logging
+import numpy as np
+from collections import deque
 from abc import ABC, abstractmethod
 from typing import Literal, Union, List
-import numpy as np
+
 import jsbsim
-from collections import deque
 from .catalog import Property, Catalog
 from ..utils.utils import get_root_dir, LLA2NEU, NEU2LLA
 
@@ -29,6 +31,7 @@ class BaseSimulator(ABC):
         self._position = np.zeros(3)
         self._poseture = np.zeros(3)
         self._velocity = np.zeros(3)
+        logging.debug(f"{self.__class__.__name__}:{self._uid} is created!")
 
     @property
     def uid(self) -> str:
@@ -77,7 +80,7 @@ class BaseSimulator(ABC):
         pass
 
     def __del__(self):
-        print(f"{self.__class__.__name__}:{self._uid} is deleted!")
+        logging.debug(f"{self.__class__.__name__}:{self._uid} is deleted!")
 
 
 class AircraftSimulator(BaseSimulator):
@@ -121,10 +124,8 @@ class AircraftSimulator(BaseSimulator):
         """Reload aircraft simulator
         """
         super().reload()
-        self.partners = []
-        self.enemies = []
         # load JSBSim FDM
-        self.jsbsim_exec = jsbsim.FGFDMExec(path.join(get_root_dir(), 'data'))
+        self.jsbsim_exec = jsbsim.FGFDMExec(os.path.join(get_root_dir(), 'data'))
         self.jsbsim_exec.set_debug_level(0)
         self.jsbsim_exec.load_model(self.model)
         Catalog.add_jsbsim_props(self.jsbsim_exec.query_property_catalog(""))

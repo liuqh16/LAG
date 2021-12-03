@@ -16,7 +16,7 @@ acceleration_limit_z: 10.0
 # B0100 is pursuing A0100
 aircraft_configs: {
   A0100: {
-    team: Red,
+    color: Red,
     model: f16,
     init_state: {
       ic_long_gc_deg: 120.0,
@@ -28,7 +28,7 @@ aircraft_configs: {
     missile: 0,
   },
   B0100: {
-    team: Blue,
+    color: Blue,
     model: f16,
     init_state: {
       ic_h_sl_ft: 20000,

@@ -10,7 +10,7 @@ from ..utils.utils import in_range_rad, get_AO_TA_R, LLA2NEU, get_root_dir
 
 class SingleCombatTask(BaseTask):
     def __init__(self, config):
-        self.config = config
+        super().__init__(config)
         self.use_baseline = getattr(self.config, 'use_baseline', False)
         if self.use_baseline:
             self.load_policy(self.config.baseline_type)
@@ -110,10 +110,10 @@ class SingleCombatTask(BaseTask):
         """Convert discrete action index into continuous value.
         """
         norm_act = np.zeros(4)
-        norm_act[0] = action[0] * 2. / (self.action_space[0].nvec[0] - 1.) - 1.
-        norm_act[1] = action[1] * 2. / (self.action_space[0].nvec[1] - 1.) - 1.
-        norm_act[2] = action[2] * 2. / (self.action_space[0].nvec[2] - 1.) - 1.
-        norm_act[3] = action[3] * 0.5 / (self.action_space[0].nvec[3] - 1.) + 0.4
+        norm_act[0] = action[0] * 2. / (self.action_space.nvec[0] - 1.) - 1.
+        norm_act[1] = action[1] * 2. / (self.action_space.nvec[1] - 1.) - 1.
+        norm_act[2] = action[2] * 2. / (self.action_space.nvec[2] - 1.) - 1.
+        norm_act[3] = action[3] * 0.5 / (self.action_space.nvec[3] - 1.) + 0.4
         return norm_act
 
     def reset(self, env):
@@ -136,7 +136,8 @@ class SingleCombatTask(BaseTask):
             self.policy = HistoryAgent(policy)
 
     def rollout(self, env, sim):
-        return self.policy.get_action(env, self, sim)
+        action = self.policy.get_action(env, self, sim)
+        return self.normalize_action(env, action)
 
 
 def load_agent(name):
