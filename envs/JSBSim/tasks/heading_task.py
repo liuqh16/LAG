@@ -29,14 +29,15 @@ class HeadingTask(BaseTask):
 
     def load_variables(self):
         self.state_var = [
-            c.delta_altitude,                   # 0. delta_h   (unit: m)
-            c.delta_heading,                    # 1. delta_θ   (unit: °)
-            c.attitude_roll_rad,                # 2. roll      (unit: rad)
-            c.attitude_pitch_rad,               # 3. pitch     (unit: rad)
-            c.velocities_v_north_mps,           # 4. v_north   (unit: mps)
-            c.velocities_v_east_mps,            # 5. v_east    (unit: mps)
-            c.velocities_v_down_mps,            # 6. v_down    (unit: mps)
-            c.velocities_vc_mps,                # 7. vc        (unit: mps)
+            c.delta_altitude,                   # 0. delta_h    (unit: m)
+            c.delta_heading,                    # 1. delta_θ    (unit: °)
+            c.delta_velocities_u,               # 2. delta_v    (unit: m/s)
+            c.attitude_roll_rad,                # 3. roll       (unit: rad)
+            c.attitude_pitch_rad,               # 4. pitch      (unit: rad)
+            c.velocities_u_mps,                 # 5. v_body_x   (unit: m/s)
+            c.velocities_v_mps,                 # 6. v_body_y   (unit: m/s)
+            c.velocities_w_mps,                 # 7. v_body_z   (unit: m/s)
+            c.velocities_vc_mps,                # 8. vc         (unit: m/s)
         ]
         self.action_var = [
             c.fcs_aileron_cmd_norm,             # [-1., 1.]
@@ -54,7 +55,7 @@ class HeadingTask(BaseTask):
         ]
 
     def load_observation_space(self):
-        self.observation_space = spaces.Box(low=-10, high=10., shape=(8,))
+        self.observation_space = spaces.Box(low=-10, high=10., shape=(11,))
 
     def load_action_space(self):
         # aileron, elevator, rudder, throttle
@@ -63,15 +64,18 @@ class HeadingTask(BaseTask):
     def normalize_obs(self, env, obs):
         """Normalize raw observation to make training easier.
         """
-        norm_obs = np.zeros(8)
+        norm_obs = np.zeros(11)
         norm_obs[0] = obs[0] / 1000         # 0. ego delta altitude  (unit: 1km)
         norm_obs[1] = obs[1] / 180 * np.pi  # 1. ego delta heading   (unit rad)
-        norm_obs[2] = obs[2]                # 2. ego_roll      (unit: rad)
-        norm_obs[3] = obs[3]                # 3. ego_pitch     (unit: rad)
-        norm_obs[4] = obs[4] / 340          # 4. ego_v_north   (unit: mh)
-        norm_obs[5] = obs[5] / 340          # 5. ego_v_east    (unit: mh)
-        norm_obs[6] = obs[6] / 340          # 6. ego_v_down    (unit: mh)
-        norm_obs[7] = obs[7] / 340          # 7. ego_vc        (unit: mh)
+        norm_obs[2] = obs[2] / 340          # 2. ego delta velocities_u  (unit: mh)
+        norm_obs[3] = np.sin(obs[3])        # 3. ego_roll_sin
+        norm_obs[4] = np.cos(obs[3])        # 4. ego_roll_cos
+        norm_obs[5] = np.sin(obs[4])        # 5. ego_pitch_sin
+        norm_obs[6] = np.cos(obs[4])        # 6. ego_pitch_cos
+        norm_obs[7] = obs[5] / 340          # 4. ego_v_north   (unit: mh)
+        norm_obs[8] = obs[6] / 340          # 5. ego_v_east    (unit: mh)
+        norm_obs[9] = obs[7] / 340          # 6. ego_v_down    (unit: mh)
+        norm_obs[10] = obs[8] / 340         # 7. ego_vc        (unit: mh)
         return norm_obs
 
     def normalize_action(self, env, action):

@@ -319,10 +319,26 @@ class ExtraCatalog(Property, Enum):
             ExtraCatalog.velocities_vc_mps,
             sim.get_property_value(JsbsimCatalog.velocities_vc_fps) * 0.3048))
 
+    velocities_u_mps = Property(
+        "velocities/u-mps", "body frame x-axis velocity [m/s]", -700, 700, access="R",
+        update=lambda sim: sim.set_property_value(
+            ExtraCatalog.velocities_u_mps,
+            sim.get_property_value(JsbsimCatalog.velocities_u_fps) * 0.3048))
+
+    velocities_v_mps = Property(
+        "velocities/v-mps", "body frame y-axis velocity [m/s]", -700, 700, access="R",
+        update=lambda sim: sim.set_property_value(
+            ExtraCatalog.velocities_v_mps,
+            sim.get_property_value(JsbsimCatalog.velocities_v_fps) * 0.3048))
+
+    velocities_w_mps = Property(
+        "velocities/w-mps", "body frame z-axis velocity [m/s]", -700, 700, access="R",
+        update=lambda sim: sim.set_property_value(
+            ExtraCatalog.velocities_w_mps,
+            sim.get_property_value(JsbsimCatalog.velocities_w_fps) * 0.3048))
+
     def update_delta_altitude(sim):
-        value = sim.get_property_value(ExtraCatalog.target_altitude_ft) - sim.get_property_value(
-            JsbsimCatalog.position_h_sl_ft
-        ) * 0.3048
+        value = (sim.get_property_value(ExtraCatalog.target_altitude_ft) - sim.get_property_value(JsbsimCatalog.position_h_sl_ft)) * 0.3048
         sim.set_property_value(ExtraCatalog.delta_altitude, value)
 
     def update_delta_heading(sim):
@@ -330,6 +346,10 @@ class ExtraCatalog(Property, Enum):
             sim.get_property_value(ExtraCatalog.target_heading_deg) - sim.get_property_value(JsbsimCatalog.attitude_psi_deg)
         )
         sim.set_property_value(ExtraCatalog.delta_heading, value)
+
+    def update_delta_velocities(sim):
+        value = (sim.get_property_value(ExtraCatalog.target_velocities_u_mps) - sim.get_property_value(ExtraCatalog.velocities_u_mps))
+        sim.set_property_value(ExtraCatalog.delta_velocities_u, value)
 
     @staticmethod
     def update_property_incr(sim, discrete_prop, prop, incr_prop):
@@ -413,7 +433,14 @@ class ExtraCatalog(Property, Enum):
         access="R",
         update=update_delta_heading,
     )
-
+    delta_velocities_u = Property(
+        "position/delta-velocities_u-to-target-mps",
+        "delta velocities_u to target",
+        -1400,
+        1400,
+        access="R",
+        update=update_delta_velocities,
+    )
     # controls command
 
     throttle_cmd_dir = Property(
@@ -482,6 +509,12 @@ class ExtraCatalog(Property, Enum):
         "target heading [deg]",
         JsbsimCatalog.attitude_psi_deg.min,
         JsbsimCatalog.attitude_psi_deg.max,
+    )
+    target_velocities_u_mps = Property(
+        "tc/target-velocity-u-mps",
+        "target heading [mps]",
+        -700,
+        700
     )
     target_vg = Property("tc/target-vg", "target ground velocity [ft/s]")
     target_time = Property("tc/target-time-sec", "target time [sec]", 0)

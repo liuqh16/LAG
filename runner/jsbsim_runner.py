@@ -37,10 +37,10 @@ class JSBSimRunner(Runner):
             self.restore()
 
     def save(self):
-        policy_actor = self.trainer.policy.actor
         save_dir = str(self.save_dir) + f"/{self.total_num_steps}"
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
+        policy_actor = self.trainer.policy.actor
         torch.save(policy_actor, save_dir + "/actor.pth")
         policy_critic = self.trainer.policy.critic
         torch.save(policy_critic, save_dir + "/critic.pth")
@@ -53,6 +53,7 @@ class JSBSimRunner(Runner):
 
         for episode in range(episodes):
 
+            heading_turns_list = []
             for step in range(self.buffer_size):
                 # Sample actions
                 values, actions, action_log_probs, rnn_states_actor, rnn_states_critic = self.collect(step)
@@ -64,6 +65,11 @@ class JSBSimRunner(Runner):
 
                 # insert data into buffer
                 self.insert(data)
+
+                # Extra recorded information
+                for info in infos:
+                    if 'heading_turns' in info:
+                        heading_turns_list.append(info['heading_turns'])
 
             # compute return and update network
             self.compute()
@@ -80,20 +86,23 @@ class JSBSimRunner(Runner):
             if episode % self.log_interval == 0:
                 end = time.time()
                 print("\n Scenario {} Algo {} Exp {} updates {}/{} episodes, total num timesteps {}/{}, FPS {}.\n"
-                      .format(self.all_args.scenario_name,
-                              self.algorithm_name,
-                              self.experiment_name,
-                              episode,
-                              episodes,
-                              self.total_num_steps,
-                              self.num_env_steps,
-                              int(self.total_num_steps / (end - start))))
+                        .format(self.all_args.scenario_name,
+                                self.algorithm_name,
+                                self.experiment_name,
+                                episode,
+                                episodes,
+                                self.total_num_steps,
+                                self.num_env_steps,
+                                int(self.total_num_steps / (end - start))))
 
                 done_splits = np.where(self.buffer._cast(self.buffer.dones) == True)[0] + 1
                 sum_rewards = self.buffer._cast(self.buffer.rewards)[slice(*done_splits[[0, -1]])].sum()
 
                 train_infos["average_episode_rewards"] = sum_rewards / (len(done_splits) - 1)
                 print("average episode rewards is {}".format(train_infos["average_episode_rewards"]))
+                if len(heading_turns_list):
+                    train_infos["average_heading_turns"] = np.mean(heading_turns_list)
+                    print("average heading turns is {}".format(train_infos["average_heading_turns"]))
                 self.log_info(train_infos, self.total_num_steps)
 
             # eval

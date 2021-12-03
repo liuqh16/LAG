@@ -1,9 +1,5 @@
-import numpy as np
-from typing import List
 from .env_base import BaseEnv
-from ..core.simulatior import AircraftSimulator
-from ..core.simulatior import BaseSimulator
-from ..tasks import HeadingTask
+from ..tasks.heading_task import HeadingTask
 
 
 class SingleControlEnv(BaseEnv):
@@ -15,30 +11,14 @@ class SingleControlEnv(BaseEnv):
         # Env-Specific initialization here!
         assert len(self.jsbsims) == 1, f"{self.__class__.__name__} only supports 1 aircraft!"
 
-    @property
-    def agent(self) -> AircraftSimulator:
-        return self.jsbsims[0]
-
-    @property
-    def sims(self) -> List[BaseSimulator]:
-        return list(self.jsbsims.values())
-
     def load_task(self):
-        taskname = getattr(self.config, 'task', 'heading')
+        taskname = getattr(self.config, 'task', None)
         if taskname == 'heading':
             self.task = HeadingTask(self.config)
         else:
             raise NotImplementedError(f'Unknown taskname: {taskname}')
         self.observation_space = self.task.observation_space
         self.action_space = self.task.action_space
-
-    def load_simulator(self):
-        self.jsbsims = []   # type: List[AircraftSimulator]
-        for uid, config in self.config.aircraft_configs.items():
-            self.jsbsims.append(
-                AircraftSimulator(uid, config.get("team", "f16"), config.get("model", "f16"), config.get("init_state"),
-                                  getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0)), self.jsbsim_freq)
-            )
 
     def reset(self):
         self.current_step = 0
@@ -49,13 +29,17 @@ class SingleControlEnv(BaseEnv):
     def reset_simulators(self):
         new_init_state = self.jsbsims[0].init_state
         new_init_state.update({
-            'ic_psi_true_deg': self.np_random.uniform(0, 360),
-            'ic_u_fps': self.np_random.uniform(500, 1000),
-            'ic_v_fps': self.np_random.uniform(-100, 100),
-            'ic_w_fps': self.np_random.uniform(-100, 100),
-            'ic_p_rad_sec': self.np_random.uniform(-np.pi, np.pi),
-            'ic_q_rad_sec': self.np_random.uniform(-np.pi, np.pi),
-            'ic_r_rad_sec': self.np_random.uniform(-np.pi, np.pi),
+            'ic_psi_true_deg': 0,
+            'ic_u_fps': 800,
+            'ic_v_fps': 0,
+            'ic_w_fps': 0,
+            'ic_p_rad_sec': 0,
+            'ic_q_rad_sec': 0,
+            'ic_r_rad_sec': 0,
+            'target_heading_deg': 0,
+            'target_altitude_ft': 20000,
+            'target_velocities_u_mps': 243,
+            'heading_check_time': 20
         })
         self.jsbsims[0].reload(new_init_state)
 
@@ -80,10 +64,10 @@ class SingleControlEnv(BaseEnv):
 
         # apply actions
         action = self.task.normalize_action(self, action)
-        self.agent.set_property_values(self.task.action_var, action)
+        self.agents[0].set_property_values(self.task.action_var, action)
         # run simulation
         for _ in range(self.agent_interaction_steps):
-            self.agent.run()
+            self.agents[0].run()
 
         obs = self.get_obs()
 
@@ -94,5 +78,5 @@ class SingleControlEnv(BaseEnv):
         return obs, reward, done, info
 
     def get_obs(self):
-        obs = self.agent.get_property_values(self.task.state_var)
+        obs = self.agents[0].get_property_values(self.task.state_var)
         return self.task.normalize_obs(self, obs)
