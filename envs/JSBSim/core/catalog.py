@@ -289,24 +289,34 @@ class ExtraCatalog(Property, Enum):
 
     # state in other formats
 
-    position_h_sl_m = Property("position/h-sl-m", "altitude above mean sea level [m]", -500, 26000, \
-        access="R", update=lambda sim: sim.set_property_value(ExtraCatalog.position_h_sl_m, \
+    position_h_sl_m = Property(
+        "position/h-sl-m", "altitude above mean sea level [m]", -500, 26000, access="R",
+        update=lambda sim: sim.set_property_value(
+            ExtraCatalog.position_h_sl_m,
             sim.get_property_value(JsbsimCatalog.position_h_sl_ft) * 0.3048))
 
-    velocities_v_north_mps = Property("velocities/v-north-mps", "velocity true north [m/s]", -700, 700, \
-        access="R", update=lambda sim: sim.set_property_value(ExtraCatalog.velocities_v_north_mps, \
+    velocities_v_north_mps = Property(
+        "velocities/v-north-mps", "velocity true north [m/s]", -700, 700, access="R",
+        update=lambda sim: sim.set_property_value(
+            ExtraCatalog.velocities_v_north_mps,
             sim.get_property_value(JsbsimCatalog.velocities_v_north_fps) * 0.3048))
 
-    velocities_v_east_mps = Property("velocities/v-east-mps", "velocity east [m/s]", -700, 700, \
-        access="R", update=lambda sim: sim.set_property_value(ExtraCatalog.velocities_v_east_mps, \
+    velocities_v_east_mps = Property(
+        "velocities/v-east-mps", "velocity east [m/s]", -700, 700, access="R",
+        update=lambda sim: sim.set_property_value(
+            ExtraCatalog.velocities_v_east_mps,
             sim.get_property_value(JsbsimCatalog.velocities_v_east_fps) * 0.3048))
 
-    velocities_v_down_mps = Property("velocities/v-down-mps", "velocity downwards [m/s]", -700, 700, \
-        access="R", update=lambda sim: sim.set_property_value(ExtraCatalog.velocities_v_down_mps, \
+    velocities_v_down_mps = Property(
+        "velocities/v-down-mps", "velocity downwards [m/s]", -700, 700, access="R",
+        update=lambda sim: sim.set_property_value(
+            ExtraCatalog.velocities_v_down_mps,
             sim.get_property_value(JsbsimCatalog.velocities_v_down_fps) * 0.3048))
 
-    velocities_vc_mps = Property("velocities/vc-mps", "airspeed in knots [m/s]", 0, 1400, \
-        access="R", update=lambda sim: sim.set_property_value(ExtraCatalog.velocities_vc_mps, \
+    velocities_vc_mps = Property(
+        "velocities/vc-mps", "airspeed in knots [m/s]", 0, 1400, access="R",
+        update=lambda sim: sim.set_property_value(
+            ExtraCatalog.velocities_vc_mps,
             sim.get_property_value(JsbsimCatalog.velocities_vc_fps) * 0.3048))
 
     def update_delta_altitude(sim):
@@ -317,8 +327,7 @@ class ExtraCatalog(Property, Enum):
 
     def update_delta_heading(sim):
         value = in_range_deg(
-            sim.get_property_value(ExtraCatalog.target_heading_deg)
-            - sim.get_property_value(JsbsimCatalog.attitude_psi_deg)
+            sim.get_property_value(ExtraCatalog.target_heading_deg) - sim.get_property_value(JsbsimCatalog.attitude_psi_deg)
         )
         sim.set_property_value(ExtraCatalog.delta_heading, value)
 
@@ -369,8 +378,7 @@ class ExtraCatalog(Property, Enum):
                         JsbsimCatalog.velocities_r_rad_sec,
                     ]
                 )
-            )
-            >= 1000
+            ) >= 1000
         )
         extreme_altitude = sim.get_property_value(JsbsimCatalog.position_h_sl_ft) >= 1e10
         extreme_acceleration = (
@@ -380,8 +388,7 @@ class ExtraCatalog(Property, Enum):
                     abs(sim.get_property_value(JsbsimCatalog.accelerations_n_pilot_y_norm)),
                     abs(sim.get_property_value(JsbsimCatalog.accelerations_n_pilot_z_norm)),
                 ]
-            )
-            > 1e1
+            ) > 1e1
         )  # acceleration larger than 10G
         sim.set_property_value(
             ExtraCatalog.detect_extreme_state,

@@ -1,8 +1,8 @@
-import os
 import numpy as np
 from gym import spaces
 from abc import ABC, abstractmethod
 from ..core.catalog import Catalog as c
+
 
 class BaseTask(ABC):
     """
@@ -14,6 +14,7 @@ class BaseTask(ABC):
         self.config = config
         self.reward_functions = []
         self.termination_conditions = []
+        self.policy = None
         self.load_variables()
         self.load_observation_space()
         self.load_action_space()
@@ -123,8 +124,25 @@ class BaseTask(ABC):
                 break
         return done, info
 
-    def get_reward_trajectory(self):
-        reward_trajectory_dict = {}
-        for reward_function in self.reward_functions:
-            reward_trajectory_dict.update(reward_function.get_reward_trajectory())
-        return reward_trajectory_dict
+    def normalize_obs(self, env, obs):
+        """Extract useful informations from raw observation.
+        """
+        return np.array(obs)
+
+    def normalize_action(self, env, action):
+        """Normalize action to be consistent with action space.
+        """
+        return np.array(action)
+
+    def load_policy(self, policy):
+        """Load a specific strategy for opponents
+
+        Args:
+            policy (str | torch.nn.Module): Rule-based / Parameterized policy
+        """
+        pass
+
+    def rollout(self, env, sim):
+        """Return a legal action of the given simulator based on `self.policy`
+        """
+        assert self.policy is not None

@@ -12,10 +12,10 @@ from ..utils.utils import NEU2LLA, LLA2NEU, get_AO_TA_R
 
 class SingleCombatWithMissileTask(SingleCombatTask):
     def __init__(self, config: str):
-        super().__init__(config)            
+        super().__init__(config)
 
         self.reward_functions = [
-            # MissileAttackReward(self.config),
+            MissileAttackReward(self.config),
             AltitudeReward(self.config),
             PostureReward(self.config),
             RelativeAltitudeReward(self.config),
@@ -31,37 +31,36 @@ class SingleCombatWithMissileTask(SingleCombatTask):
         self.bloods, self.remaining_missiles, self.lock_duration = None, None, None
 
     def load_observation_space(self):
-        self.observation_space = [spaces.Box(low=-10, high=10., shape=(25,)) for _ in range(self.num_agents)]
-        # TODO: add extra obs_space for missile information here!
+        self.observation_space = spaces.Box(low=-10, high=10., shape=(25,))
 
     def load_action_space(self):
         # aileron, elevator, rudder, throttle
-        self.action_space = [spaces.MultiDiscrete([41, 41, 41, 30]) for _ in range(self.num_agents)]
+        self.action_space = spaces.MultiDiscrete([41, 41, 41, 30])
 
-    def normalize_observation(self, env, observations):
+    def normalize_obs(self, env, obs, enemy_obs):
         """Convert simulation states into the format of observation_space
         """
         def _normalize(agent_id):
             ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_aircrafts
 
-            ego_obs_list, enm_obs_list = np.array(observations[ego_idx]), np.array(observations[enm_idx])
+            ego_obs_list, enm_obs_list = np.array(obs[ego_idx]), np.array(obs[enm_idx])
             # (0) extract feature: [north(km), east(km), down(km), v_n(mh), v_e(mh), v_d(mh)]
             ego_cur_ned = LLA2NEU(*ego_obs_list[:3], env.center_lon, env.center_lat, env.center_alt)
             enm_cur_ned = LLA2NEU(*enm_obs_list[:3], env.center_lon, env.center_lat, env.center_alt)
-            ego_feature = np.array([*(ego_cur_ned/1000), *(ego_obs_list[6:9]/340)])
-            enm_feature = np.array([*(enm_cur_ned/1000), *(enm_obs_list[6:9]/340)])
+            ego_feature = np.array([*(ego_cur_ned / 1000), *(ego_obs_list[6:9] / 340)])
+            enm_feature = np.array([*(enm_cur_ned / 1000), *(enm_obs_list[6:9] / 340)])
             observation = np.zeros(25)
             # (1) ego info normalization
-            observation[0] = ego_obs_list[2] / 5000             #  0. ego altitude  (unit: 5km)
-            observation[1] = np.linalg.norm(ego_feature[3:])    #  1. ego_v         (unit: mh)
-            observation[2] = ego_obs_list[8] / 340                  #  2. ego_v_down    (unit: mh)
-            observation[3] = np.sin(ego_obs_list[3])            #  3. ego_roll_sin
-            observation[4] = np.cos(ego_obs_list[3])            #  4. ego_roll_cos
-            observation[5] = np.sin(ego_obs_list[4])            #  5. ego_pitch_sin
-            observation[6] = np.cos(ego_obs_list[4])            #  6. ego_pitch_cos
-            observation[7] = ego_obs_list[9] / 340              #  7. ego_vc        (unit: mh)
-            observation[8] = ego_obs_list[10]                   #  8. ego_north_ng  (unit: 5G)
-            observation[9] = ego_obs_list[11]                   #  9. ego_east_ng   (unit: 5G)
+            observation[0] = ego_obs_list[2] / 5000             # 0. ego altitude  (unit: 5km)
+            observation[1] = np.linalg.norm(ego_feature[3:])    # 1. ego_v         (unit: mh)
+            observation[2] = ego_obs_list[8] / 340              # 2. ego_v_down    (unit: mh)
+            observation[3] = np.sin(ego_obs_list[3])            # 3. ego_roll_sin
+            observation[4] = np.cos(ego_obs_list[3])            # 4. ego_roll_cos
+            observation[5] = np.sin(ego_obs_list[4])            # 5. ego_pitch_sin
+            observation[6] = np.cos(ego_obs_list[4])            # 6. ego_pitch_cos
+            observation[7] = ego_obs_list[9] / 340              # 7. ego_vc        (unit: mh)
+            observation[8] = ego_obs_list[10]                   # 8. ego_north_ng  (unit: 5G)
+            observation[9] = ego_obs_list[11]                   # 9. ego_east_ng   (unit: 5G)
             observation[10] = ego_obs_list[12]                  # 10. ego_down_ng   (unit: 5G)
             # (2) relative info w.r.t enm state
             ego_AO, ego_TA, R, side_flag = get_AO_TA_R(ego_feature, enm_feature, return_side=True)
@@ -75,7 +74,7 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             # (3) missile info
             enm_missile_sim = self.check_missile_warning(env, agent_id)
             if enm_missile_sim is not None:
-                enm_missile_feature = np.array([*(enm_missile_sim.get_position()/1000), *(enm_missile_sim.get_velocity()/340)])
+                enm_missile_feature = np.array([*(enm_missile_sim.get_position() / 1000), *(enm_missile_sim.get_velocity() / 340)])
                 ego_AO, ego_TA, R, side_flag = get_AO_TA_R(ego_feature, enm_missile_feature, return_side=True)
                 observation[18] = R / 10                                    # 11. relative distance (unit: 10km)
                 observation[19] = ego_AO                                    # 12. ego_missile_AO        (unit: rad)

@@ -10,11 +10,8 @@ class BaseRewardFunction(ABC):
     def __init__(self, config):
         self.config = config
         # inner variables
-        self.num_aircrafts = len(getattr(self.config, 'aircraft_configs', {}).keys())
         self.reward_scale = getattr(self.config, f'{self.__class__.__name__}_scale', 1.0)
         self.is_potential = getattr(self.config, f'{self.__class__.__name__}_potential', False)
-        self.pre_rewards = [0.0 for _ in range(self.num_aircrafts)]
-        self.reward_trajectory = [[] for _ in range(self.num_aircrafts)]
         self.reward_item_names = [self.__class__.__name__]
 
     def reset(self, task, env):

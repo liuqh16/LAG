@@ -74,7 +74,7 @@ class MultipleCombatTask(BaseTask):
         # aileron, elevator, rudder, throttle
         self.action_space = [spaces.MultiDiscrete([41, 41, 41, 30]) for _ in range(self.num_agents)]
 
-    def normalize_observation(self, env, observations):
+    def normalize_obs(self, env, observations):
         """Convert simulation states into the format of observation_space
         """
         def _normalize(agent_id):

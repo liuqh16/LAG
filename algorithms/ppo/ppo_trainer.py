@@ -111,7 +111,7 @@ class PPOTrainer():
 
         for k in train_info.keys():
             train_info[k] /= num_updates
- 
+
         return train_info
 
     def prep_training(self):

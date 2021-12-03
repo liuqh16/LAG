@@ -42,7 +42,7 @@ class PPOActor(nn.Module):
             actor_features, rnn_states = self.rnn(actor_features, rnn_states)
 
         actions, action_log_probs = self.act(actor_features, deterministic)
-        
+
         return actions, action_log_probs, rnn_states
 
     def evaluate_actions(self, obs, rnn_states, action):

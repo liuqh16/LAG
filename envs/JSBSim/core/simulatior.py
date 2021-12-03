@@ -1,11 +1,11 @@
 from os import path
 from abc import ABC, abstractmethod
-from typing import Literal
+from typing import Literal, Union, List
 import numpy as np
 import jsbsim
 from collections import deque
 from .catalog import Property, Catalog
-from ..utils.utils import get_root_dir, LLA2NEU, NEU2LLA, in_range_rad
+from ..utils.utils import get_root_dir, LLA2NEU, NEU2LLA
 
 TeamColors = Literal["Red", "Blue", "Green", "Violet", "Orange"]
 
@@ -76,6 +76,9 @@ class BaseSimulator(ABC):
     def close(self):
         pass
 
+    def __del__(self):
+        print(f"{self.__class__.__name__}:{self._uid} is deleted!")
+
 
 class AircraftSimulator(BaseSimulator):
     """A class which wraps an instance of JSBSim and manages communication with it.
@@ -83,7 +86,7 @@ class AircraftSimulator(BaseSimulator):
 
     def __init__(self,
                  uid: str = "A0100",
-                 team: TeamColors = "Red",
+                 color: TeamColors = "Red",
                  model: str = 'f16',
                  init_state: dict = {},
                  origin: tuple = (120.0, 60.0, 0.0),
@@ -92,7 +95,7 @@ class AircraftSimulator(BaseSimulator):
 
         Args:
             uid (str): 5-digits hexadecimal numbers for unique identification. Default = `"A0100"`.
-            team (TeamColors): use different color strings to represent diferent teams
+            color (TeamColors): use different color strings to represent diferent teams
             model (str): name of aircraft to be loaded. Default = `"f16"`.
                 model path: './data/aircraft_name/aircraft_name.xml'
             init_state (dict): dict mapping properties to their initial values. Input empty dict to use a default set of initial props.
@@ -100,11 +103,13 @@ class AircraftSimulator(BaseSimulator):
             jsbsim_freq (int): JSBSim integration frequency. Default = `60`.
             agent_interaction_steps (int): simulation steps before the agent interact. Default = `5`.
         """
-        super().__init__(uid, team, 1 / jsbsim_freq)
+        super().__init__(uid, color, 1 / jsbsim_freq)
         self.model = model
         self.init_state = init_state
         self.lon0, self.lat0, self.alt0 = origin
         self._status = "Alive"
+        self.partners = []  # type: List[AircraftSimulator]
+        self.enemies = []   # type: List[AircraftSimulator]
         # initialize simulator
         self.reload()
 
@@ -112,10 +117,12 @@ class AircraftSimulator(BaseSimulator):
     def is_alive(self):
         return self._status == "Alive"
 
-    def reload(self, new_state=None, new_origin=None):
+    def reload(self, new_state: Union[dict, None] = None, new_origin: Union[tuple, None] = None):
         """Reload aircraft simulator
         """
         super().reload()
+        self.partners = []
+        self.enemies = []
         # load JSBSim FDM
         self.jsbsim_exec = jsbsim.FGFDMExec(path.join(get_root_dir(), 'data'))
         self.jsbsim_exec.set_debug_level(0)
@@ -144,17 +151,17 @@ class AircraftSimulator(BaseSimulator):
 
     def clear_defalut_condition(self):
         default_condition = {
-            Catalog.ic_long_gc_deg:     120.0,  # geodesic longitude [deg]
-            Catalog.ic_lat_geod_deg:    60.0,   # geodesic latitude  [deg]
-            Catalog.ic_h_sl_ft:         20000,  # altitude above mean sea level [ft]
-            Catalog.ic_psi_true_deg:    0.0,    # initial (true) heading [deg] (0, 360)
-            Catalog.ic_u_fps:           800.0,  # body frame x-axis velocity [ft/s]  (-2200, 2200)
-            Catalog.ic_v_fps:           0.0,    # body frame y-axis velocity [ft/s]  (-2200, 2200)
-            Catalog.ic_w_fps:           0.0,    # body frame z-axis velocity [ft/s]  (-2200, 2200)
-            Catalog.ic_p_rad_sec:       0.0,    # roll rate  [rad/s]  (-2 * pi, 2 * pi)
-            Catalog.ic_q_rad_sec:       0.0,    # pitch rate [rad/s]  (-2 * pi, 2 * pi)
-            Catalog.ic_r_rad_sec:       0.0,    # yaw rate   [rad/s]  (-2 * pi, 2 * pi)
-            Catalog.ic_roc_fpm:         0.0,    # initial rate of climb [ft/min]
+            Catalog.ic_long_gc_deg: 120.0,  # geodesic longitude [deg]
+            Catalog.ic_lat_geod_deg: 60.0,  # geodesic latitude  [deg]
+            Catalog.ic_h_sl_ft: 20000,      # altitude above mean sea level [ft]
+            Catalog.ic_psi_true_deg: 0.0,   # initial (true) heading [deg] (0, 360)
+            Catalog.ic_u_fps: 800.0,        # body frame x-axis velocity [ft/s]  (-2200, 2200)
+            Catalog.ic_v_fps: 0.0,          # body frame y-axis velocity [ft/s]  (-2200, 2200)
+            Catalog.ic_w_fps: 0.0,          # body frame z-axis velocity [ft/s]  (-2200, 2200)
+            Catalog.ic_p_rad_sec: 0.0,      # roll rate  [rad/s]  (-2 * pi, 2 * pi)
+            Catalog.ic_q_rad_sec: 0.0,      # pitch rate [rad/s]  (-2 * pi, 2 * pi)
+            Catalog.ic_r_rad_sec: 0.0,      # yaw rate   [rad/s]  (-2 * pi, 2 * pi)
+            Catalog.ic_roc_fpm: 0.0,        # initial rate of climb [ft/min]
             Catalog.ic_terrain_elevation_ft: 0,
         }
         for prop, value in default_condition.items():
@@ -183,6 +190,8 @@ class AircraftSimulator(BaseSimulator):
         """ Closes the simulation and any plots. """
         if self.jsbsim_exec:
             self.jsbsim_exec = None
+        self.partners = []
+        self.enemies = []
 
     def _update_properties(self):
         # update position
@@ -280,12 +289,12 @@ class MissileSimulator(BaseSimulator):
 
     def __init__(self,
                  uid="A0101",
-                 team="Red",
+                 color="Red",
                  model="AIM-9L",
                  dt=1 / 12):
-        super().__init__(uid, team, dt)
+        super().__init__(uid, color, dt)
         self._status = ""
-        self.team = ""
+        self.color = ""
         self.model = model
         self.target_aircraft = None  # type: AircraftSimulator
         self.render_explosion = False
@@ -340,15 +349,15 @@ class MissileSimulator(BaseSimulator):
         # approximate expression
         return 1.225 * np.exp(-self._geodetic[-1] / 9300)
         # exact expression (Reference: https://www.cnblogs.com/pathjh/p/9127352.html)
-        rho0 = 1.225; T0 = 288.15; h = self._geodetic[-1]
+        rho0, T0, h = 1.225, 288.15, self._geodetic[-1]
         if h <= 11000:  # Troposphere
             T = T0 - 0.0065 * h
             return rho0 * (T / T0)**4.25588
         elif h <= 20000:  # Lower Stratosphere
             T = 216.65
             return 0.36392 * np.exp((11000 - h) / 6341.62)
-        else: # Upper Stratosphere
-            T = 216.65 + 0.001 * (h-20000)
+        else:  # Upper Stratosphere
+            T = 216.65 + 0.001 * (h - 20000)
             return 0.088035 * (T / 216.65)**(-35.1632)
 
     @property
@@ -385,7 +394,7 @@ class MissileSimulator(BaseSimulator):
             self._status = "Hit"
             self.target_aircraft._status = "Crash"
         elif (self._t > self._t_max) or (np.linalg.norm(self.get_velocity()) < self._v_min) \
-            or np.sum(self._distance_increment) >= self._distance_increment.maxlen:
+                or np.sum(self._distance_increment) >= self._distance_increment.maxlen:
             self._status = "Miss"
         else:
             self._state_trans(action)

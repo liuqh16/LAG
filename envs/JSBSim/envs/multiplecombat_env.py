@@ -95,7 +95,7 @@ class MultipleCombatEnv(BaseEnv):
         next_observation = []
         for sim in self.jsbsims.values():
             next_observation.append(sim.get_property_values(self.task.state_var))
-        next_observation = self.task.normalize_observation(self, next_observation)
+        next_observation = self.task.normalize_obs(self, next_observation)
         return next_observation
 
     def close(self):

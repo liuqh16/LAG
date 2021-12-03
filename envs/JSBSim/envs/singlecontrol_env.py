@@ -1,7 +1,8 @@
 import numpy as np
+from typing import List
 from .env_base import BaseEnv
-from ..core.catalog import Catalog
-from ..tasks import HeadingTask, HeadingAndAltitudeTask, HeadingContinuousTask
+from ..core.simulatior import AircraftSimulator
+from ..tasks.heading_task import HeadingTask, HeadingAndAltitudeTask, HeadingContinuousTask
 
 
 class SingleControlEnv(BaseEnv):
@@ -10,10 +11,19 @@ class SingleControlEnv(BaseEnv):
     """
     def __init__(self, config_name: str):
         super().__init__(config_name)
-        assert self.num_aircrafts == 1, "only support one fighter"
+        # Env-Specific initialization here!
+        assert len(self.jsbsims) == 1, f"{self.__class__.__name__} only supports 1 aircraft!"
+
+    @property
+    def agent(self) -> AircraftSimulator:
+        return self.jsbsims[0]
+
+    @property
+    def sims(self) -> List[AircraftSimulator]:
+        return self.jsbsims
 
     def load_task(self):
-        taskname = getattr(self.config, 'task', 'heading_task')
+        taskname = getattr(self.config, 'task', None)
         if taskname == 'heading_task':
             self.task = HeadingTask(self.config)
         elif taskname == 'heading_altitude_task':
@@ -25,102 +35,67 @@ class SingleControlEnv(BaseEnv):
         self.observation_space = self.task.observation_space
         self.action_space = self.task.action_space
 
+    def load_simulator(self):
+        self.jsbsims = []   # type: List[AircraftSimulator]
+        for uid, config in self.config.aircraft_configs.items():
+            self.jsbsims.append(
+                AircraftSimulator(uid, config.get("team", "f16"), config.get("model", "f16"), config.get("init_state"),
+                                  getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0)), self.jsbsim_freq)
+            )
+
     def reset(self):
         self.current_step = 0
-        self.reset_conditions()
-        next_observation = self.get_observation()
+        self.reset_simulators()
         self.task.reset(self)
-        return next_observation
+        return self.get_obs()
 
-    def reset_conditions(self):
-        new_init_state = self.aircraft_configs[0].get('init_state', {})  # type: dict
+    def reset_simulators(self):
+        new_init_state = self.jsbsims[0].init_state
         new_init_state.update({
-            'ic_psi_true_deg': np.random.uniform(0, 360),
-            'ic_u_fps': np.random.uniform(500, 1000),
-            'ic_v_fps': np.random.uniform(-100, 100),
-            'ic_w_fps': np.random.uniform(-100, 100),
-            'ic_p_rad_sec': np.random.uniform(-np.pi, np.pi),
-            'ic_q_rad_sec': np.random.uniform(-np.pi, np.pi),
-            'ic_r_rad_sec': np.random.uniform(-np.pi, np.pi),
+            'ic_psi_true_deg': self.np_random.uniform(0, 360),
+            'ic_u_fps': self.np_random.uniform(500, 1000),
+            'ic_v_fps': self.np_random.uniform(-100, 100),
+            'ic_w_fps': self.np_random.uniform(-100, 100),
+            'ic_p_rad_sec': self.np_random.uniform(-np.pi, np.pi),
+            'ic_q_rad_sec': self.np_random.uniform(-np.pi, np.pi),
+            'ic_r_rad_sec': self.np_random.uniform(-np.pi, np.pi),
         })
-        self.sims[0].reload(new_init_state)
+        self.jsbsims[0].reload(new_init_state)
 
-    def step(self, action: list):
+    def step(self, action):
         """Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`
-        to reset this environment's state. Accepts an action and 
+        to reset this environment's observation. Accepts an action and
         returns a tuple (observation, reward_visualize, done, info).
 
         Args:
-            action (dict{str: np.array}): the agents' action, with same length as action variables.
+            action (np.array): the agent's action, with same length as action variables.
 
         Returns:
             (tuple):
                 state: agent's observation of the current environment
-                reward_visualize: amount of reward_visualize returned after previous action
+                reward: amount of reward returned after previous action
                 done: whether the episode has ended, in which case further step() calls are undefined
                 info: auxiliary information
         """
         self.current_step += 1
-        info = {}
+        info = {"current_step": self.current_step}
+
+        # apply actions
         action = self.task.normalize_action(self, action)
-        # run JSBSim for one step
-        next_observation = self.make_step(action)
+        self.agent.set_property_values(self.task.action_var, action)
+        # run simulation
+        for _ in range(self.agent_interaction_steps):
+            self.agent.run()
 
-        reward = np.zeros(self.num_aircrafts)
-        for agent_id in range(self.num_aircrafts):
-            reward[agent_id], info = self.task.get_reward(self, agent_id, info)
+        obs = self.get_obs()
 
-        done = False
-        for agent_id in range(self.num_aircrafts):
-            agent_done, info = self.task.get_termination(self, agent_id, info)
-            done = agent_done or done
+        reward = self.task.get_reward(self, 0, info)
 
-        return next_observation, reward, done, info
+        done, info = self.task.get_termination(self, 0, info)
 
-    def get_observation(self):
-        """
-        get state observation from sim.
+        return obs, reward, done, info
 
-        Returns:
-            (OrderedDict): the same format as self.observation_space
-        """
-        # generate observation (gym.Env output)
-        next_observation = []
-        for agent_id in range(self.num_aircrafts):
-            next_observation.append(self.sims[agent_id].get_property_values(self.task.state_var))
-        next_observation = self.task.normalize_observation(self, next_observation)
-        return next_observation
-
-    def close(self):
-        """Cleans up this environment's objects.
-
-        Environments automatically close() when garbage collected or when the program exits.
-        """
-        for agent_id in range(self.num_aircrafts):
-            if self.sims[agent_id]:
-                self.sims[agent_id].close()
-
-    def render(self, mode="human", **kwargs):
-        """Renders the environment.
-
-        The set of supported modes varies per environment. (And some
-
-        environments do not support rendering at all.) By convention,
-
-        if mode is:
-
-        - human: print on the terminal
-        - csv: output to cvs files
-
-        Note:
-
-            Make sure that your class's metadata 'render.modes' key includes
-              the list of supported modes. It's recommended to call super()
-              in implementations to use the functionality of this method.
-        :param mode: str, the mode to render with
-        """
-        render_list = []
-        for agent_id in range(self.num_aircrafts):
-            render_list.append(np.array(self.sims[agent_id].get_property_values(self.task.render_var)))
-        return np.hstack(render_list)
+    def get_obs(self):
+        obs = self.agent.get_property_values(self.task.state_var)
+        return self.task.normalize_obs(self, obs)

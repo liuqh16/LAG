@@ -1,6 +1,8 @@
 import gym
+from gym.utils import seeding
 import numpy as np
-from ..core.simulatior import AircraftSimulator
+from typing import Dict, List
+from ..core.simulatior import BaseSimulator, AircraftSimulator
 from ..tasks.task_base import BaseTask
 from ..utils.utils import parse_config
 
@@ -19,44 +21,63 @@ class BaseEnv(gym.Env):
 
     def __init__(self, config_name: str):
         self.config = parse_config(config_name)
-        self.aircraft_configs = self.config.aircraft_configs     # type: dict
-        self.num_aircrafts = len(self.aircraft_configs.keys())
-        self.max_steps = getattr(self.config, 'max_steps', 100)   # type: int
-        self.jsbsim_freq = getattr(self.config, 'jsbsim_freq', 60)   # type: int
+        self.max_steps = getattr(self.config, 'max_steps', 100)     # type: int
+        self.jsbsim_freq = getattr(self.config, 'jsbsim_freq', 60)  # type: int
         self.agent_interaction_steps = getattr(self.config, 'agent_interaction_steps', 12)  # type: int
+        self._ego_team = None
+        self._ego_sims = []
         self.load()
 
     @property
-    def num_agents(self):
+    def num_agents(self) -> int:
         return self.task.num_agents
 
     @property
-    def time_interval(self):
+    def agents(self) -> List[AircraftSimulator]:
+        return self._ego_sims
+
+    @property
+    def sims(self) -> Dict[str, BaseSimulator]:
+        sims = {}
+        sims.update(self.jsbsims)
+        return sims
+
+    @property
+    def time_interval(self) -> int:
         return self.agent_interaction_steps / self.jsbsim_freq
 
     def load(self):
         self.load_task()
-        self.load_variables()
         self.load_simulator()
+        self.seed()
 
     def load_task(self):
         self.task = BaseTask(self.config)
         self.observation_space = self.task.observation_space
         self.action_space = self.task.action_space
 
-    def load_variables(self):
-        self.current_step = 0
-        self.center_lon, self.center_lat, self.center_alt = \
-            getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0))
-
     def load_simulator(self):
-        self.jsbsims = dict([(uid, AircraftSimulator(
-            uid=uid,
-            team=self.aircraft_configs[uid].get("team", "Red"),
-            model=self.aircraft_configs[uid].get("model", "f16"),
-            init_state=self.aircraft_configs[uid].get("init_state", {}),
-            origin=(self.center_lon, self.center_lat, self.center_alt),
-            jsbsim_freq=self.jsbsim_freq)) for uid in self.aircraft_configs.keys()])
+        self.jsbsims = {}   # type: Dict[str, AircraftSimulator]
+        for uid, config in self.config.aircraft_configs.items():
+            if self._ego_team is None:
+                self._ego_team = uid[0]
+            self.jsbsims[uid] = AircraftSimulator(
+                uid, config.get("color", "Red"),
+                config.get("model", "f16"),
+                config.get("init_state"),
+                getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0)),
+                self.jsbsim_freq)
+            if uid[0] == self._ego_team:
+                self._ego_sims.append(self.jsbsims[uid])
+
+        for key, sim in self.jsbsims.items():
+            for k, s in self.jsbsims.items():
+                if k == key:
+                    pass
+                elif k[0] == key[0]:
+                    sim.partners.append(s)
+                else:
+                    sim.enemies.append(s)
 
     def reset(self):
         """Resets the state of the environment and returns an initial observation.
@@ -64,63 +85,101 @@ class BaseEnv(gym.Env):
         Args:
             init_conditions (np.array): the initial observation of the space.
         """
+        # reset sim
         self.current_step = 0
         for sim in self.jsbsims.values():
             sim.reload()
-        next_observation = self.get_observation()
+        # reset task
         self.task.reset(self)
-        return next_observation
+        # return obs[0]
+        init_obs = self.get_obs()
+        return init_obs
 
     def step(self, actions):
         """Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`
-        to reset this environment's state. Accepts an action and 
+        to reset this environment's observation. Accepts an action and
         returns a tuple (observation, reward_visualize, done, info).
 
         Args:
-            action (np.array): the agents; action, with same length as action variables
+            actions (np.array): the agents' actions, with same length as num_agents
 
         Returns:
             (tuple):
-                state: agent's observation of the current environment
-                reward: amount of reward returned after previous action
-                done: whether the episode has ended, in which case further step() calls are undefined
+                obs: agents' observation of the current environment
+                rewards: amount of rewards returned after previous actions
+                dones: whether the episode has ended, in which case further step() calls are undefined
                 info: auxiliary information
+
+        NOTE: shape of obs/rewards/dones: [num_agents, *dim]
         """
         self.current_step += 1
-        info = {}
+        info = {"current_step": self.current_step}
 
-        # take actions
+        # apply actions
+        for agent_id in range(self.num_agents):
+            action = self.task.normalize_action(self, actions[agent_id])
+            self.agents[agent_id].set_property_values(self.task.action_var, action)
+        for sim in [sim for uid, sim in self.jsbsims.items() if uid[0] != self._ego_team]:
+            action = self.task.rollout(self, sim)
+            sim.set_property_values(self.task.action_space, action)
+        # run simulation
         for _ in range(self.agent_interaction_steps):
-            for idx, sim in enumerate(self.jsbsims.values()):
-                sim.set_property_values(self.task.action_var, actions[idx])
+            for sim in self.sims.values():
                 sim.run()
 
-        next_observation = self.get_observation()
-        reward, info = self.task.get_reward(self, 0, info)
-        done, info = self.task.get_termination(self, 0, info)
+        obs = self.get_obs()
 
-        return next_observation, reward, done, info
+        rewards = np.zeros((self.num_agents, 1))
+        for agent_id in range(self.num_agents):
+            rewards[agent_id], info = self.task.get_reward(self, agent_id, info)
 
-    def get_observation(self):
-        """get state observation from sim.
+        dones = np.zeros((self.num_agents, 1))
+        for agent_id in range(self.num_agents):
+            dones[agent_id], info = self.task.get_termination(self, agent_id, info)
+
+        return obs, rewards, dones, info
+
+    def get_obs_agent(self, agent_id: int):
+        """Returns observation for agent_id.
 
         Returns:
-            (np.array): the first state observation of the episode
+            (np.array)
         """
-        next_observation = []
-        for sim in self.jsbsims.values():
-            next_observation.append(sim.get_property_values(self.task.state_var))
-        return np.array(next_observation)
+        return np.array(self.agents[agent_id].get_property_values(self.task.state_var))
+
+    def get_obs(self):
+        """Returns all agent observations in a list.
+
+        NOTE: Agents should have access only to their local observations
+        during decentralised execution.
+        """
+        agents_obs = [self.get_obs_agent(i) for i in range(self.num_agents)]
+        return agents_obs
+
+    def get_state(self):
+        """Returns the global state.
+
+        NOTE: This functon should not be used during decentralised execution.
+        """
+        pass
+
+    def load_policy(self, name: str):
+        """Load a specific strategy for opponents
+
+        Args:
+            name (str): Baseline name or Model path
+        """
+        self.task.load_policy(self, name)
 
     def close(self):
         """Cleans up this environment's objects
-        Environments automatically close() when garbage collected or when the
+
+        NOTE: Environments automatically close() when garbage collected or when the
         program exits.
         """
-        for sim in self.jsbsims.values():
-            if sim:
-                sim.close()
+        for sim in self.sims.values():
+            sim.close()
 
     def render(self, mode="human", **kwargs):
         """Renders the environment.
@@ -157,4 +216,5 @@ class BaseEnv(gym.Env):
               'seed'. Often, the main seed equals the provided 'seed', but
               this won't be true if seed=None, for example.
         """
-        return
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
