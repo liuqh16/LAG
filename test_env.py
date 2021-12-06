@@ -86,7 +86,7 @@ def test_heading_env():
     while True:
         cur_step += 1
         # flying straight forward
-        actions = [np.array([0, -0.05, 0., 0.4])]
+        actions = [np.array([20, 18.6, 20, 0])]
         # random fly
         # actions = act_space.sample()
         next_obs, reward, done, env_info = env.step(actions)
@@ -101,6 +101,4 @@ def test_heading_env():
     # print(reward_render)
     # np.save('save_trajectories.npy', np.asarray(trajectory_list))
 
-# test_env()
-# test_parallel_env()
-test_heading_env()
+test_env()

@@ -215,12 +215,15 @@ class DummyVecEnv(VecEnv):
         for env in self.envs:
             env.close()
 
-    def render(self, mode="human"):
+    def render(self, mode="human", filepath=None):
         if mode == "rgb_array":
             return np.array([env.render(mode) for env in self.envs])
         elif mode == "human":
             for env in self.envs:
                 env.render(mode=mode)
+        elif mode == 'txt':
+            for env in self.envs:
+                env.render(mode=mode, filepath=filepath)
         else:
             raise NotImplementedError
 
