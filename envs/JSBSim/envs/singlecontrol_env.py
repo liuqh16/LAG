@@ -1,8 +1,9 @@
 import numpy as np
+from typing import List
 from .env_base import BaseEnv
 from ..core.catalog import Catalog
-from ..tasks import HeadingTask, HeadingAndAltitudeTask, HeadingContinuousTask
-
+from ..core.simulatior import BaseSimulator
+from ..tasks import HeadingTask
 
 class SingleControlEnv(BaseEnv):
     """
@@ -11,15 +12,16 @@ class SingleControlEnv(BaseEnv):
     def __init__(self, config_name: str):
         super().__init__(config_name)
         assert self.num_aircrafts == 1, "only support one fighter"
+        self._create_records = False
+
+    @property
+    def sims(self) -> List[BaseSimulator]:
+        return list(self.jsbsims.values())
 
     def load_task(self):
-        taskname = getattr(self.config, 'task', 'heading_task')
-        if taskname == 'heading_task':
+        taskname = getattr(self.config, 'task', 'heading')
+        if taskname == 'heading':
             self.task = HeadingTask(self.config)
-        elif taskname == 'heading_altitude_task':
-            self.task = HeadingAndAltitudeTask(self.config)
-        elif taskname == 'heading_continuous_task':
-            self.task = HeadingContinuousTask(self.config)
         else:
             raise NotImplementedError(f'Unknown taskname: {taskname}')
         self.observation_space = self.task.observation_space
@@ -27,25 +29,31 @@ class SingleControlEnv(BaseEnv):
 
     def reset(self):
         self.current_step = 0
+        self.heading_turns = 0
         self.reset_conditions()
         next_observation = self.get_observation()
         self.task.reset(self)
         return next_observation
 
     def reset_conditions(self):
-        new_init_state = self.aircraft_configs[0].get('init_state', {})  # type: dict
+        uid = list(self.aircraft_configs.keys())[0]
+        new_init_state = self.aircraft_configs[uid].get('init_state', {})  # type: dict
         new_init_state.update({
-            'ic_psi_true_deg': np.random.uniform(0, 360),
-            'ic_u_fps': np.random.uniform(500, 1000),
-            'ic_v_fps': np.random.uniform(-100, 100),
-            'ic_w_fps': np.random.uniform(-100, 100),
-            'ic_p_rad_sec': np.random.uniform(-np.pi, np.pi),
-            'ic_q_rad_sec': np.random.uniform(-np.pi, np.pi),
-            'ic_r_rad_sec': np.random.uniform(-np.pi, np.pi),
+            'ic_psi_true_deg': 0,
+            'ic_u_fps': 800,
+            'ic_v_fps': 0,
+            'ic_w_fps': 0,
+            'ic_p_rad_sec': 0,
+            'ic_q_rad_sec': 0,
+            'ic_r_rad_sec': 0,
+            'target_heading_deg': 0,
+            'target_altitude_ft': 20000,
+            'target_velocities_u_mps': 243, 
+            'heading_check_time': 20
         })
         self.sims[0].reload(new_init_state)
 
-    def step(self, action: list):
+    def step(self, actions: list):
         """Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`
         to reset this environment's state. Accepts an action and 
@@ -62,21 +70,28 @@ class SingleControlEnv(BaseEnv):
                 info: auxiliary information
         """
         self.current_step += 1
-        info = {}
-        action = self.task.normalize_action(self, action)
-        # run JSBSim for one step
-        next_observation = self.make_step(action)
+        info = {"current_step": self.current_step}
+        
+        actions = self.task.normalize_action(self, actions)
+        for idx, sim in enumerate(self.jsbsims.values()):
+            sim.set_property_values(self.task.action_var, actions[idx])
+        # run simulator for one step
+        for _ in range(self.agent_interaction_steps):
+            for sim in self.sims:
+                sim.run()
 
-        reward = np.zeros(self.num_aircrafts)
+        next_observation = self.get_observation()
+        rewards = np.zeros(self.num_aircrafts)
         for agent_id in range(self.num_aircrafts):
-            reward[agent_id], info = self.task.get_reward(self, agent_id, info)
+            rewards[agent_id], info = self.task.get_reward(self, agent_id, info)
 
         done = False
         for agent_id in range(self.num_aircrafts):
             agent_done, info = self.task.get_termination(self, agent_id, info)
             done = agent_done or done
+        dones = done * np.ones(self.num_aircrafts)
 
-        return next_observation, reward, done, info
+        return next_observation, rewards, dones, info
 
     def get_observation(self):
         """
@@ -101,26 +116,22 @@ class SingleControlEnv(BaseEnv):
             if self.sims[agent_id]:
                 self.sims[agent_id].close()
 
-    def render(self, mode="human", **kwargs):
-        """Renders the environment.
+    def render(self, mode="txt", filepath='./JSBSimRecording.txt.acmi'):
+        if mode == "txt":
+            if not self._create_records:
+                with open(filepath, mode='w', encoding='utf-8-sig') as f:
+                    f.write("FileType=text/acmi/tacview\n")
+                    f.write("FileVersion=2.1\n")
+                    f.write("0,ReferenceTime=2020-04-01T00:00:00Z\n")
+                self._create_records = True
+            with open(filepath, mode='a', encoding='utf-8-sig') as f:
+                timestamp = self.current_step * self.time_interval
+                f.write(f"#{timestamp:.2f}\n")
+                for sim in self.sims:
+                    log_msg = sim.log()
+                    if log_msg is not None:
+                        f.write(log_msg + "\n")
+        # TODO: real time rendering [Use FlightGear, etc.]
+        else:
+            raise NotImplementedError
 
-        The set of supported modes varies per environment. (And some
-
-        environments do not support rendering at all.) By convention,
-
-        if mode is:
-
-        - human: print on the terminal
-        - csv: output to cvs files
-
-        Note:
-
-            Make sure that your class's metadata 'render.modes' key includes
-              the list of supported modes. It's recommended to call super()
-              in implementations to use the functionality of this method.
-        :param mode: str, the mode to render with
-        """
-        render_list = []
-        for agent_id in range(self.num_aircrafts):
-            render_list.append(np.array(self.sims[agent_id].get_property_values(self.task.render_var)))
-        return np.hstack(render_list)

@@ -9,6 +9,7 @@ class HeadingReward(BaseRewardFunction):
     """
     def __init__(self, config):
         super().__init__(config)
+        self.reward_item_names = [self.__class__.__name__ + item for item in ['', '_heading', '_alt', '_roll', '_speed']]
 
     def get_reward(self, task, env, agent_id):
         """
@@ -32,8 +33,8 @@ class HeadingReward(BaseRewardFunction):
         roll_error_scale = 0.35  # radians ~= 20 degrees
         roll_r = math.exp(-((env.jsbsims[ego_uid].get_property_value(c.attitude_roll_rad) / roll_error_scale) ** 2))
 
-        speed_error_scale = 16  # fps (~5%)
-        speed_r = math.exp(-(((env.jsbsims[ego_uid].get_property_value(c.velocities_u_fps) - 800) / speed_error_scale) ** 2))
-
-        reward = (heading_r * alt_r  * roll_r * speed_r) ** (1 / 5)
-        return self._process(reward)
+        speed_error_scale = 12  # mps (~5%)
+        speed_r = math.exp(-((env.jsbsims[ego_uid].get_property_value(c.delta_velocities_u) / speed_error_scale) ** 2))
+        
+        reward = (heading_r * alt_r  * roll_r * speed_r) ** (1 / 4)
+        return self._process(reward, agent_id, (heading_r, alt_r, roll_r, speed_r))
