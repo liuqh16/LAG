@@ -21,36 +21,36 @@ class PPOPolicy:
             {'params': self.critic.parameters()}
         ], lr=self.lr)
 
-    def get_actions(self, obs, rnn_states_actor, rnn_states_critic):
+    def get_actions(self, obs, rnn_states_actor, rnn_states_critic, masks):
         """
         Returns:
             values, actions, action_log_probs, rnn_states_actor, rnn_states_critic
         """
-        actions, action_log_probs, rnn_states_actor = self.actor(obs, rnn_states_actor)
-        values, rnn_states_critic = self.critic(obs, rnn_states_critic)
+        actions, action_log_probs, rnn_states_actor = self.actor(obs, rnn_states_actor, masks)
+        values, rnn_states_critic = self.critic(obs, rnn_states_critic, masks)
         return values, actions, action_log_probs, rnn_states_actor, rnn_states_critic
 
-    def get_values(self, obs, rnn_states_critic):
+    def get_values(self, obs, rnn_states_critic, masks):
         """
         Returns:
             values
         """
-        values, _ = self.critic(obs, rnn_states_critic)
+        values, _ = self.critic(obs, rnn_states_critic, masks)
         return values
 
-    def evaluate_actions(self, obs, rnn_states_actor, rnn_states_critic, action):
+    def evaluate_actions(self, obs, rnn_states_actor, rnn_states_critic, action, masks):
         """
         Returns:
             values, action_log_probs, dist_entropy
         """
-        action_log_probs, dist_entropy = self.actor.evaluate_actions(obs, rnn_states_actor, action)
-        values, _ = self.critic(obs, rnn_states_critic)
+        action_log_probs, dist_entropy = self.actor.evaluate_actions(obs, rnn_states_actor, action, masks)
+        values, _ = self.critic(obs, rnn_states_critic, masks)
         return values, action_log_probs, dist_entropy
 
-    def act(self, obs, rnn_states_actor, deterministic=False):
+    def act(self, obs, rnn_states_actor, masks, deterministic=False):
         """
         Returns:
             actions, rnn_states_actor
         """
-        actions, _, rnn_states_actor = self.actor(obs, rnn_states_actor, deterministic)
+        actions, _, rnn_states_actor = self.actor(obs, rnn_states_actor, masks, deterministic)
         return actions, rnn_states_actor

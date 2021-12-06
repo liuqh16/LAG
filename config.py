@@ -83,6 +83,8 @@ def _get_replaybuffer_config(parser: argparse.ArgumentParser):
             discount factor for rewards (default: 0.99)
         --buffer-size <int>
             the maximum storage in the buffer.
+        --use-proper-time-limits
+            by default, the return value does consider limits of time. If set, compute returns with considering time limits factor.
         --use-gae
             by default, use generalized advantage estimation. If set, do not use gae.
         --gae-lambda <float>
@@ -93,6 +95,8 @@ def _get_replaybuffer_config(parser: argparse.ArgumentParser):
                        help='discount factor for rewards (default: 0.99)')
     group.add_argument("--buffer-size", type=int, default=200,
                        help="maximum storage in the buffer.")
+    group.add_argument("--use-proper-time-limits", action='store_true', default=False,
+                       help='compute returns taking into account time limits')
     group.add_argument("--use-gae", action='store_false', default=True,
                        help='Whether to use generalized advantage estimation')
     group.add_argument("--gae-lambda", type=float, default=0.95,

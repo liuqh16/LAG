@@ -26,40 +26,38 @@ class PPOTrainer():
 
     def ppo_update(self, sample):
 
-        obs_batch, rnn_states_actor_batch, rnn_states_critic_batch, actions_batch, \
-            value_preds_batch, return_batch, old_action_log_probs_batch, advantages_batch = sample
+        obs_batch, actions_batch, masks_batch, old_action_log_probs_batch, advantages_batch, \
+            returns_batch, value_preds_batch, rnn_states_actor_batch, rnn_states_critic_batch = sample
 
-        value_preds_batch = check(value_preds_batch).to(**self.tpdv)
-        return_batch = check(return_batch).to(**self.tpdv)
         old_action_log_probs_batch = check(old_action_log_probs_batch).to(**self.tpdv)
         advantages_batch = check(advantages_batch).to(**self.tpdv)
+        returns_batch = check(returns_batch).to(**self.tpdv)
+        value_preds_batch = check(value_preds_batch).to(**self.tpdv)
 
         # Reshape to do in a single forward pass for all steps
-        values, action_log_probs, dist_entropy = \
-            self.policy.evaluate_actions(obs_batch,
-                                         rnn_states_actor_batch,
-                                         rnn_states_critic_batch,
-                                         actions_batch)
-
-        mask_tensor = torch.sign(torch.max(torch.abs(check(obs_batch).to(**self.tpdv)), dim=-1, keepdim=True)[0])
+        values, action_log_probs, dist_entropy = self.policy.evaluate_actions(obs_batch,
+                                                                              rnn_states_actor_batch,
+                                                                              rnn_states_critic_batch,
+                                                                              actions_batch,
+                                                                              masks_batch)
 
         # Obtain the loss function
         ratio = torch.exp(action_log_probs - old_action_log_probs_batch)
         surr1 = ratio * advantages_batch
         surr2 = torch.clamp(ratio, 1.0 - self.clip_param, 1.0 + self.clip_param) * advantages_batch
         policy_loss = torch.sum(torch.min(surr1, surr2), dim=-1, keepdim=True)
-        policy_loss = -(policy_loss * mask_tensor).mean()
+        policy_loss = policy_loss.mean()
 
         if self.use_clipped_value_loss:
             value_pred_clipped = value_preds_batch + (values - value_preds_batch).clamp(-self.clip_param, self.clip_param)
-            value_losses = (values - return_batch).pow(2)
-            value_losses_clipped = (value_pred_clipped - return_batch).pow(2)
+            value_losses = (values - returns_batch).pow(2)
+            value_losses_clipped = (value_pred_clipped - returns_batch).pow(2)
             value_loss = 0.5 * torch.max(value_losses, value_losses_clipped)
         else:
-            value_loss = 0.5 * (return_batch - values).pow(2)
-        value_loss = (value_loss * mask_tensor).mean()
+            value_loss = 0.5 * (returns_batch - values).pow(2)
+        value_loss = value_loss.mean()
 
-        policy_entropy_loss = -(dist_entropy * mask_tensor).mean()
+        policy_entropy_loss = -dist_entropy.mean()
 
         loss = policy_loss + value_loss * self.value_loss_coef + policy_entropy_loss * self.entropy_coef
 
@@ -79,7 +77,6 @@ class PPOTrainer():
     def train(self, buffer: ReplayBuffer):
         advantages = buffer.returns[:-1] - buffer.value_preds[:-1]
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-5)
-        advantages = buffer.returns[:-1] - buffer.value_preds[:-1]
 
         train_info = {}
         train_info['value_loss'] = 0
@@ -91,7 +88,7 @@ class PPOTrainer():
 
         for _ in range(self.ppo_epoch):
             if self.use_recurrent_policy:
-                data_generator = buffer.recurrent_generator(advantages, self.num_mini_batch)
+                data_generator = buffer.recurrent_generator(advantages, self.num_mini_batch, self.data_chunk_length)
             else:
                 raise NotImplementedError
 

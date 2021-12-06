@@ -15,7 +15,8 @@ def get_shape_from_space(space):
     if isinstance(space, gym.spaces.Discrete):
         return (1,)
     elif isinstance(space, gym.spaces.Box) \
-            or isinstance(space, gym.spaces.MultiDiscrete):
+            or isinstance(space, gym.spaces.MultiDiscrete) \
+            or isinstance(space, gym.spaces.MultiBinary):
         return space.shape
     else:
         raise NotImplementedError
