@@ -66,8 +66,8 @@ class JSBSimRunner(Runner):
 
                 # Extra recorded information
                 for info in infos:
-                    if 'heading_turns' in info:
-                        heading_turns_list.append(info['heading_turns'])
+                    if 'heading_turn_counts' in info:
+                        heading_turns_list.append(info['heading_turn_counts'])
 
             # compute return and update network
             self.compute()

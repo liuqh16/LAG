@@ -101,4 +101,5 @@ def test_heading_env():
     # print(reward_render)
     # np.save('save_trajectories.npy', np.asarray(trajectory_list))
 
-test_env()
+
+test_heading_env()
