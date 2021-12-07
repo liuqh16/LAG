@@ -17,13 +17,15 @@ aircraft_configs: {
   A0100: {
     team: Red,
     model: f16,
+    max_heading_increment: 180,       # degree
+    max_altitude_increment: 7000,     # feet
+    max_velocities_u_increment: 100,  # meter
+    check_interval: 30,               # second
     init_state: {
       ic_long_gc_deg: 120.0,
       ic_lat_geod_deg: 60.0,
-      ic_h_sl_ft: 20000,
-      ic_psi_true_deg: 0.0,
-      ic_u_fps: 800.0,
     }
+    
 }
 }
 # (lontitude, latitude, altitude)
