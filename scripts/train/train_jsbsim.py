@@ -116,6 +116,7 @@ def main(args):
     # run experiments
 
     runner = Runner(config)
+    import pdb; pdb.set_trace()
     runner.run()
 
     # post process

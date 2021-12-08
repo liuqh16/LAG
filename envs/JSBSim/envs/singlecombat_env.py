@@ -13,16 +13,9 @@ class SingleCombatEnv(BaseEnv):
     def __init__(self, config_name: str):
         super().__init__(config_name)
         # Env-Specific initialization here!
-        assert len(self.jsbsims.keys()) == 2, f"{self.__class__.__name__} only supports 1v1 scenarios!"
+        assert len(self.agent_ids) == 2, f"{self.__class__.__name__} only supports 1v1 scenarios!"
         self._create_records = False
-
-
-    @property
-    def sims(self) -> Dict[str, BaseSimulator]:
-        sims = {}
-        sims.update(self.jsbsims)
-        sims.update(self.other_sims)
-        return sims
+        self.__tempsims = {}  # type: Dict[str, BaseSimulator]
 
     def load_task(self):
         taskname = getattr(self.config, 'task', None)
@@ -89,10 +82,11 @@ class SingleCombatEnv(BaseEnv):
 
         return obs, reward, done, info
 
-    def get_obs(self):
-        obs = self.agents[0].get_property_values(self.task.state_var)
-        enemy_obs = self.agents[0].enemies[0].get_property_values(self.task.state_var)
-        return self.task.normalize_obs(self, obs, enemy_obs)
+    def get_obs_agent(self, agent_id: str):
+        obs_ego = np.array(self.agents[agent_id].get_property_values(self.task.state_var))
+        # select the first enemy's state as extra input
+        obs_enemy = np.array(self.agents[agent_id].enemies[0].get_property_values(self.task.state_var))
+        return self.task.normalize_obs(self, agent_id, np.hstack((obs_ego, obs_enemy)))
 
     def close(self):
         res = super().close()

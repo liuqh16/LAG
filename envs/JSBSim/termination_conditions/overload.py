@@ -15,7 +15,7 @@ class Overload(BaseTerminationCondition):
         self.acceleration_limit_y = getattr(config, 'acceleration_limit_y', 10.0)  # unit: g
         self.acceleration_limit_z = getattr(config, 'acceleration_limit_z', 10.0)  # unit: g
 
-    def get_termination(self, task, env, agent_id=0, info={}):
+    def get_termination(self, task, env, agent_id, info={}):
         """
         Return whether the episode should terminate.
         End up the simulation if acceleration are too high.
@@ -27,20 +27,18 @@ class Overload(BaseTerminationCondition):
         Returns:
             (tuple): (done, success, info)
         """
-        ego_uid = list(env.jsbsims.keys())[agent_id]
-        done = self._judge_overload(env.jsbsims[ego_uid])
+        done = self._judge_overload(env.agents[agent_id])
         if done:
-            print(f'INFO: agent[{agent_id}] acceleration is too high! Total Steps={env.current_step}')
-            info[f'agent{agent_id}_end_reason'] = 1  # crash
+            print(f'INFO: {agent_id} acceleration is too high! Total Steps={env.current_step}')
+            info[f'{agent_id}_end_reason'] = 1  # crash
         success = False
         return done, success, info
 
     def _judge_overload(self, sim):
         flag_overload = False
         if sim.get_property_value(c.simulation_sim_time_sec) > 10:
-            if (math.fabs(sim.get_property_value(c.accelerations_n_pilot_x_norm)) > self.acceleration_limit_x
-                or math.fabs(sim.get_property_value(c.accelerations_n_pilot_y_norm)) > self.acceleration_limit_y
-                or math.fabs(sim.get_property_value(c.accelerations_n_pilot_z_norm) + 1) > self.acceleration_limit_z
-            ):
+            if math.fabs(sim.get_property_value(c.accelerations_n_pilot_x_norm)) > self.acceleration_limit_x \
+                    or math.fabs(sim.get_property_value(c.accelerations_n_pilot_y_norm)) > self.acceleration_limit_y \
+                    or math.fabs(sim.get_property_value(c.accelerations_n_pilot_z_norm) + 1) > self.acceleration_limit_z:
                 flag_overload = True
         return flag_overload

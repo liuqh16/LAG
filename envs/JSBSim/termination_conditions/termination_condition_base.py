@@ -11,7 +11,7 @@ class BaseTerminationCondition(ABC):
         self.config = config
 
     @abstractmethod
-    def get_termination(self, task, env, agent_id=0, info={}):
+    def get_termination(self, task, env, agent_id, info={}):
         """
         Return whether the episode should terminate.
         Overwritten by subclasses.

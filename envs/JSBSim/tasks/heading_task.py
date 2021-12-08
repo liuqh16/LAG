@@ -63,7 +63,7 @@ class HeadingTask(BaseTask):
         # aileron, elevator, rudder, throttle
         self.action_space = spaces.MultiDiscrete([41, 41, 41, 30])
 
-    def normalize_obs(self, env, obs):
+    def normalize_obs(self, env, agent_id, obs):
         """Normalize raw observation to make training easier.
         """
         norm_obs = np.zeros(11)
@@ -78,9 +78,10 @@ class HeadingTask(BaseTask):
         norm_obs[8] = obs[6] / 340          # 5. ego_v_east    (unit: mh)
         norm_obs[9] = obs[7] / 340          # 6. ego_v_down    (unit: mh)
         norm_obs[10] = obs[8] / 340         # 7. ego_vc        (unit: mh)
+        norm_obs = np.clip(norm_obs, self.observation_space.low, self.observation_space.high)
         return norm_obs
 
-    def normalize_action(self, env, action):
+    def normalize_action(self, env, agent_id, action):
         """Convert discrete action index into continuous value.
         """
         norm_act = np.zeros(4)

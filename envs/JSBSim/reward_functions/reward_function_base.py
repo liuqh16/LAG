@@ -13,8 +13,9 @@ class BaseRewardFunction(ABC):
         # inner variables
         self.reward_scale = getattr(self.config, f'{self.__class__.__name__}_scale', 1.0)
         self.is_potential = getattr(self.config, f'{self.__class__.__name__}_potential', False)
-        self.reward_item_names = [self.__class__.__name__]
+        self.pre_rewards = {}
         self.reward_trajectory = defaultdict(list)
+        self.reward_item_names = [self.__class__.__name__]
 
     def reset(self, task, env):
         """Perform reward function-specific reset after episode reset.
@@ -25,8 +26,8 @@ class BaseRewardFunction(ABC):
             env: environment instance
         """
         if self.is_potential:
-            self.pre_rewards = [0.0 for _ in range(env.num_agents)]
-            for agent_id in range(env.num_agents):
+            self.pre_rewards.clear()
+            for agent_id in env.agent_ids:
                 self.pre_rewards[agent_id] = self.get_reward(task, env, agent_id)
         self.reward_trajectory.clear()
 
@@ -44,12 +45,12 @@ class BaseRewardFunction(ABC):
         """
         raise NotImplementedError
 
-    def _process(self, new_reward, agent_id=0, render_items=()):
+    def _process(self, new_reward, agent_id, render_items=()):
         """Process reward and inner variables.
 
         Args:
             new_reward (float)
-            agent_id (int)
+            agent_id (str)
             render_items (tuple, optional): Must set if `len(reward_item_names)>1`. Defaults to None.
 
         Returns:

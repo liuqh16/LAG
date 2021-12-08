@@ -1,5 +1,6 @@
 import numpy as np
 from gym import spaces
+from typing import List, Tuple
 from abc import ABC, abstractmethod
 from ..core.catalog import Catalog as c
 
@@ -12,9 +13,9 @@ class BaseTask(ABC):
     """
     def __init__(self, config):
         self.config = config
+        self.agent_ids = list(self.config.aircraft_configs.keys())  # type: List[str]
         self.reward_functions = []
         self.termination_conditions = []
-        self.policy = None
         self.load_variables()
         self.load_observation_space()
         self.load_action_space()
@@ -81,7 +82,7 @@ class BaseTask(ABC):
         """
         pass
 
-    def get_reward(self, env, agent_id, info={}):
+    def get_reward(self, env, agent_id, info={}) -> Tuple[float, dict]:
         """
         Aggregate reward functions
 
@@ -100,7 +101,7 @@ class BaseTask(ABC):
             reward += reward_function.get_reward(self, env, agent_id)
         return reward, info
 
-    def get_termination(self, env, agent_id, info={}):
+    def get_termination(self, env, agent_id, info={}) -> Tuple[bool, dict]:
         """
         Aggregate termination conditions
 
@@ -124,25 +125,12 @@ class BaseTask(ABC):
                 break
         return done, info
 
-    def normalize_obs(self, env, obs):
+    def normalize_obs(self, env, agent_id, obs):
         """Extract useful informations from raw observation.
         """
         return np.array(obs)
 
-    def normalize_action(self, env, action):
+    def normalize_action(self, env, agent_id, action):
         """Normalize action to be consistent with action space.
         """
         return np.array(action)
-
-    def load_policy(self, policy):
-        """Load a specific strategy for opponents
-
-        Args:
-            policy (str | torch.nn.Module): Rule-based / Parameterized policy
-        """
-        pass
-
-    def rollout(self, env, sim):
-        """Return a legal action of the given simulator based on `self.policy`
-        """
-        assert self.policy is not None

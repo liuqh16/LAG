@@ -16,7 +16,7 @@ class UnreachHeading(BaseTerminationCondition):
         self.target_angles = np.array([30., 60., 90., 120., 150., 180.])
         self.check_interval = 20
 
-    def get_termination(self, task, env, agent_id=0, info={}):
+    def get_termination(self, task, env, agent_id, info={}):
         """
         Return whether the episode should terminate.
         End up the simulation if the aircraft didn't reach the target heading or attitude in limited time.

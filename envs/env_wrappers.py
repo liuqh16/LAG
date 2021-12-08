@@ -5,7 +5,6 @@ import numpy as np
 from abc import ABC, abstractmethod
 from multiprocessing import Process, Pipe
 from multiprocessing.connection import Connection
-from utils.utils import tile_images
 
 
 class CloudpickleWrapper(object):
@@ -33,11 +32,6 @@ class VecEnv(ABC):
     be applied per-environment.
     """
     closed = False
-    viewer = None
-
-    metadata = {
-        'render.modes': ['human', 'rgb_array']
-    }
 
     def __init__(self, num_envs, observation_space, action_space):
         self.num_envs = num_envs
@@ -49,6 +43,7 @@ class VecEnv(ABC):
         """
         Reset all the environments and return an array of
         observations, or a dict of observation arrays.
+
         If step_async is still doing work, that work will
         be cancelled and step_wait() should not be called
         until step_async() is invoked again.
@@ -61,6 +56,7 @@ class VecEnv(ABC):
         Tell all the environments to start taking a step
         with the given actions.
         Call step_wait() to get the results of the step.
+
         You should not call this if a step_async run is
         already pending.
         """
@@ -70,6 +66,7 @@ class VecEnv(ABC):
     def step_wait(self):
         """
         Wait for the step taken with step_async().
+
         Returns (obs, rews, dones, infos):
          - obs: an array of observations, or a dict of
                 arrays of observations.
@@ -89,41 +86,17 @@ class VecEnv(ABC):
     def close(self):
         if self.closed:
             return
-        if self.viewer is not None:
-            self.viewer.close()
         self.close_extras()
         self.closed = True
 
     def step(self, actions):
         """
         Step the environments synchronously.
+
         This is available for backwards compatibility.
         """
         self.step_async(actions)
         return self.step_wait()
-
-    def render(self, mode='human'):
-        imgs = self.get_images()
-        bigimg = tile_images(imgs)
-        if mode == 'human':
-            self.get_viewer().imshow(bigimg)
-            return self.get_viewer().isopen
-        elif mode == 'rgb_array':
-            return bigimg
-        else:
-            raise NotImplementedError
-
-    def get_images(self):
-        """
-        Return RGB images from each environment
-        """
-        raise NotImplementedError
-
-    def get_viewer(self):
-        if self.viewer is None:
-            from gym.envs.classic_control import rendering
-            self.viewer = rendering.SimpleImageViewer()
-        return self.viewer
 
 
 def worker(remote: Connection, parent_remote: Connection, env_fn_wrapper):
@@ -137,40 +110,32 @@ def worker(remote: Connection, parent_remote: Connection, env_fn_wrapper):
     """
     parent_remote.close()
     env = env_fn_wrapper.x()
-    while True:
-        cmd, data = remote.recv()
-        if cmd == 'step':
-            obs, reward, done, info = env.step(data)
-            if 'bool' in done.__class__.__name__:
-                if done:
-                    obs = env.reset()
-            elif isinstance(done, (list, tuple, np.ndarray)):
+    try:
+        while True:
+            cmd, data = remote.recv()
+            if cmd == 'step':
+                obs, reward, done, info = env.step(data)
+                obs = _listify_scalar(obs)
+                reward = _listify_scalar(reward)
+                done = _listify_scalar(done)
                 if np.all(done):
                     obs = env.reset()
-            else:
-                raise NotImplementedError("Unexpected type of done!")
-            remote.send((obs, reward, done, info))
-        elif cmd == 'reset':
-            obs = env.reset()
-            remote.send((obs))
-        elif cmd == 'render':
-            if data == "rgb_array":
-                fr = env.render(mode=data)
-                remote.send(fr)
-            elif data == "human":
-                env.render(mode=data)
+                remote.send((obs, reward, done, info))
+            elif cmd == 'reset':
+                obs = _listify_scalar(env.reset())
+                remote.send((obs))
+            elif cmd == 'close':
+                env.close()
+                remote.close()
+                break
+            elif cmd == 'get_spaces':
+                remote.send((env.observation_space, env.action_space))
             else:
                 raise NotImplementedError
-        elif cmd == 'close':
-            env.close()
-            remote.close()
-            break
-        elif cmd == 'get_spaces':
-            remote.send((env.observation_space, env.action_space))
-        elif cmd == 'get_max_steps':
-            remote.send((env.max_steps))
-        else:
-            raise NotImplementedError
+    except KeyboardInterrupt:
+        print('SubprocVecEnv worker: got KeyboardInterrupt')
+    finally:
+        env.close()
 
 
 class DummyVecEnv(VecEnv):
@@ -184,48 +149,32 @@ class DummyVecEnv(VecEnv):
         self.envs = [fn() for fn in env_fns]
         env = self.envs[0]
         super().__init__(len(self.envs), env.observation_space, env.action_space)
+
+        self.buf_obs = [None] * self.num_envs
+        self.buf_dones = np.zeros((self.num_envs, 1), dtype=np.bool)
+        self.buf_rews = np.zeros((self.num_envs, 1), dtype=np.float32)
+        self.buf_infos = [{} for _ in range(self.num_envs)]
         self.actions = None
 
     def step_async(self, actions):
         self.actions = actions
 
     def step_wait(self):
-        results = [env.step(a) for (a, env) in zip(self.actions, self.envs)]
-        obs, rews, dones, infos = map(np.array, zip(*results))
-        for (i, done) in enumerate(dones):
-            if 'bool' in done.__class__.__name__:
-                if done:
-                    obs[i] = self.envs[i].reset()
-            elif isinstance(done, (list, tuple, np.ndarray)):
-                if np.all(done):
-                    obs[i] = self.envs[i].reset()
-            else:
-                raise NotImplementedError("Unexpected type of done!")
+        for e in range(self.num_envs):
+            self.buf_obs[e], self.buf_rews[e], self.buf_dones[e], self.buf_infos[e] = self.envs[e].step(self.actions[e])
+            if np.all(self.buf_dones[e]):
+                self.buf_obs[e] = self.envs[e].reset()
         self.actions = None
-        return obs, rews, dones, infos
+        return self.buf_obs.copy(), np.copy(self.buf_rews), np.copy(self.buf_dones), self.buf_infos.copy()
 
     def reset(self):
-        obs = [env.reset() for env in self.envs]
-        return np.array(obs)
-
-    def get_max_step(self):
-        return [env.max_steps for env in self.envs]
+        for e in range(self.num_envs):
+            self.buf_obs[e] = self.envs[e].reset()
+        return self.buf_obs.copy()
 
     def close(self):
         for env in self.envs:
             env.close()
-
-    def render(self, mode="human", filepath=None):
-        if mode == "rgb_array":
-            return np.array([env.render(mode) for env in self.envs])
-        elif mode == "human":
-            for env in self.envs:
-                env.render(mode=mode)
-        elif mode == 'txt':
-            for env in self.envs:
-                env.render(mode=mode, filepath=filepath)
-        else:
-            raise NotImplementedError
 
 
 class SubprocVecEnv(VecEnv):
@@ -237,7 +186,7 @@ class SubprocVecEnv(VecEnv):
         self.waiting = False
         self.closed = False
         nenvs = len(env_fns)
-        # create Pipe connections to send/recv data from subprocesses, 
+        # create Pipe connections to send/recv data from subprocesses,
         # only use one-end in mainprocess and the other must be closed.
         self.remotes, self.work_remotes = zip(*[Pipe() for _ in range(nenvs)])
         self.ps = [Process(target=worker, args=(work_remote, remote, CloudpickleWrapper(env_fn)))
@@ -282,3 +231,10 @@ class SubprocVecEnv(VecEnv):
 
     def _assert_not_closed(self):
         assert not self.closed, "Trying to operate on a SubprocVecEnv after calling close()"
+
+
+def _listify_scalar(value):
+    value = np.array(value)
+    if value.ndim == 0:
+        value = np.array([value])
+    return value

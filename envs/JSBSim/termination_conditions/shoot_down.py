@@ -11,7 +11,7 @@ class ShootDown(BaseTerminationCondition):
         super().__init__(config)
         self.altitude_limit = getattr(config, 'altitude_limit', 2500)  # unit: m
 
-    def get_termination(self, task, env, agent_id=0, info={}):
+    def get_termination(self, task, env, agent_id, info={}):
         """
         Return whether the episode should terminate.
         End up the simulation if the aircraft has been shot down.
@@ -25,7 +25,7 @@ class ShootDown(BaseTerminationCondition):
         """
         done = task.bloods[agent_id] <= 0
         if done:
-            print(f'INFO: agent[{agent_id}] has been shot down!')
-            info[f'agent{agent_id}_end_reason'] = 2  # shoot down
+            print(f'INFO: {agent_id} has been shot down!')
+            info[f'{agent_id}_end_reason'] = 2  # shoot down
         success = False
         return done, success, info

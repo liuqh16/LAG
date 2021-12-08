@@ -11,7 +11,7 @@ class ExtremeState(BaseTerminationCondition):
     def __init__(self, config):
         super().__init__(config)
 
-    def get_termination(self, task, env, agent_id=0, info={}):
+    def get_termination(self, task, env, agent_id, info={}):
         """
         Return whether the episode should terminate.
         End up the simulation if the aircraft is on an extreme state.
@@ -23,10 +23,9 @@ class ExtremeState(BaseTerminationCondition):
         Returns:
             (tuple): (done, success, info)
         """
-        ego_uid = list(env.jsbsims.keys())[agent_id]
-        done = bool(env.jsbsims[ego_uid].get_property_value(c.detect_extreme_state))
+        done = bool(env.agents[agent_id].get_property_value(c.detect_extreme_state))
         if done:
-            print(f'INFO: agent[{agent_id}] is on an extreme state! Total Steps={env.current_step}')
-            info[f'agent{agent_id}_end_reason'] = 1  # crash
+            print(f'INFO: {agent_id} is on an extreme state! Total Steps={env.current_step}')
+            info[f'{agent_id}_end_reason'] = 1  # crash
         success = False
         return done, success, info

@@ -12,7 +12,7 @@ class LowAltitude(BaseTerminationCondition):
         super().__init__(config)
         self.altitude_limit = getattr(config, 'altitude_limit', 2500)  # unit: m
 
-    def get_termination(self, task, env, agent_id=0, info={}):
+    def get_termination(self, task, env, agent_id, info={}):
         """
         Return whether the episode should terminate.
         End up the simulation if altitude are too low.
@@ -24,10 +24,9 @@ class LowAltitude(BaseTerminationCondition):
         Returns:
             (tuple): (done, success, info)
         """
-        ego_uid = list(env.jsbsims.keys())[agent_id]
-        done = env.jsbsims[ego_uid].get_property_value(c.position_h_sl_m) <= self.altitude_limit
+        done = env.agents[agent_id].get_property_value(c.position_h_sl_m) <= self.altitude_limit
         if done:
-            print(f'INFO: agent[{agent_id}] altitude is too low. Total Steps={env.current_step}')
-            info[f'agent{agent_id}_end_reason'] = 1  # crash
+            print(f'INFO: {agent_id} altitude is too low. Total Steps={env.current_step}')
+            info[f'{agent_id}_end_reason'] = 1  # crash
         success = False
         return done, success, info

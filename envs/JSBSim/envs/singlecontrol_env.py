@@ -9,7 +9,7 @@ class SingleControlEnv(BaseEnv):
     def __init__(self, config_name: str):
         super().__init__(config_name)
         # Env-Specific initialization here!
-        assert len(self.jsbsims.keys()) == 1, f"{self.__class__.__name__} only supports 1 aircraft!"
+        assert len(self.agent_ids) == 1, f"{self.__class__.__name__} only supports 1 aircraft!"
 
     def load_task(self):
         taskname = getattr(self.config, 'task', None)
@@ -28,7 +28,7 @@ class SingleControlEnv(BaseEnv):
         return self.get_obs()
 
     def reset_simulators(self):
-        new_init_state = self.agents[0].init_state
+        new_init_state = self.agents[self.agent_ids[0]].init_state
         new_init_state.update({
             'ic_psi_true_deg': 0,
             'ic_u_fps': 800,
@@ -42,7 +42,7 @@ class SingleControlEnv(BaseEnv):
             'target_velocities_u_mps': 243,
             'heading_check_time': 20
         })
-        self.agents[0].reload(new_init_state)
+        self.agents[self.agent_ids[0]].reload(new_init_state)
 
     def step(self, action):
         """Run one timestep of the environment's dynamics. When end of
@@ -63,21 +63,21 @@ class SingleControlEnv(BaseEnv):
         self.current_step += 1
         info = {"current_step": self.current_step}
 
+        agent_id = self.agent_ids[0]
         # apply actions
-        action = self.task.normalize_action(self, action)
-        self.agents[0].set_property_values(self.task.action_var, action)
+        action = self.task.normalize_action(self, agent_id, action)
+        self.agents[agent_id].set_property_values(self.task.action_var, action)
         # run simulation
         for _ in range(self.agent_interaction_steps):
-            self.agents[0].run()
+            self.agents[agent_id].run()
 
         obs = self.get_obs()
 
-        reward, info = self.task.get_reward(self, 0, info)
+        reward, info = self.task.get_reward(self, agent_id, info)
 
-        done, info = self.task.get_termination(self, 0, info)
+        done, info = self.task.get_termination(self, agent_id, info)
 
         return obs, reward, done, info
 
     def get_obs(self):
-        obs = self.agents[0].get_property_values(self.task.state_var)
-        return self.task.normalize_obs(self, obs)
+        return self.get_obs_agent(self.agent_ids[0])

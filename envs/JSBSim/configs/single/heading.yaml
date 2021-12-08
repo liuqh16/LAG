@@ -25,7 +25,7 @@ aircraft_configs: {
       ic_u_fps: 800.0,
       heading_check_time: 20.0,
     }
-}
+  }
 }
 # (lontitude, latitude, altitude)
 battle_field_center: [120.0, 60.0, 0.0]

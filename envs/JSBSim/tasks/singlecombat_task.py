@@ -11,9 +11,6 @@ from ..utils.utils import in_range_rad, get_AO_TA_R, LLA2NEU, get_root_dir
 class SingleCombatTask(BaseTask):
     def __init__(self, config):
         super().__init__(config)
-        self.use_baseline = getattr(self.config, 'use_baseline', False)
-        if self.use_baseline:
-            self.load_policy(self.config.baseline_type)
 
         self.reward_functions = [
             AltitudeReward(self.config),
@@ -33,7 +30,7 @@ class SingleCombatTask(BaseTask):
 
     @property
     def num_agents(self) -> int:
-        return 1
+        return 2
 
     def load_variables(self):
         self.state_var = [
@@ -67,17 +64,18 @@ class SingleCombatTask(BaseTask):
         ]
 
     def load_observation_space(self):
-        self.observation_space = spaces.Box(low=-10, high=10., shape=(18,))
+        self.observation_space = dict([(agend_id, spaces.Box(low=-10, high=10., shape=(18,))) for agend_id in self.agent_ids])
 
     def load_action_space(self):
         # aileron, elevator, rudder, throttle
-        self.action_space = spaces.MultiDiscrete([41, 41, 41, 30])
+        self.action_space = dict([(agend_id, spaces.MultiDiscrete([41, 41, 41, 30])) for agend_id in self.agent_ids])
 
-    def normalize_obs(self, env, obs, enemy_obs):
+    def normalize_obs(self, env, agent_id, obs):
         """Combine both aircrafts' state to generate actual observation
         """
         norm_obs = np.zeros(18)
-        ego_obs_list, enm_obs_list = np.array(obs), np.array(enemy_obs)
+        ego_obs_list, enm_obs_list = obs[:13], obs[13:]
+        assert len(ego_obs_list) == len(enm_obs_list)
         # (0) extract feature: [north(km), east(km), down(km), v_n(mh), v_e(mh), v_d(mh)]
         ego_cur_ned = LLA2NEU(*ego_obs_list[:3], env.center_lon, env.center_lat, env.center_alt)
         enm_cur_ned = LLA2NEU(*enm_obs_list[:3], env.center_lon, env.center_lat, env.center_alt)
@@ -104,9 +102,10 @@ class SingleCombatTask(BaseTask):
         norm_obs[15] = enm_obs_list[2] / 5000            # 15. enm_altitude  (unit: 5km)
         norm_obs[16] = np.linalg.norm(enm_feature[3:])   # 16. enm_v         (unit: mh)
         norm_obs[17] = enm_obs_list[8]                   # 17. enm_v_down    (unit: mh)
+        norm_obs = np.clip(norm_obs, self.observation_space[agent_id].low, self.observation_space[agent_id].high)
         return norm_obs
 
-    def normalize_action(self, env, action):
+    def normalize_action(self, env, agent_id, action):
         """Convert discrete action index into continuous value.
         """
         norm_act = np.zeros(4)
@@ -119,25 +118,7 @@ class SingleCombatTask(BaseTask):
     def reset(self, env):
         """Task-specific reset, include reward function reset.
         """
-        if self.policy is not None:
-            self.policy.reset()
         return super().reset(env)
-
-    def load_policy(self, policy: str):
-        if isinstance(policy, str):
-            if policy == "control":
-                self.policy = SingleControlAgent()
-            elif policy == "straight":
-                self.policy = StraightFlyAgent()
-            else:
-                assert ValueError(f"Unknown policy: {policy}")
-        else:
-            assert isinstance(policy, torch.nn.Module)
-            self.policy = HistoryAgent(policy)
-
-    def rollout(self, env, sim):
-        action = self.policy.get_action(env, self, sim)
-        return self.normalize_action(env, action)
 
 
 def load_agent(name):
@@ -202,17 +183,3 @@ class StraightFlyAgent(SingleControlAgent):
 
     def _calculate_cmd(self, env, task, sim):
         return 0, 0
-
-
-class HistoryAgent(SingleControlAgent):
-    def __init__(self, policy: torch.nn.Module):
-        self.actor = policy.cpu()
-        self.actor.eval()
-
-    def get_action(self, env, task, sim):
-        ego_obs = sim.get_property_values(task.state_var)
-        enm_obs = sim.ememies[0].get_property_values(task.state_var)
-        norm_obs = task.normalize_obs(env, ego_obs, enm_obs)
-        norm_obs = np.expand_dims(norm_obs, axis=0)
-        action, _, self.rnn_states = self.actor(norm_obs, self.rnn_states, deterministic=True)
-        return action.detach().cpu().numpy().squeeze()
