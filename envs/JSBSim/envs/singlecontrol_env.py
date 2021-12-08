@@ -17,8 +17,6 @@ class SingleControlEnv(BaseEnv):
             self.task = HeadingTask(self.config)
         else:
             raise NotImplementedError(f'Unknown taskname: {taskname}')
-        self.observation_space = self.task.observation_space
-        self.action_space = self.task.action_space
 
     def reset(self):
         self.current_step = 0
@@ -80,4 +78,4 @@ class SingleControlEnv(BaseEnv):
         return obs, reward, done, info
 
     def get_obs(self):
-        return self.get_obs_agent(self.agent_ids[0])
+        return self.task.get_obs(self, self.agent_ids[0])

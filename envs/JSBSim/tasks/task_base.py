@@ -73,12 +73,11 @@ class BaseTask(ABC):
         for reward_function in self.reward_functions:
             reward_function.reset(self, env)
 
-    def step(self, env, action):
+    def step(self, env):
         """ Task-specific step
 
         Args:
             env: environment instance
-            action: input action
         """
         pass
 
@@ -125,10 +124,10 @@ class BaseTask(ABC):
                 break
         return done, info
 
-    def normalize_obs(self, env, agent_id, obs):
-        """Extract useful informations from raw observation.
+    def get_obs(self, env, agent_id):
+        """Extract useful informations from environment for specific agent_id.
         """
-        return np.array(obs)
+        return np.zeros(2)
 
     def normalize_action(self, env, agent_id, action):
         """Normalize action to be consistent with action space.

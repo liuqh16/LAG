@@ -63,9 +63,10 @@ class HeadingTask(BaseTask):
         # aileron, elevator, rudder, throttle
         self.action_space = spaces.MultiDiscrete([41, 41, 41, 30])
 
-    def normalize_obs(self, env, agent_id, obs):
+    def get_obs(self, env, agent_id):
         """Normalize raw observation to make training easier.
         """
+        obs = np.array(env.agents[agent_id].get_property_values(self.state_var))
         norm_obs = np.zeros(11)
         norm_obs[0] = obs[0] / 1000         # 0. ego delta altitude  (unit: 1km)
         norm_obs[1] = obs[1] / 180 * np.pi  # 1. ego delta heading   (unit rad)

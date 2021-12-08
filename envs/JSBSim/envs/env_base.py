@@ -1,8 +1,8 @@
 import gym
 from gym.utils import seeding
 import numpy as np
-from typing import Dict, List, Union
-from ..core.simulatior import AircraftSimulator
+from typing import Dict, List
+from ..core.simulatior import AircraftSimulator, BaseSimulator
 from ..tasks.task_base import BaseTask
 from ..utils.utils import parse_config
 
@@ -25,11 +25,12 @@ class BaseEnv(gym.Env):
         self.jsbsim_freq = getattr(self.config, 'jsbsim_freq', 60)  # type: int
         self.agent_interaction_steps = getattr(self.config, 'agent_interaction_steps', 12)  # type: int
         self.center_lon, self.center_lat, self.center_alt = getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0))
+        self._create_records = False
         self.load()
 
     @property
     def agent_ids(self) -> List[str]:
-        return self.__agent_ids
+        return self._agent_ids
 
     @property
     def num_agents(self) -> int:
@@ -37,11 +38,19 @@ class BaseEnv(gym.Env):
 
     @property
     def agents(self) -> Dict[str, AircraftSimulator]:
-        return self.__jsbsims
+        return self._jsbsims
 
     @property
     def time_interval(self) -> int:
         return self.agent_interaction_steps / self.jsbsim_freq
+
+    @property
+    def observation_space(self) -> Dict[str, gym.Space]:
+        return self.task.observation_space
+
+    @property
+    def action_space(self) -> Dict[str, gym.Space]:
+        return self.task.action_space
 
     def load(self):
         self.load_task()
@@ -50,28 +59,31 @@ class BaseEnv(gym.Env):
 
     def load_task(self):
         self.task = BaseTask(self.config)
-        self.observation_space = self.task.observation_space
-        self.action_space = self.task.action_space
 
     def load_simulator(self):
-        self.__jsbsims = {}   # type: Dict[str, AircraftSimulator]
+        self._jsbsims = {}     # type: Dict[str, AircraftSimulator]
         for uid, config in self.config.aircraft_configs.items():
-            self.__jsbsims[uid] = AircraftSimulator(
+            self._jsbsims[uid] = AircraftSimulator(
                 uid, config.get("color", "Red"),
                 config.get("model", "f16"),
                 config.get("init_state"),
                 getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0)),
                 self.jsbsim_freq)
-        self.__agent_ids = list(self.__jsbsims.keys())
+        self._agent_ids = list(self._jsbsims.keys())
 
-        for key, sim in self.__jsbsims.items():
-            for k, s in self.__jsbsims.items():
+        for key, sim in self._jsbsims.items():
+            for k, s in self._jsbsims.items():
                 if k == key:
                     pass
                 elif k[0] == key[0]:
                     sim.partners.append(s)
                 else:
                     sim.enemies.append(s)
+
+        self._tempsims = {}    # type: Dict[str, BaseSimulator]
+
+    def add_temp_simulator(self, sim: BaseSimulator):
+        self._tempsims[sim.uid] = sim
 
     def reset(self):
         """Resets the state of the environment and returns an initial observation.
@@ -81,8 +93,9 @@ class BaseEnv(gym.Env):
         """
         # reset sim
         self.current_step = 0
-        for sim in self.__jsbsims.values():
+        for sim in self._jsbsims.values():
             sim.reload()
+        self._tempsims.clear()
         # reset task
         self.task.reset(self)
         return self.get_obs()
@@ -110,12 +123,15 @@ class BaseEnv(gym.Env):
 
         # apply actions
         for agent_id in self.agent_ids:
-            action = self.task.normalize_action(self, agent_id, action[agent_id])
-            self.agents[agent_id].set_property_values(self.task.action_var, action)
+            a_action = self.task.normalize_action(self, agent_id, action[agent_id])
+            self.agents[agent_id].set_property_values(self.task.action_var, a_action)
         # run simulation
         for _ in range(self.agent_interaction_steps):
-            for sim in self.__jsbsims.values():
+            for sim in self._jsbsims.values():
                 sim.run()
+            for sim in self._tempsims.values():
+                sim.run()
+        self.task.step(self)
 
         obs = self.get_obs()
 
@@ -124,19 +140,10 @@ class BaseEnv(gym.Env):
             rewards[agent_id], info = self.task.get_reward(self, agent_id, info)
 
         dones = {}
-        for agent_id in range(self.num_agents):
+        for agent_id in self.agent_ids:
             dones[agent_id], info = self.task.get_termination(self, agent_id, info)
 
         return obs, rewards, dones, info
-
-    def get_obs_agent(self, agent_id: str):
-        """Returns observation for agent_id.
-
-        Returns:
-            (np.array)
-        """
-        obs_agent = np.array(self.agents[agent_id].get_property_values(self.task.state_var))
-        return self.task.normalize_obs(self, agent_id, obs_agent)
 
     def get_obs(self):
         """Returns all agent observations in a list.
@@ -144,15 +151,14 @@ class BaseEnv(gym.Env):
         NOTE: Agents should have access only to their local observations
         during decentralised execution.
         """
-        obs = dict([(agent_id, self.get_obs_agent(agent_id)) for agent_id in self.agent_ids])
-        return obs
+        return dict([(agent_id, self.task.get_obs(self, agent_id)) for agent_id in self.agent_ids])
 
     def get_state(self):
         """Returns the global state.
 
         NOTE: This functon should not be used during decentralised execution.
         """
-        return np.stack([self.get_obs_agent(agent_id) for agent_id in self.agent_ids])
+        return np.stack([self.task.get_obs(self, agent_id) for agent_id in self.agent_ids])
 
     def close(self):
         """Cleans up this environment's objects
@@ -160,11 +166,14 @@ class BaseEnv(gym.Env):
         NOTE: Environments automatically close() when garbage collected or when the
         program exits.
         """
-        for sim in self.__jsbsims.values():
+        for sim in self._jsbsims.values():
             sim.close()
-        self.__jsbsims = {}
+        for sim in self._tempsims.values():
+            sim.close()
+        self._jsbsims.clear()
+        self._tempsims.clear()
 
-    def render(self, mode="human", **kwargs):
+    def render(self, mode="txt", filepath='./JSBSimRecording.txt.acmi'):
         """Renders the environment.
 
         The set of supported modes varies per environment. (And some
@@ -183,7 +192,27 @@ class BaseEnv(gym.Env):
               in implementations to use the functionality of this method.
         :param mode: str, the mode to render with
         """
-        pass
+        if mode == "txt":
+            if not self._create_records:
+                with open(filepath, mode='w', encoding='utf-8-sig') as f:
+                    f.write("FileType=text/acmi/tacview\n")
+                    f.write("FileVersion=2.1\n")
+                    f.write("0,ReferenceTime=2020-04-01T00:00:00Z\n")
+                self._create_records = True
+            with open(filepath, mode='a', encoding='utf-8-sig') as f:
+                timestamp = self.current_step * self.time_interval
+                f.write(f"#{timestamp:.2f}\n")
+                for sim in self._jsbsims.values():
+                    log_msg = sim.log()
+                    if log_msg is not None:
+                        f.write(log_msg + "\n")
+                for sim in self._tempsims.values():
+                    log_msg = sim.log()
+                    if log_msg is not None:
+                        f.write(log_msg + "\n")
+        # TODO: real time rendering [Use FlightGear, etc.]
+        else:
+            raise NotImplementedError
 
     def seed(self, seed=None):
         """

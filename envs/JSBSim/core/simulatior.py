@@ -87,6 +87,9 @@ class AircraftSimulator(BaseSimulator):
     """A class which wraps an instance of JSBSim and manages communication with it.
     """
 
+    ALIVE = 0
+    CRASH = 1
+
     def __init__(self,
                  uid: str = "A0100",
                  color: TeamColors = "Red",
@@ -110,20 +113,40 @@ class AircraftSimulator(BaseSimulator):
         self.model = model
         self.init_state = init_state
         self.lon0, self.lat0, self.alt0 = origin
-        self._status = "Alive"
+        self._bloods = 100
+        self._status = AircraftSimulator.ALIVE
+        # fixed simulator links
         self.partners = []  # type: List[AircraftSimulator]
         self.enemies = []   # type: List[AircraftSimulator]
+        # temp simulator links
+        self.launch_missiles = []   # type: List[MissileSimulator]
+        self.under_missiles = []    # type: List[MissileSimulator]
         # initialize simulator
         self.reload()
 
     @property
     def is_alive(self):
-        return self._status == "Alive"
+        return self._status == AircraftSimulator.ALIVE
+
+    @property
+    def health(self):
+        return self._bloods
+
+    def crash(self):
+        self._bloods = 0
+        self._status = AircraftSimulator.CRASH
 
     def reload(self, new_state: Union[dict, None] = None, new_origin: Union[tuple, None] = None):
         """Reload aircraft simulator
         """
         super().reload()
+
+        # reset temp simulator links
+        self._bloods = 100
+        self._status = AircraftSimulator.ALIVE
+        self.launch_missiles.clear()
+        self.under_missiles.clear()
+
         # load JSBSim FDM
         self.jsbsim_exec = jsbsim.FGFDMExec(os.path.join(get_root_dir(), 'data'))
         self.jsbsim_exec.set_debug_level(0)
@@ -131,6 +154,7 @@ class AircraftSimulator(BaseSimulator):
         Catalog.add_jsbsim_props(self.jsbsim_exec.query_property_catalog(""))
         self.jsbsim_exec.set_dt(self.dt)
         self.clear_defalut_condition()
+
         # assign new properties
         if new_state is not None:
             self.init_state = new_state
@@ -141,6 +165,7 @@ class AircraftSimulator(BaseSimulator):
         success = self.jsbsim_exec.run_ic()
         if not success:
             raise RuntimeError("JSBSim failed to init simulation conditions.")
+
         # propulsion init running
         propulsion = self.jsbsim_exec.get_propulsion()
         n = propulsion.get_num_engines()
@@ -168,7 +193,7 @@ class AircraftSimulator(BaseSimulator):
         for prop, value in default_condition.items():
             self.set_property_value(prop, value)
 
-    def run(self, **kwargs):
+    def run(self):
         """Runs JSBSim simulation until the agent interacts and update custom properties.
 
         JSBSim monitors the simulation and detects whether it thinks it should
@@ -178,7 +203,7 @@ class AircraftSimulator(BaseSimulator):
         Returns:
             (bool): False if sim has met JSBSim termination criteria else True.
         """
-        if self._status == "Alive":
+        if self.is_alive:
             result = self.jsbsim_exec.run()
             if not result:
                 raise RuntimeError("JSBSim failed.")
@@ -280,6 +305,11 @@ class AircraftSimulator(BaseSimulator):
 
 class MissileSimulator(BaseSimulator):
 
+    INACTIVE = -1
+    LAUNCHED = 0
+    HIT = 1
+    MISS = 2
+
     @classmethod
     def create(cls, parent: AircraftSimulator, target: AircraftSimulator, uid: str, missile_model: str = "AIM-9L"):
         assert parent.dt == target.dt, "integration timestep must be same!"
@@ -294,9 +324,10 @@ class MissileSimulator(BaseSimulator):
                  model="AIM-9L",
                  dt=1 / 12):
         super().__init__(uid, color, dt)
-        self._status = ""
+        self._status = MissileSimulator.INACTIVE
         self.color = ""
         self.model = model
+        self.parent_aircraft = None  # type: AircraftSimulator
         self.target_aircraft = None  # type: AircraftSimulator
         self.render_explosion = False
 
@@ -317,15 +348,19 @@ class MissileSimulator(BaseSimulator):
 
     @property
     def is_alive(self):
-        return self._status == "Launched"
+        """Missile is still flying"""
+        return self._status == MissileSimulator.LAUNCHED
 
     @property
     def is_success(self):
-        return self._status == "Hit"
+        """Missile has hit the target"""
+        return self._status == MissileSimulator.HIT
 
     @property
-    def is_deleted(self):
-        return self._status == "Inactive"
+    def is_done(self):
+        """Missile is already exploded"""
+        return self._status == MissileSimulator.HIT \
+            or self._status == MissileSimulator.MISS
 
     @property
     def Isp(self):
@@ -367,6 +402,8 @@ class MissileSimulator(BaseSimulator):
 
     def launch(self, parent: AircraftSimulator):
         # inherit kinetic parameters from parent aricraft
+        self.parent_aircraft = parent
+        self.parent_aircraft.launch_missiles.append(self)
         self._parent_uid = parent.uid
         self._geodetic[:] = parent.get_geodetic()
         self._position[:] = parent.get_position()
@@ -378,37 +415,33 @@ class MissileSimulator(BaseSimulator):
         self._t = 0
         self._m = self._m0
         self._dtheta, self._dphi = 0, 0
-        self._status = "Launched"
+        self._status = MissileSimulator.LAUNCHED
         self._distance_pre = np.inf
         self._distance_increment = deque(maxlen=int(5 / self.dt))  # 5s of distance increment -- can't hit
         self._left_t = int(1 / self.dt)  # remove missile 1s after its destroying
 
     def target(self, target: AircraftSimulator):
         self.target_aircraft = target  # TODO: change target?
+        self.target_aircraft.under_missiles.append(self)
 
-    def run(self, **kwargs):
+    def run(self):
         self._t += self.dt
         action, distance = self._guidance()
         self._distance_increment.append(distance > self._distance_pre)
         self._distance_pre = distance
         if distance < self._Rc:
-            self._status = "Hit"
-            self.target_aircraft._status = "Crash"
+            self._status = MissileSimulator.HIT
+            self.target_aircraft.crash()
         elif (self._t > self._t_max) or (np.linalg.norm(self.get_velocity()) < self._v_min) \
                 or np.sum(self._distance_increment) >= self._distance_increment.maxlen:
-            self._status = "Miss"
+            self._status = MissileSimulator.MISS
         else:
             self._state_trans(action)
-        # delete missile & release memory
-        if self._status == "Hit" or self._status == "Miss":
-            self._left_t -= 1
-            if self._left_t <= 0:
-                self._status = "Inactive"
 
     def log(self):
-        if self._status == "Launched":
+        if self.is_alive:
             log_msg = super().log()
-        elif (self._status == "Hit" or "Miss") and (not self.render_explosion):
+        elif self.is_done and (not self.render_explosion):
             self.render_explosion = True
             # remove missile model
             log_msg = f"-{self._uid}\n"

@@ -13,7 +13,7 @@ class BaseRewardFunction(ABC):
         # inner variables
         self.reward_scale = getattr(self.config, f'{self.__class__.__name__}_scale', 1.0)
         self.is_potential = getattr(self.config, f'{self.__class__.__name__}_potential', False)
-        self.pre_rewards = {}
+        self.pre_rewards = defaultdict(float)
         self.reward_trajectory = defaultdict(list)
         self.reward_item_names = [self.__class__.__name__]
 
