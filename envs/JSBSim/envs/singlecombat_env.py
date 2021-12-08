@@ -1,7 +1,4 @@
-import numpy as np
-from typing import List, Dict
 from .env_base import BaseEnv
-from ..core.simulatior import BaseSimulator
 from ..tasks.singlecombat_task import SingleCombatTask
 from ..tasks.singlecombat_with_missle_task import SingleCombatWithMissileTask
 

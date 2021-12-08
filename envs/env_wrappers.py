@@ -115,14 +115,17 @@ def worker(remote: Connection, parent_remote: Connection, env_fn_wrapper):
             cmd, data = remote.recv()
             if cmd == 'step':
                 obs, reward, done, info = env.step(data)
-                obs = _listify_scalar(obs)
-                reward = _listify_scalar(reward)
-                done = _listify_scalar(done)
-                if np.all(done):
-                    obs = env.reset()
+                if 'bool' in done.__class__.__name__:
+                    if done:
+                        obs = env.reset()
+                elif isinstance(done, dict):
+                    if np.all(list(done.values())):
+                        obs = env.reset()
+                else:
+                    raise NotImplementedError("Unexpected type of done!")
                 remote.send((obs, reward, done, info))
             elif cmd == 'reset':
-                obs = _listify_scalar(env.reset())
+                obs = env.reset()
                 remote.send((obs))
             elif cmd == 'close':
                 env.close()
@@ -130,6 +133,8 @@ def worker(remote: Connection, parent_remote: Connection, env_fn_wrapper):
                 break
             elif cmd == 'get_spaces':
                 remote.send((env.observation_space, env.action_space))
+            elif cmd == 'get_agent_ids':
+                remote.send((getattr(env, "agent_ids", ["default"])))
             else:
                 raise NotImplementedError
     except KeyboardInterrupt:
@@ -149,28 +154,31 @@ class DummyVecEnv(VecEnv):
         self.envs = [fn() for fn in env_fns]
         env = self.envs[0]
         super().__init__(len(self.envs), env.observation_space, env.action_space)
+        self.agent_ids = getattr(env, "agent_ids", ["default"])
 
-        self.buf_obs = [None] * self.num_envs
-        self.buf_dones = np.zeros((self.num_envs, 1), dtype=np.bool)
-        self.buf_rews = np.zeros((self.num_envs, 1), dtype=np.float32)
-        self.buf_infos = [{} for _ in range(self.num_envs)]
         self.actions = None
 
     def step_async(self, actions):
         self.actions = actions
 
     def step_wait(self):
-        for e in range(self.num_envs):
-            self.buf_obs[e], self.buf_rews[e], self.buf_dones[e], self.buf_infos[e] = self.envs[e].step(self.actions[e])
-            if np.all(self.buf_dones[e]):
-                self.buf_obs[e] = self.envs[e].reset()
+        results = [env.step(a) for (a, env) in zip(self.actions, self.envs)]
+        obs, rews, dones, infos = map(np.array, zip(*results))
+        for (i, done) in enumerate(dones):
+            if 'bool' in done.__class__.__name__:
+                if done:
+                    obs[i] = self.envs[i].reset()
+            elif isinstance(done, dict):
+                if np.all(list(done.values())):
+                    obs[i] = self.envs[i].reset()
+            else:
+                raise NotImplementedError("Unexpected type of done!")
         self.actions = None
-        return self.buf_obs.copy(), np.copy(self.buf_rews), np.copy(self.buf_dones), self.buf_infos.copy()
+        return obs, rews, dones, infos
 
     def reset(self):
-        for e in range(self.num_envs):
-            self.buf_obs[e] = self.envs[e].reset()
-        return self.buf_obs.copy()
+        obs = [env.reset() for env in self.envs]
+        return np.array(obs)
 
     def close(self):
         for env in self.envs:
@@ -199,6 +207,8 @@ class SubprocVecEnv(VecEnv):
         self.remotes[0].send(('get_spaces', None))
         observation_space, action_space = self.remotes[0].recv()
         super().__init__(nenvs, observation_space, action_space)
+        self.remotes[0].send(('get_agent_ids', None))
+        self.agent_ids = self.remotes[0].recv()
 
     def step_async(self, actions):
         self._assert_not_closed()
@@ -210,15 +220,15 @@ class SubprocVecEnv(VecEnv):
         self._assert_not_closed()
         results = [remote.recv() for remote in self.remotes]
         self.waiting = False
-        obss, rewards, dones, infos = zip(*results)
-        return np.stack(obss), np.stack(rewards), np.stack(dones), infos
+        obss, rewards, dones, infos = map(np.array, zip(*results))
+        return obss, rewards, dones, infos
 
     def reset(self):
         self._assert_not_closed()
         for remote in self.remotes:
             remote.send(('reset', None))
         obss = [remote.recv() for remote in self.remotes]
-        return np.stack(obss)
+        return np.array(obss)
 
     def close_extras(self):
         if self.waiting:
@@ -231,10 +241,3 @@ class SubprocVecEnv(VecEnv):
 
     def _assert_not_closed(self):
         assert not self.closed, "Trying to operate on a SubprocVecEnv after calling close()"
-
-
-def _listify_scalar(value):
-    value = np.array(value)
-    if value.ndim == 0:
-        value = np.array([value])
-    return value

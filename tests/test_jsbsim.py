@@ -2,9 +2,9 @@ import sys
 import os
 import pytest
 import numpy as np
-from copy import deepcopy
-
+from itertools import product
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+from envs.env_wrappers import DummyVecEnv, SubprocVecEnv
 
 
 def create_env(config: str):
@@ -75,6 +75,24 @@ class TestSingleControlEnv:
                     and reward == rew_buf[t] \
                     and done == done_buff[t]
                 t += 1
+
+    @pytest.mark.parametrize("vecenv", [DummyVecEnv, SubprocVecEnv])
+    def test_vec_env(self, vecenv):
+        parallel_num = 4
+        envs = vecenv([lambda: create_env("single/heading") for _ in range(parallel_num)])
+        obss = envs.reset()
+        assert obss.shape[0] == parallel_num
+
+        actions = [envs.action_space.sample() for _ in range(parallel_num)]
+        while True:
+            obss, rewards, dones, infos = envs.step(actions)
+            assert obss.shape[0] == parallel_num \
+                and rewards.shape[0] == parallel_num \
+                and dones.shape[0] == parallel_num \
+                and infos.shape[0] == parallel_num
+            if np.any(dones):
+                break
+        envs.close()
 
 
 class TestSingleCombatEnv:
@@ -182,3 +200,40 @@ class TestSingleCombatEnv:
             if np.all(list(dones.values())):
                 assert env.current_step <= env.max_steps
                 break
+
+    @pytest.mark.parametrize("vecenv, config", list(product(
+        [DummyVecEnv, SubprocVecEnv], ["1v1/NoWeapon/Selfplay", "1v1/Missile/Selfplay"])))
+    def test_vec_env(self, vecenv, config):
+        parallel_num = 4
+        envs = vecenv([lambda: create_env(config) for _ in range(parallel_num)])
+        obss = envs.reset()
+        assert obss.shape[0] == parallel_num
+
+        actions = [dict([(agent_id, envs.action_space[agent_id].sample()) for agent_id in envs.agent_ids]) for _ in range(parallel_num)]
+        while True:
+            obss, rewards, dones, infos = envs.step(actions)
+            assert obss.shape[0] == parallel_num \
+                and rewards.shape[0] == parallel_num \
+                and dones.shape[0] == parallel_num \
+                and infos.shape[0] == parallel_num
+            if np.any(list(map(lambda x: np.all(list(x.values())), dones))):
+                break
+        envs.close()
+
+    # def test_subprocvec_env(self):
+    #     from envs.env_wrappers import SubprocVecEnv
+    #     parallel_num = 4
+    #     envs = SubprocVecEnv([lambda: create_env("1v1/Missile/Selfplay") for _ in range(parallel_num)])
+    #     obss = envs.reset()
+    #     assert obss.shape[0] == parallel_num
+
+    #     actions = [envs.action_space.sample() for _ in range(parallel_num)]
+    #     while True:
+    #         obss, rewards, dones, infos = envs.step(actions)
+    #         assert obss.shape[0] == parallel_num \
+    #             and rewards.shape[0] == parallel_num \
+    #             and dones.shape[0] == parallel_num \
+    #             and infos.shape[0] == parallel_num
+    #         if np.any(dones):
+    #             break
+    #     envs.close()
