@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
+import numpy as np
 from .ppo_policy import PPOPolicy
 from ..utils.buffer import ReplayBuffer
 from ..utils.util import check, get_gard_norm
-
 
 class PPOTrainer():
     def __init__(self, args, policy: PPOPolicy, device=torch.device("cpu")):
@@ -79,7 +79,7 @@ class PPOTrainer():
     def train(self, buffer: ReplayBuffer):
         advantages = buffer.returns[:-1] - buffer.value_preds[:-1]
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-5)
-        advantages = buffer.returns[:-1] - buffer.value_preds[:-1]
+        log_advantages = advantages.reshape(-1)
 
         train_info = {}
         train_info['value_loss'] = 0
@@ -88,6 +88,10 @@ class PPOTrainer():
         train_info['actor_grad_norm'] = 0
         train_info['critic_grad_norm'] = 0
         train_info['ratio'] = 0
+        train_info['advantage_p0'] = np.percentile(log_advantages, 0)
+        train_info['advantage_p25'] = np.percentile(log_advantages, 25)
+        train_info['advantage_p75'] = np.percentile(log_advantages, 75)
+        train_info['advantage_p100'] = np.percentile(log_advantages, 100)
 
         for _ in range(self.ppo_epoch):
             if self.use_recurrent_policy:
