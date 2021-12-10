@@ -95,7 +95,11 @@ class JSBSimRunner(Runner):
                                 self.num_env_steps,
                                 int(self.total_num_steps / (end - start))))
 
-                train_infos["average_episode_rewards"] = np.mean(self.buffer.rewards) * self.episode_length
+                done_splits = np.where(self.buffer._cast(self.buffer.dones) == True)[0] + 1
+                sum_rewards = self.buffer._cast(self.buffer.rewards)[slice(*done_splits[[0, -1]])].sum()
+
+                train_infos["average_episode_rewards"] = sum_rewards / (len(done_splits) - 1)
+
                 print("average episode rewards is {}".format(train_infos["average_episode_rewards"]))
                 if len(heading_turns_list):
                     train_infos["average_heading_turns"] = np.mean(heading_turns_list)

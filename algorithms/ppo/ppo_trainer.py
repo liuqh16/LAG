@@ -90,6 +90,7 @@ class PPOTrainer():
         train_info['ratio'] = 0
         train_info['advantage_p0'] = np.percentile(log_advantages, 0)
         train_info['advantage_p25'] = np.percentile(log_advantages, 25)
+        train_info['advantage_p50'] = np.percentile(log_advantages, 50)
         train_info['advantage_p75'] = np.percentile(log_advantages, 75)
         train_info['advantage_p100'] = np.percentile(log_advantages, 100)
 

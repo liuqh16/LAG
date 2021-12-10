@@ -47,6 +47,9 @@ battle_field_center: [120.0, 60.0, 0.0]
 # reward config
 MissileAttackReward_potential: true
 
+MissilePostureReward_potential: true
+MissilePostureReward_scale: 1.0
+
 PostureReward_scale: 15.0
 PostureReward_potential: true
 PostureReward_orientation_version: v2

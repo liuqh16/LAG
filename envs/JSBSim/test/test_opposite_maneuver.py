@@ -10,6 +10,7 @@ import torch
 import time
 import numpy as np
 from typing import Literal
+import matplotlib.pyplot as plt
 
 
 class ManeuverAgent:
@@ -78,29 +79,36 @@ class ManeuverAgent:
 
 
 def test_maneuver():
-    env = SingleCombatEnv(config_name='1v1/Missile/test/opposite')
-    escape_agent = ManeuverAgent(agent_id=0, maneuver='n')
-    pursue_agent = ManeuverAgent(agent_id=1, maneuver='l')
-    dt = env.time_interval
-    obs = env.reset()
-    env.render()
-    missile_data = []
-    while True:
-        actions = [
-            escape_agent.get_action(env, env.task),
-            pursue_agent.get_action(env, env.task),
-        ]
-        obs, reward, done, env_info = env.step(actions)
-        if "B0101" in env.other_sims.keys():
-            sim = env.other_sims["B0101"]
-            if isinstance(sim, MissileSimulator):
-                missile_data.append((np.linalg.norm(sim.get_velocity()), sim.target_distance))
+    for i in ['l', 'n','r']:
+        env = SingleCombatEnv(config_name='1v1/Missile/test/opposite')
+        escape_agent = ManeuverAgent(agent_id=0, maneuver=i)
+        pursue_agent = ManeuverAgent(agent_id=1, maneuver='l')
+        dt = env.time_interval
+        obs = env.reset()
         env.render()
-        if np.array(done).all():
-            print(env_info)
-            break
-    missile_data = np.array(missile_data)
-    np.save("missile_data_nvl", missile_data)
+        missile_data = []
+        while True:
+            actions = [
+                escape_agent.get_action(env, env.task),
+                pursue_agent.get_action(env, env.task),
+            ]
+            obs, reward, done, env_info = env.step(actions)
+            if "B0101" in env.other_sims.keys():
+                sim = env.other_sims["B0101"]
+                if isinstance(sim, MissileSimulator):
+                    missile_data.append((np.linalg.norm(sim.get_velocity()), sim.target_distance))
+            env.render()
+            if np.array(done).all():
+                print(env_info)
+                break
+        # missile_data = np.array(missile_data)
+        # np.save("missile_data_nvl", missile_data)
+        reward_dict = env.task.get_reward_trajectory()
+        for key, value in reward_dict.items():
+            if key == 'MissilePostureReward':
+                plt.plot(value[0], label=i)
+    plt.legend()
+    plt.savefig('rewards.png')
 
 
 if __name__ == "__main__":
