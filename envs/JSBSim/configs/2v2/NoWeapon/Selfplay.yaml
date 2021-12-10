@@ -13,10 +13,8 @@ acceleration_limit_y: 10.0
 acceleration_limit_z: 10.0
 
 # aircraft config
-use_baseline: true
-baseline_type: control
 aircraft_configs: {
-  A001: {
+  A0100: {
     color: Red,
     model: f16,
     init_state: {
@@ -27,7 +25,7 @@ aircraft_configs: {
       ic_u_fps: 800.0,
     },
   },
-  A002: {
+  A0200: {
     color: Red,
     model: f16,
     init_state: {
@@ -38,7 +36,7 @@ aircraft_configs: {
       ic_u_fps: 800.0,
     },
   },
-  B001: {
+  B0100: {
     color: Blue,
     model: f16,
     init_state: {
@@ -49,7 +47,7 @@ aircraft_configs: {
       ic_u_fps: 800.0,
     },
   },
-  B002: {
+  B0200: {
     color: Blue,
     model: f16,
     init_state: {
@@ -65,12 +63,6 @@ aircraft_configs: {
 battle_field_center: [120.0, 60.0, 0.0]
 
 # reward config
-PostureReward_scale: 100.0
-PostureReward_potential: true
-PostureReward_orientation_version: v2
-PostureReward_range_version: v2
-PostureReward_target_dist: 3.0
-
 AltitudeReward_safe_altitude: 4.0
 AltitudeReward_danger_altitude: 3.5
 AltitudeReward_Kv: 0.2

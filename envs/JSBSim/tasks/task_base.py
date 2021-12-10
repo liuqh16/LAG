@@ -115,11 +115,11 @@ class BaseTask(ABC):
                 info(dict): additional info
         """
         done = False
-        success = False
+        success = True
         for condition in self.termination_conditions:
             d, s, info = condition.get_termination(self, env, agent_id, info)
             done = done or d
-            success = success or s
+            success = success and s
             if done:
                 break
         return done, info

@@ -1,9 +1,7 @@
 import numpy as np
-from typing import List
+from typing import Tuple, Dict, Sequence
 from .env_base import BaseEnv
-from ..core.catalog import Catalog
-from ..core.simulatior import BaseSimulator
-from ..tasks import MultipleCombatTask
+from ..tasks.multiplecombat_task import MultipleCombatTask
 
 
 class MultipleCombatEnv(BaseEnv):
@@ -16,8 +14,8 @@ class MultipleCombatEnv(BaseEnv):
         self._create_records = False
 
     @property
-    def sims(self) -> List[BaseSimulator]:
-        return list(self.jsbsims.values()) + list(self.other_sims.values())
+    def share_observation_space(self):
+        return self.task.share_observation_space
 
     def load_task(self):
         taskname = getattr(self.config, 'task', None)
@@ -25,109 +23,67 @@ class MultipleCombatEnv(BaseEnv):
             self.task = MultipleCombatTask(self.config)
         else:
             raise NotImplementedError(f"Unknown taskname: {taskname}")
-        self.observation_space = self.task.observation_space
-        self.action_space = self.task.action_space
 
-    def reset(self):
+    def reset(self) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
+        """Resets the state of the environment and returns an initial observation.
+
+        Returns:
+            obs (dict): {agent_id: initial observation}
+            share_obs (dict): {agent_id: initial state}
+        """
         self.current_step = 0
         self.reset_simulators()
-        next_observation = self.get_observation()
         self.task.reset(self)
-        return self._mask(next_observation)
+        return self.get_obs(), self.get_state()
 
     def reset_simulators(self):
         # Assign new initial condition here!
-        for sim in self.jsbsims.values():
+        for sim in self._jsbsims.values():
             sim.reload()
-        self.other_sims = {}  # type: dict[str, BaseSimulator]
+        self._tempsims.clear()
 
-    def step(self, actions: list):
+    def step(self, action: Dict[str, Sequence]) -> \
+            Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Dict[str, float], Dict[str, bool], dict]:
         """Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`
-        to reset this environment's state. Accepts an action and 
+        to reset this environment's observation. Accepts an action and
         returns a tuple (observation, reward_visualize, done, info).
 
         Args:
-            action (np.array): the agents' action, with same length as action space.
+            action (dict): the agents' actions, each key corresponds to an agent_id
 
         Returns:
             (tuple):
-                state: agent's observation of the current environment
-                reward_visualize: amount of reward_visualize returned after previous action
-                done: whether the episode has ended, in which case further step() calls are undefined
+                obs: agents' observation of the current environment
+                share_obs: agents' share observation of the current environment
+                rewards: amount of rewards returned after previous actions
+                dones: whether the episode has ended, in which case further step() calls are undefined
                 info: auxiliary information
         """
         self.current_step += 1
         info = {"current_step": self.current_step}
 
-        # apply action
-        actions = self.task.normalize_action(self, actions)
-        for idx, sim in enumerate(self.jsbsims.values()):
-            sim.set_property_values(self.task.action_var, actions[idx])
-        # run simulator for one step
+        # apply actions
+        for agent_id in self.agent_ids:
+            a_action = self.task.normalize_action(self, agent_id, action[agent_id])
+            self.agents[agent_id].set_property_values(self.task.action_var, a_action)
+        # run simulation
         for _ in range(self.agent_interaction_steps):
-            for sim in self.sims:
+            for sim in self._jsbsims.values():
                 sim.run()
-        # call task.step for extra process
-        self.task.step(self, actions)
+            for sim in self._tempsims.values():
+                sim.run()
+        self.task.step(self)
 
-        next_observation = self.get_observation()
+        obs = self.get_obs()
+        share_obs = self.get_state()
 
-        rewards = np.zeros(self.num_aircrafts)
-        for agent_id in range(self.num_aircrafts):
+        rewards = {}    # type: Dict[str, float]
+        for agent_id in self.agent_ids:
             rewards[agent_id], info = self.task.get_reward(self, agent_id, info)
 
-        done = False
-        for agent_id in range(self.num_aircrafts):
-            agent_done, info = self.task.get_termination(self, agent_id, info)
-            done = agent_done or done
-        dones = done * np.ones(self.num_aircrafts)
+        dones = {}      # type: Dict[str, bool]
+        for agent_id in self.agent_ids:
+            dones[agent_id], info = self.task.get_termination(self, agent_id, info)
 
-        return self._mask(next_observation), self._mask(rewards), self._mask(dones), info
-
-    def get_observation(self):
-        """
-        get state observation from sim.
-
-        Returns:
-            (OrderedDict): the same format as self.observation_space
-        """
-        next_observation = []
-        for sim in self.jsbsims.values():
-            next_observation.append(sim.get_property_values(self.task.state_var))
-        next_observation = self.task.normalize_obs(self, next_observation)
-        return next_observation
-
-    def close(self):
-        """Cleans up this environment's objects.
-
-        Environments automatically close() when garbage collected or when the program exits.
-        """
-        for sim in self.sims:
-            sim.close()
-
-    def render(self, mode="txt", filepath='./JSBSimRecording.txt.acmi'):
-        if mode == "txt":
-            if not self._create_records:
-                with open(filepath, mode='w', encoding='utf-8-sig') as f:
-                    f.write("FileType=text/acmi/tacview\n")
-                    f.write("FileVersion=2.1\n")
-                    f.write("0,ReferenceTime=2020-04-01T00:00:00Z\n")
-                self._create_records = True
-            with open(filepath, mode='a', encoding='utf-8-sig') as f:
-                timestamp = self.current_step * self.time_interval
-                f.write(f"#{timestamp:.2f}\n")
-                for sim in self.sims:
-                    log_msg = sim.log()
-                    if log_msg is not None:
-                        f.write(log_msg + "\n")
-        # TODO: real time rendering [Use FlightGear, etc.]
-        else:
-            raise NotImplementedError
-
-    def seed(self, seed):
-        # TODO: random seed
-        return super().seed(seed=seed)
-
-    def _mask(self, data):
-        return np.expand_dims(data[0], axis=0) if self.task.use_baseline else data
+        return obs, share_obs, rewards, dones, info

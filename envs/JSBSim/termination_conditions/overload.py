@@ -29,8 +29,7 @@ class Overload(BaseTerminationCondition):
         """
         done = self._judge_overload(env.agents[agent_id])
         if done:
-            print(f'INFO: {agent_id} acceleration is too high! Total Steps={env.current_step}')
-            info[f'{agent_id}_end_reason'] = 1  # crash
+            self.log(f'{agent_id} acceleration is too high! Total Steps={env.current_step}')
         success = False
         return done, success, info
 

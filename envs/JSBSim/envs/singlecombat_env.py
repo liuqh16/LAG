@@ -1,3 +1,5 @@
+import numpy as np
+from typing import Tuple, Dict
 from .env_base import BaseEnv
 from ..tasks.singlecombat_task import SingleCombatTask
 from ..tasks.singlecombat_with_missle_task import SingleCombatWithMissileTask
@@ -22,11 +24,15 @@ class SingleCombatEnv(BaseEnv):
         else:
             raise NotImplementedError(f"Unknown taskname: {taskname}")
 
-    def reset(self):
+    def reset(self) -> Dict[str, np.ndarray]:
         self.current_step = 0
         self.reset_simulators()
         self.task.reset(self)
         return self.get_obs()
+
+    def step(self, action: Dict[str, np.ndarray]) -> \
+            Tuple[Dict[str, np.ndarray], Dict[str, float], Dict[str, bool], dict]:
+        return super().step(action)
 
     def reset_simulators(self):
         # switch side

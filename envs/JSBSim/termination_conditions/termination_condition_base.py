@@ -1,3 +1,4 @@
+import logging
 from abc import ABC, abstractmethod
 
 
@@ -24,3 +25,6 @@ class BaseTerminationCondition(ABC):
             (tuple): (done, success, info)
         """
         raise NotImplementedError
+
+    def log(self, msg):
+        logging.info(msg)

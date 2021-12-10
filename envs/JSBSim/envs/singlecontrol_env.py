@@ -1,3 +1,5 @@
+import numpy as np
+from typing import Tuple
 from .env_base import BaseEnv
 from ..tasks.heading_task import HeadingTask
 
@@ -42,7 +44,7 @@ class SingleControlEnv(BaseEnv):
         })
         self.agents[self.agent_ids[0]].reload(new_init_state)
 
-    def step(self, action):
+    def step(self, action) -> Tuple[np.ndarray, float, bool, dict]:
         """Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`
         to reset this environment's observation. Accepts an action and

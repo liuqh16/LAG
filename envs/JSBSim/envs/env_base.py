@@ -158,7 +158,8 @@ class BaseEnv(gym.Env):
 
         NOTE: This functon should not be used during decentralised execution.
         """
-        return np.stack([self.task.get_obs(self, agent_id) for agent_id in self.agent_ids])
+        state = np.hstack([self.task.get_obs(self, agent_id) for agent_id in self.agent_ids])
+        return dict([(agent_id, state.copy()) for agent_id in self.agent_ids])
 
     def close(self):
         """Cleans up this environment's objects

@@ -3,7 +3,7 @@ from gym import spaces
 from .task_base import BaseTask
 from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, PostureReward, RelativeAltitudeReward
-from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout
+from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout, SafeReturn
 from ..utils.utils import get_AO_TA_R, LLA2NEU
 
 
@@ -18,6 +18,7 @@ class SingleCombatTask(BaseTask):
         ]
 
         self.termination_conditions = [
+            SafeReturn(self.config),
             ExtremeState(self.config),
             Overload(self.config),
             LowAltitude(self.config),
@@ -114,13 +115,3 @@ class SingleCombatTask(BaseTask):
             return super().get_reward(env, agent_id, info=info)
         else:
             return 0.0, info
-
-    def get_termination(self, env, agent_id, info=...):
-        # once either of the two aircrafts crashs, the whole environment will be done!
-        if (not env.agents[agent_id].is_alive) or (not env.agents[agent_id].enemies[0].is_alive):
-            return True, info
-        else:
-            done, info = super().get_termination(env, agent_id, info=info)
-            if done:
-                env.agents[agent_id].crash()
-            return done, info

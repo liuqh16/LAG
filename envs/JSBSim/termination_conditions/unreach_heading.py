@@ -1,5 +1,4 @@
 import math
-import random
 import numpy as np
 from ..core.catalog import Catalog as c
 from .termination_condition_base import BaseTerminationCondition
@@ -44,11 +43,11 @@ class UnreachHeading(BaseTerminationCondition):
                 new_heading = env.agents[agent_id].get_property_value(c.target_heading_deg) + sign * angle
                 new_heading = (new_heading + 360) % 360
                 env.heading_turns += 1
-                print(f'current_step:{cur_step} target_heading:{new_heading}')
+                self.log(f'current_step:{cur_step} target_heading:{new_heading}')
                 env.agents[agent_id].set_property_value(c.target_heading_deg, new_heading)
                 env.agents[agent_id].set_property_value(c.heading_check_time, check_time + self.check_interval)
         if done:
-            print(f'INFO: agent[{agent_id}] unreached heading, Total Steps={env.current_step}')
+            self.log(f'INFO: agent[{agent_id}] unreached heading, Total Steps={env.current_step}')
             info['heading_turns'] = env.heading_turns
             info[f'agent{agent_id}_end_reason'] = 3  # unreach_heading
         success = False

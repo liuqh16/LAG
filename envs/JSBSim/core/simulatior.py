@@ -22,24 +22,27 @@ class BaseSimulator(ABC):
             color (TeamColors): use different color strings to represent diferent teams
             dt (float): simulation timestep. Default = `1 / 60`.
         """
-        self._uid = uid
-        self._color = color
-        self._dt = dt
-        self._parent_uid = ""
+        self.__uid = uid
+        self.__color = color
+        self.__dt = dt
         self.model = ""
         self._geodetic = np.zeros(3)
         self._position = np.zeros(3)
         self._poseture = np.zeros(3)
         self._velocity = np.zeros(3)
-        logging.debug(f"{self.__class__.__name__}:{self._uid} is created!")
+        logging.debug(f"{self.__class__.__name__}:{self.__uid} is created!")
 
     @property
     def uid(self) -> str:
-        return self._uid
+        return self.__uid
+
+    @property
+    def color(self) -> str:
+        return self.__color
 
     @property
     def dt(self) -> float:
-        return self._dt
+        return self.__dt
 
     def get_geodetic(self):
         """(lontitude, latitude, altitude), unit: °, m"""
@@ -70,9 +73,9 @@ class BaseSimulator(ABC):
     def log(self):
         lon, lat, alt = self.get_geodetic()
         roll, pitch, yaw = self.get_rpy() * 180 / np.pi
-        log_msg = f"{self._uid},T={lon}|{lat}|{alt}|{roll}|{pitch}|{yaw},"
+        log_msg = f"{self.uid},T={lon}|{lat}|{alt}|{roll}|{pitch}|{yaw},"
         log_msg += f"Name={self.model.upper()},"
-        log_msg += f"Color={self._color}"
+        log_msg += f"Color={self.color}"
         return log_msg
 
     @abstractmethod
@@ -80,7 +83,7 @@ class BaseSimulator(ABC):
         pass
 
     def __del__(self):
-        logging.debug(f"{self.__class__.__name__}:{self._uid} is deleted!")
+        logging.debug(f"{self.__class__.__name__}:{self.uid} is deleted!")
 
 
 class AircraftSimulator(BaseSimulator):
@@ -88,7 +91,8 @@ class AircraftSimulator(BaseSimulator):
     """
 
     ALIVE = 0
-    CRASH = 1
+    CRASH = 1       # low altitude / extreme state / overload
+    SHOTDOWN = 2    # missile attack
 
     def __init__(self,
                  uid: str = "A0100",
@@ -313,7 +317,7 @@ class MissileSimulator(BaseSimulator):
     @classmethod
     def create(cls, parent: AircraftSimulator, target: AircraftSimulator, uid: str, missile_model: str = "AIM-9L"):
         assert parent.dt == target.dt, "integration timestep must be same!"
-        missile = MissileSimulator(uid, parent._color, missile_model, parent.dt)
+        missile = MissileSimulator(uid, parent.color, missile_model, parent.dt)
         missile.launch(parent)
         missile.target(target)
         return missile
@@ -325,7 +329,6 @@ class MissileSimulator(BaseSimulator):
                  dt=1 / 12):
         super().__init__(uid, color, dt)
         self._status = MissileSimulator.INACTIVE
-        self.color = ""
         self.model = model
         self.parent_aircraft = None  # type: AircraftSimulator
         self.target_aircraft = None  # type: AircraftSimulator
@@ -404,7 +407,6 @@ class MissileSimulator(BaseSimulator):
         # inherit kinetic parameters from parent aricraft
         self.parent_aircraft = parent
         self.parent_aircraft.launch_missiles.append(self)
-        self._parent_uid = parent.uid
         self._geodetic[:] = parent.get_geodetic()
         self._position[:] = parent.get_position()
         self._velocity[:] = parent.get_velocity()
@@ -444,12 +446,12 @@ class MissileSimulator(BaseSimulator):
         elif self.is_done and (not self.render_explosion):
             self.render_explosion = True
             # remove missile model
-            log_msg = f"-{self._uid}\n"
+            log_msg = f"-{self.uid}\n"
             # add explosion
             lon, lat, alt = self.get_geodetic()
             roll, pitch, yaw = self.get_rpy() * 180 / np.pi
-            log_msg += f"{self._uid}F,T={lon}|{lat}|{alt}|{roll}|{pitch}|{yaw},"
-            log_msg += f"Type=Misc+Explosion,Color={self._color},Radius={self._Rc}"
+            log_msg += f"{self.uid}F,T={lon}|{lat}|{alt}|{roll}|{pitch}|{yaw},"
+            log_msg += f"Type=Misc+Explosion,Color={self.color},Radius={self._Rc}"
         else:
             log_msg = None
         return log_msg
