@@ -12,14 +12,6 @@ class MissileAttackReward(BaseRewardFunction):
     """
     def __init__(self, config):
         super().__init__(config)
-        assert self.num_aircrafts == 2, \
-            "MissileAttackReward only support one-to-one environments but current env has more than 2 agents!"
-        # self.all_reward_scales = []
-
-    def reset(self, task, env):
-        super().reset(task, env)
-        # for reward_fn in task.reward_functions:
-        #     self.all_reward_scales.append(reward_fn.reward_scale)
 
     def get_reward(self, task, env, agent_id):
         """

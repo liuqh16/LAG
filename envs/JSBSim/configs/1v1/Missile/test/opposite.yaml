@@ -58,4 +58,4 @@ MissileAttackReward_potential: true
 
 
 MissilePostureReward_potential: true
-MissilePostureReward_scale: 30
+MissilePostureReward_scale: 1

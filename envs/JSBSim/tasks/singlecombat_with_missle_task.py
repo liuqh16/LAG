@@ -18,7 +18,7 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             MissileAttackReward(self.config),
             MissilePostureReward(self.config),
             AltitudeReward(self.config),
-            PostureReward(self.config),
+            # PostureReward(self.config),
             CrashReward(self.config)
         ]
 

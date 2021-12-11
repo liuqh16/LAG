@@ -48,7 +48,7 @@ battle_field_center: [120.0, 60.0, 0.0]
 MissileAttackReward_potential: true
 
 MissilePostureReward_potential: true
-MissilePostureReward_scale: 1.0
+MissilePostureReward_scale: 1
 
 PostureReward_scale: 15.0
 PostureReward_potential: true

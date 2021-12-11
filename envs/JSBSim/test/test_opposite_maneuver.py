@@ -79,7 +79,7 @@ class ManeuverAgent:
 
 
 def test_maneuver():
-    for i in ['l', 'n','r']:
+    for i in ['l','r', 'n']:
         env = SingleCombatEnv(config_name='1v1/Missile/test/opposite')
         escape_agent = ManeuverAgent(agent_id=0, maneuver=i)
         pursue_agent = ManeuverAgent(agent_id=1, maneuver='l')
@@ -105,8 +105,9 @@ def test_maneuver():
         # np.save("missile_data_nvl", missile_data)
         reward_dict = env.task.get_reward_trajectory()
         for key, value in reward_dict.items():
-            if key == 'MissilePostureReward':
-                plt.plot(value[0], label=i)
+            if 'MissilePostureReward' == key:
+                y = np.cumsum(value[0])
+                plt.plot(value[0], label=i+'plus'+key)
     plt.legend()
     plt.savefig('rewards.png')
 
