@@ -3,8 +3,6 @@ import sys
 import wandb
 import torch
 import numpy as np
-from icecream import ic
-# Deal with relative import error
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from algorithms.utils.buffer import ReplayBuffer
 
@@ -12,14 +10,13 @@ from algorithms.utils.buffer import ReplayBuffer
 def _t2n(x):
     return x.detach().cpu().numpy()
 
+
 class Runner(object):
     def __init__(self, config):
 
         self.all_args = config['all_args']
         self.envs = config['envs']
         self.device = config['device']
-        self.num_agents = config['num_agents']
-        
 
         # parameters
         self.env_name = self.all_args.env_name
@@ -61,10 +58,9 @@ class Runner(object):
                              self.envs.action_space,
                              device=self.device)
         self.trainer = Trainer(self.all_args, self.policy, device=self.device)
-        
+
         # buffer
         self.buffer = ReplayBuffer(self.all_args,
-                                   self.num_agents,
                                    self.envs.observation_space,
                                    self.envs.action_space)
 
@@ -80,46 +76,38 @@ class Runner(object):
     def collect(self, step):
         raise NotImplementedError
 
-    def insert(self, data):
+    def rollout(self):
         raise NotImplementedError
-    
+
     @torch.no_grad()
     def compute(self):
-        self.trainer.prep_rollout()
-        next_values = self.trainer.policy.get_values(np.concatenate(self.buffer.obs[-1]), 
-                                                     np.concatenate(self.buffer.rnn_states_critic[-1]))
+        self.policy.prep_rollout()
+        next_values = self.policy.get_values(np.concatenate(self.buffer.obs[-1]),
+                                             np.concatenate(self.buffer.rnn_states_critic[-1]))
         next_values = np.array(np.split(_t2n(next_values), self.buffer.n_rollout_threads))
         self.buffer.compute_returns(next_values)
 
     def train(self):
-        self.trainer.prep_training()
-        train_infos = self.trainer.train(self.buffer)      
+        self.policy.prep_training()
+        train_infos = self.trainer.train(self.buffer)
         self.buffer.after_update()
         return train_infos
 
     def save(self):
-        # policy_actor = self.trainer.policy.actor
-        # torch.save(policy_actor.state_dict(), str(self.save_dir) + "/actor.pt")
-        # policy_critic = self.trainer.policy.critic
-        # torch.save(policy_critic.state_dict(), str(self.save_dir) + "/critic.pt")
-        policy_actor = self.trainer.policy.actor
-        torch.save(policy_actor, str(self.save_dir) + "/actor.pth")
-        policy_critic = self.trainer.policy.critic
-        torch.save(policy_critic, str(self.save_dir) + "/critic.pth")
+        policy_actor = self.policy.actor
+        torch.save(policy_actor.state_dict(), str(self.save_dir) + "/actor.pt")
+        policy_critic = self.policy.critic
+        torch.save(policy_critic.state_dict(), str(self.save_dir) + "/critic.pt")
 
     def restore(self):
-        # policy_actor_state_dict = torch.load(str(self.model_dir) + '/actor_agent.pt')
-        # self.policy.actor.load_state_dict(policy_actor_state_dict)
-        # policy_critic_state_dict = torch.load(str(self.model_dir) + '/critic_agent.pt')
-        # self.policy.critic.load_state_dict(policy_critic_state_dict)
-        self.policy.actor = torch.load(str(self.model_dir) + '/actor.pth')
-        self.policy.critic = torch.load(str(self.model_dir) + '/critic.pth')
-
+        policy_actor_state_dict = torch.load(str(self.model_dir) + '/actor.pt')
+        self.policy.actor.load_state_dict(policy_actor_state_dict)
+        policy_critic_state_dict = torch.load(str(self.model_dir) + '/critic.pt')
+        self.policy.critic.load_state_dict(policy_critic_state_dict)
 
     def log_info(self, infos, total_num_steps):
         if self.use_wandb:
             for k, v in infos.items():
                 wandb.log({k: v}, step=total_num_steps)
         else:
-            # ic(total_num_steps, train_infos)
             pass

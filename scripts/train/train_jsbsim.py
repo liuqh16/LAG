@@ -11,8 +11,8 @@ import setproctitle
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 from config import get_config
 from runner.jsbsim_runner import JSBSimRunner as Runner
-from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv
-from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
+from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv, MultipleCombatEnv
+from envs.env_wrappers import SubprocVecEnv, DummyVecEnv, ShareSubprocVecEnv, ShareDummyVecEnv
 # Deal with import error
 
 
@@ -23,16 +23,24 @@ def make_train_env(all_args):
                 env = SingleCombatEnv(all_args.scenario_name)
             elif all_args.env_name == "SingleControl":
                 env = SingleControlEnv(all_args.scenario_name)
+            elif all_args.env_name == "MultipleCombat":
+                env = MultipleCombatEnv(all_args.scenario_name)
             else:
                 print("Can not support the " + all_args.env_name + "environment.")
                 raise NotImplementedError
-            # env.seed(all_args.seed + rank * 1000)
+            env.seed(all_args.seed + rank * 1000)
             return env
         return init_env
-    if all_args.n_rollout_threads == 1:
-        return DummyVecEnv([get_env_fn(0)])
+    if all_args.env_name == "MultipleCombat":
+        if all_args.n_rollout_threads == 1:
+            return ShareDummyVecEnv([get_env_fn(0)])
+        else:
+            return ShareSubprocVecEnv([get_env_fn(i) for i in range(all_args.n_rollout_threads)])
     else:
-        return DummyVecEnv([get_env_fn(i) for i in range(all_args.n_rollout_threads)])
+        if all_args.n_rollout_threads == 1:
+            return DummyVecEnv([get_env_fn(0)])
+        else:
+            return SubprocVecEnv([get_env_fn(i) for i in range(all_args.n_rollout_threads)])
 
 
 def parse_args(args, parser):
@@ -116,7 +124,6 @@ def main(args):
     # run experiments
 
     runner = Runner(config)
-    import pdb; pdb.set_trace()
     runner.run()
 
     # post process

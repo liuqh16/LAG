@@ -29,11 +29,7 @@ class SingleCombatWithMissileTask(SingleCombatTask):
         ]
 
     def load_observation_space(self):
-        self.observation_space = dict([(agend_id, spaces.Box(low=-10, high=10., shape=(25,))) for agend_id in self.agent_ids])
-
-    def load_action_space(self):
-        # aileron, elevator, rudder, throttle
-        self.action_space = dict([(agend_id, spaces.MultiDiscrete([41, 41, 41, 30])) for agend_id in self.agent_ids])
+        self.observation_space = spaces.Box(low=-10, high=10., shape=(25,))
 
     def get_obs(self, env, agent_id):
         norm_obs = np.zeros(25)
@@ -77,7 +73,7 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             norm_obs[22] = enm_missile_feature[2] / 5                # 15. missile_altitude  (unit: 5km)
             norm_obs[23] = np.linalg.norm(enm_missile_feature[3:])   # 16. missile_v         (unit: mh)
             norm_obs[24] = enm_missile_feature[5]                    # 17. missile_v_down    (unit: mh)
-        norm_obs = np.clip(norm_obs, self.observation_space[agent_id].low, self.observation_space[agent_id].high)
+        norm_obs = np.clip(norm_obs, self.observation_space.low, self.observation_space.high)
         return norm_obs
 
     def reset(self, env):

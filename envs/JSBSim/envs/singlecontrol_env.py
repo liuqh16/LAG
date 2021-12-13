@@ -1,5 +1,3 @@
-import numpy as np
-from typing import Tuple
 from .env_base import BaseEnv
 from ..tasks.heading_task import HeadingTask
 
@@ -25,7 +23,8 @@ class SingleControlEnv(BaseEnv):
         self.heading_turns = 0
         self.reset_simulators()
         self.task.reset(self)
-        return self.get_obs()
+        obs = self.get_obs()
+        return self._pack(obs)
 
     def reset_simulators(self):
         new_init_state = self.agents[self.agent_ids[0]].init_state
@@ -44,40 +43,13 @@ class SingleControlEnv(BaseEnv):
         })
         self.agents[self.agent_ids[0]].reload(new_init_state)
 
-    def step(self, action) -> Tuple[np.ndarray, float, bool, dict]:
-        """Run one timestep of the environment's dynamics. When end of
-        episode is reached, you are responsible for calling `reset()`
-        to reset this environment's observation. Accepts an action and
-        returns a tuple (observation, reward_visualize, done, info).
+    def _pack(self, data):
+        """Pack single key-value dict into single value"""
+        if isinstance(data, dict):
+            return data[self.agent_ids[0]]
+        else:
+            return data
 
-        Args:
-            action (np.array): the agent's action, with same length as action variables.
-
-        Returns:
-            (tuple):
-                state: agent's observation of the current environment
-                reward: amount of reward returned after previous action
-                done: whether the episode has ended, in which case further step() calls are undefined
-                info: auxiliary information
-        """
-        self.current_step += 1
-        info = {"current_step": self.current_step}
-
-        agent_id = self.agent_ids[0]
-        # apply actions
-        action = self.task.normalize_action(self, agent_id, action)
-        self.agents[agent_id].set_property_values(self.task.action_var, action)
-        # run simulation
-        for _ in range(self.agent_interaction_steps):
-            self.agents[agent_id].run()
-
-        obs = self.get_obs()
-
-        reward, info = self.task.get_reward(self, agent_id, info)
-
-        done, info = self.task.get_termination(self, agent_id, info)
-
-        return obs, reward, done, info
-
-    def get_obs(self):
-        return self.task.get_obs(self, self.agent_ids[0])
+    def _unpack(self, data):
+        """Unpack data into single key-value dict"""
+        return {self.agent_ids[0]: data}

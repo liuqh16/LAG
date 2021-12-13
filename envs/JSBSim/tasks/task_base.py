@@ -43,26 +43,15 @@ class BaseTask(ABC):
         """
         Load observation space
         """
-        space_tuple = ()
-        for prop in self.state_var:
-            if prop.spaces is spaces.Box:
-                space_tuple += (spaces.Box(low=np.array([prop.min]), high=np.array([prop.max]), dtype="float"),)
-            elif prop.spaces is spaces.Discrete:
-                space_tuple += (spaces.Discrete(prop.max - prop.min + 1),)
-        self.observation_space = spaces.Tuple(space_tuple)
+        self.observation_space = spaces.Discrete(5)
 
     @abstractmethod
     def load_action_space(self):
         """
         Load action space
         """
-        space_tuple = ()
-        for prop in self.action_var:
-            if prop.spaces is spaces.Box:
-                space_tuple += (spaces.Box(low=np.array([prop.min]), high=np.array([prop.max]), dtype="float"),)
-            elif prop.spaces is spaces.Discrete:
-                space_tuple += (spaces.Discrete(prop.max - prop.min + 1),)
-        self.action_space = spaces.Tuple(space_tuple)
+        self.action_space = spaces.Discrete(5)
+        pass
 
     def reset(self, env):
         """Task-specific reset
@@ -132,4 +121,4 @@ class BaseTask(ABC):
     def normalize_action(self, env, agent_id, action):
         """Normalize action to be consistent with action space.
         """
-        return np.array(action)
+        return np.array(action) if action is not None else self.action_space.sample()

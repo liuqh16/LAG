@@ -8,38 +8,12 @@ import gym.spaces
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-
-def create_actor(obs_space, act_space):
-    from algorithms.ppo.ppo_actor import PPOActor
-    from config import get_config
-    return PPOActor(
-        get_config().parse_args(args=''), obs_space, act_space, device=torch.device("cpu")
-    )
-
-
-def create_critic(obs_space):
-    from algorithms.ppo.ppo_critic import PPOCritic
-    from config import get_config
-    return PPOCritic(get_config().parse_args(args=''), obs_space, device=torch.device("cpu"))
-
-
-def create_buffer(obs_space, act_space):
-    from algorithms.utils.buffer import ReplayBuffer
-    from config import get_config
-    parser = get_config()
-    parser.add_argument('--num-agents', default=1, type=int)
-    return ReplayBuffer(parser.parse_args(args=''), obs_space, act_space)
-
-
-def create_trainer(obs_space, act_space):
-    from algorithms.ppo.ppo_trainer import PPOTrainer
-    from algorithms.ppo.ppo_policy import PPOPolicy
-    from config import get_config
-    parser = get_config()
-    parser.add_argument('--num-agents', default=1, type=int)
-    args = parser.parse_args(args='')
-    policy = PPOPolicy(args, obs_space, act_space, device=torch.device("cpu"))
-    return PPOTrainer(args, policy, device=torch.device("cpu"))
+from config import get_config
+from algorithms.ppo.ppo_actor import PPOActor
+from algorithms.ppo.ppo_critic import PPOCritic
+from algorithms.utils.buffer import ReplayBuffer
+from algorithms.ppo.ppo_policy import PPOPolicy
+from algorithms.ppo.ppo_trainer import PPOTrainer
 
 
 class TestPPO:
@@ -56,7 +30,7 @@ class TestPPO:
             1, 5
         ])))
     def test_ppo_actor(self, obs_space, act_space, batch_size):
-        actor = create_actor(obs_space, act_space)
+        actor = PPOActor(get_config().parse_args(args=''), obs_space, act_space, device=torch.device("cpu"))
 
         obs = np.array([obs_space.sample() for _ in range(batch_size)])
         masks = np.ones((batch_size, 1))
@@ -81,7 +55,7 @@ class TestPPO:
             1, 5
         ])))
     def test_ppo_critic(self, obs_space, batch_size):
-        critic = create_critic(obs_space)
+        critic = PPOCritic(get_config().parse_args(args=''), obs_space, device=torch.device("cpu"))
 
         obs = np.array([obs_space.sample() for _ in range(batch_size)])
         masks = np.ones((batch_size, 1))
@@ -105,7 +79,7 @@ class TestPPO:
             1, 4, 16
         ])))
     def test_ppo_buffer(self, obs_space, act_space, num_mini_batch, data_chunk_length):
-        buffer = create_buffer(obs_space, act_space)
+        buffer = ReplayBuffer(get_config().parse_args(args=''), obs_space, act_space)
 
         obs = [obs_space.sample() for _ in range(buffer.n_rollout_threads)]
         actions = [act_space.sample() for _ in range(buffer.n_rollout_threads)]
@@ -124,9 +98,8 @@ class TestPPO:
         next_value = np.random.randn(buffer.n_rollout_threads, 1)
         buffer.compute_returns(next_value)
 
-        advantages = buffer.returns[:-1] - buffer.value_preds[:-1]
         batch_count = 0
-        for data in buffer.recurrent_generator(advantages, num_mini_batch, data_chunk_length):
+        for data in buffer.recurrent_generator(buffer, num_mini_batch, data_chunk_length):
             obs_batch, actions_batch, masks_batch, old_action_log_probs_batch, advantages_batch, \
                 returns_batch, value_preds_batch, rnn_states_actor_batch, rnn_states_critic_batch = data
             batch_count += 1
@@ -144,7 +117,9 @@ class TestPPO:
             gym.spaces.Box(low=-1, high=1, shape=(4,)),
         ])))
     def test_ppo_trainer(self, obs_space, act_space):
-        buffer = create_buffer(obs_space, act_space)
-        trainer = create_trainer(obs_space, act_space)
-        trainer.prep_training()
-        trainer.train(buffer)
+        args = get_config().parse_args(args='')
+        buffer = ReplayBuffer(args, obs_space, act_space)
+        policy = PPOPolicy(args, obs_space, act_space, device=torch.device("cpu"))
+        trainer = PPOTrainer(args, device=torch.device("cpu"))
+        policy.prep_training()
+        trainer.train(policy, buffer)

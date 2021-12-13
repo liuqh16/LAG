@@ -54,3 +54,11 @@ class PPOPolicy:
         """
         actions, _, rnn_states_actor = self.actor(obs, rnn_states_actor, masks, deterministic)
         return actions, rnn_states_actor
+
+    def prep_training(self):
+        self.actor.train()
+        self.critic.train()
+
+    def prep_rollout(self):
+        self.actor.eval()
+        self.critic.eval()

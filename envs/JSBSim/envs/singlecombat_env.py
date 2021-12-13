@@ -28,11 +28,8 @@ class SingleCombatEnv(BaseEnv):
         self.current_step = 0
         self.reset_simulators()
         self.task.reset(self)
-        return self.get_obs()
-
-    def step(self, action: Dict[str, np.ndarray]) -> \
-            Tuple[Dict[str, np.ndarray], Dict[str, float], Dict[str, bool], dict]:
-        return super().step(action)
+        obs = self.get_obs()
+        return self._pack(obs)
 
     def reset_simulators(self):
         # switch side

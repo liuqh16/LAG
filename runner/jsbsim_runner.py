@@ -16,10 +16,15 @@ class JSBSimRunner(Runner):
         self.episode_length = self.all_args.episode_length
         self.total_num_steps = 0
 
+    def get_policy(self, agent_id=None):
+        if agent_id is None:
+            return self.policy
+        else:
+            return self.policy_pool[self.agent_policy[agent_id]]
+
     def load(self):
-        assert len(self.envs.observation_space) == self.num_agents, f'{len(self.envs.observation_space)}, {self.num_agents}'
-        obs_space = self.envs.observation_space[0]
-        act_space = self.envs.action_space[0]
+        from ..envs.env_wrappers import ShareDummyVecEnv
+        assert isinstance(self.envs, ShareDummyVecEnv)
 
         # algorithm
         if self.algorithm_name == "ppo":
@@ -27,23 +32,22 @@ class JSBSimRunner(Runner):
             from algorithms.ppo.ppo_policy import PPOPolicy as Policy
         else:
             raise NotImplementedError
+
+        obs_space = self.envs.observation_space
+        act_space = self.envs.action_space
         self.policy = Policy(self.all_args, obs_space, act_space, device=self.device)
-        self.trainer = Trainer(self.all_args, self.policy, device=self.device)
+
+        self.policy_pool = {"main": self.policy}
+        self.agent_policy = dict([(agent_id, "main") for agent_id in self.envs.agent_ids])
+        self.trainer = Trainer(self.all_args, device=self.device)
 
         # buffer
-        self.buffer = ReplayBuffer(self.all_args, self.num_agents, obs_space, act_space)
+        self.buffer_pool = dict([
+            (agent_id, ReplayBuffer(self.all_args, obs_space, act_space)) for agent_id in self.envs.agent_ids
+        ])
 
         if self.model_dir is not None:
             self.restore()
-
-    def save(self):
-        save_dir = str(self.save_dir) + f"/{self.total_num_steps}"
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        policy_actor = self.trainer.policy.actor
-        torch.save(policy_actor, save_dir + "/actor.pth")
-        policy_critic = self.trainer.policy.critic
-        torch.save(policy_critic, save_dir + "/critic.pth")
 
     def run(self):
         self.warmup()
@@ -116,12 +120,11 @@ class JSBSimRunner(Runner):
 
     @torch.no_grad()
     def collect(self, step):
-        self.trainer.prep_rollout()
+        self.policy.prep_rollout()
         values, actions, action_log_probs, rnn_states_actor, rnn_states_critic \
-            = self.trainer.policy.get_actions(np.concatenate(self.buffer.obs[step]),
-                                              np.concatenate(self.buffer.rnn_states_actor[step]),
-                                              np.concatenate(self.buffer.rnn_states_critic[step]))
-        # [self.envs, agents, dim]
+            = self.policy.get_actions(np.concatenate(self.buffer.obs[step]),
+                                      np.concatenate(self.buffer.rnn_states_actor[step]),
+                                      np.concatenate(self.buffer.rnn_states_critic[step]))
         values = np.array(np.split(_t2n(values), self.n_rollout_threads))
         actions = np.array(np.split(_t2n(actions), self.n_rollout_threads))
         action_log_probs = np.array(np.split(_t2n(action_log_probs), self.n_rollout_threads))

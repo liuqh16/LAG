@@ -27,7 +27,7 @@ class SingleCombatTask(BaseTask):
 
     @property
     def num_agents(self) -> int:
-        return 2
+        return 1
 
     def load_variables(self):
         self.state_var = [
@@ -61,11 +61,11 @@ class SingleCombatTask(BaseTask):
         ]
 
     def load_observation_space(self):
-        self.observation_space = dict([(agend_id, spaces.Box(low=-10, high=10., shape=(18,))) for agend_id in self.agent_ids])
+        self.observation_space = spaces.Box(low=-10, high=10., shape=(18,))
 
     def load_action_space(self):
         # aileron, elevator, rudder, throttle
-        self.action_space = dict([(agend_id, spaces.MultiDiscrete([41, 41, 41, 30])) for agend_id in self.agent_ids])
+        self.action_space = spaces.MultiDiscrete([41, 41, 41, 30])
 
     def get_obs(self, env, agent_id):
         norm_obs = np.zeros(18)
@@ -97,17 +97,17 @@ class SingleCombatTask(BaseTask):
         norm_obs[15] = enm_obs_list[2] / 5000            # 15. enm_altitude  (unit: 5km)
         norm_obs[16] = np.linalg.norm(enm_feature[3:])   # 16. enm_v         (unit: mh)
         norm_obs[17] = enm_obs_list[8]                   # 17. enm_v_down    (unit: mh)
-        norm_obs = np.clip(norm_obs, self.observation_space[agent_id].low, self.observation_space[agent_id].high)
+        norm_obs = np.clip(norm_obs, self.observation_space.low, self.observation_space.high)
         return norm_obs
 
     def normalize_action(self, env, agent_id, action):
         """Convert discrete action index into continuous value.
         """
         norm_act = np.zeros(4)
-        norm_act[0] = action[0] * 2. / (self.action_space[agent_id].nvec[0] - 1.) - 1.
-        norm_act[1] = action[1] * 2. / (self.action_space[agent_id].nvec[1] - 1.) - 1.
-        norm_act[2] = action[2] * 2. / (self.action_space[agent_id].nvec[2] - 1.) - 1.
-        norm_act[3] = action[3] * 0.5 / (self.action_space[agent_id].nvec[3] - 1.) + 0.4
+        norm_act[0] = action[0] * 2. / (self.action_space.nvec[0] - 1.) - 1.
+        norm_act[1] = action[1] * 2. / (self.action_space.nvec[1] - 1.) - 1.
+        norm_act[2] = action[2] * 2. / (self.action_space.nvec[2] - 1.) - 1.
+        norm_act[3] = action[3] * 0.5 / (self.action_space.nvec[3] - 1.) + 0.4
         return norm_act
 
     def get_reward(self, env, agent_id, info=...):

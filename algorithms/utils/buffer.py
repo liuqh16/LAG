@@ -1,26 +1,39 @@
 import torch
 import numpy as np
-from typing import Union
+from typing import Union, List
+from abc import ABC, abstractmethod
 from .utils import get_shape_from_space
 
 
-class ReplayBuffer:
+class Buffer(ABC):
 
-    @classmethod
-    def _flatten(cls, T: int, N: int, x: np.ndarray):
+    def __init__(self, args):
+        self.buffer_size = args.buffer_size
+        self.n_rollout_threads = args.n_rollout_threads
+
+    @abstractmethod
+    def insert(self, **kwargs):
+        pass
+
+    @abstractmethod
+    def after_update(self):
+        pass
+
+
+class ReplayBuffer(Buffer):
+
+    @staticmethod
+    def _flatten(T: int, N: int, x: np.ndarray):
         return x.reshape(T * N, *x.shape[2:])
 
-    @classmethod
-    def _cast(cls, x: np.ndarray):
+    @staticmethod
+    def _cast(x: np.ndarray):
         return x.transpose(1, 0, *range(2, x.ndim)).reshape(-1, *x.shape[2:])
 
     def __init__(self, args, obs_space, act_space):
-        # env config
-        assert args.num_agents == 1  # default replay buffer only support single agent environments
-        self.n_rollout_threads = args.n_rollout_threads
+        super().__init__(args)
         # buffer config
         self.gamma = args.gamma
-        self.buffer_size = args.buffer_size
         self.use_proper_time_limits = args.use_proper_time_limits
         self.use_gae = args.use_gae
         self.gae_lambda = args.gae_lambda
@@ -51,6 +64,11 @@ class ReplayBuffer:
         self.rnn_states_critic = np.zeros_like(self.rnn_states_actor)
 
         self.step = 0
+
+    @property
+    def advantages(self) -> np.ndarray:
+        advantages = self.returns[:-1] - self.value_preds[:-1]  # type: np.ndarray
+        return (advantages - advantages.mean()) / (advantages.std() + 1e-5)
 
     def insert(self,
                obs: np.ndarray,
@@ -128,13 +146,14 @@ class ReplayBuffer:
                 for step in reversed(range(self.rewards.shape[0])):
                     self.returns[step] = self.returns[step + 1] * self.gamma * self.masks[step + 1] + self.rewards[step]
 
-    def recurrent_generator(self, advantages: np.ndarray, num_mini_batch: int, data_chunk_length: int):
+    @staticmethod
+    def recurrent_generator(buffer: Union[Buffer, List[Buffer]], num_mini_batch: int, data_chunk_length: int):
         """
         A recurrent generator that yields training data for chunked RNN training arranged in mini batches.
         This generator shuffles the data by sequences.
 
         Args:
-            advantages (np.ndarray): advantage estimates.
+            buffers (Buffer or List[Buffer])
             num_mini_batch (int): number of minibatches to split the batch into.
             data_chunk_length (int): length of sequence chunks with which to train RNN.
 
@@ -142,24 +161,33 @@ class ReplayBuffer:
             (obs_batch, actions_batch, masks_batch, old_action_log_probs_batch, advantages_batch, \
                 returns_batch, value_preds_batch, rnn_states_actor_batch, rnn_states_critic_batch)
         """
-        assert self.n_rollout_threads * self.buffer_size >= data_chunk_length, (
+        buffer = [buffer] if isinstance(buffer, ReplayBuffer) else buffer  # type: List[ReplayBuffer]
+        n_rollout_threads = buffer[0].n_rollout_threads
+        buffer_size = buffer[0].buffer_size
+        assert all([b.n_rollout_threads == n_rollout_threads for b in buffer]) \
+            and all([b.buffer_size == buffer_size for b in buffer]) \
+            and all([isinstance(b, ReplayBuffer) for b in buffer]), \
+            "Input buffers must has the same type and shape"
+        buffer_size = buffer_size * len(buffer)
+
+        assert n_rollout_threads * buffer_size >= data_chunk_length, (
             "PPO requires the number of processes ({}) * buffer size ({}) "
             "to be greater than or equal to the number of "
-            "data chunk length ({}).".format(self.n_rollout_threads, self.buffer_size, data_chunk_length))
+            "data chunk length ({}).".format(n_rollout_threads, buffer_size, data_chunk_length))
 
         # Transpose and reshape parallel data into sequential data
-        obs = self._cast(self.obs[:-1])
-        actions = self._cast(self.actions)
-        masks = self._cast(self.masks[:-1])
-        old_action_log_probs = self._cast(self.action_log_probs)
-        advantages = self._cast(advantages)
-        returns = self._cast(self.returns[:-1])
-        value_preds = self._cast(self.value_preds[:-1])
-        rnn_states_actor = self._cast(self.rnn_states_actor[:-1])
-        rnn_states_critic = self._cast(self.rnn_states_critic[:-1])
+        obs = np.vstack([ReplayBuffer._cast(buf.obs[:-1]) for buf in buffer])
+        actions = np.vstack([ReplayBuffer._cast(buf.actions) for buf in buffer])
+        masks = np.vstack([ReplayBuffer._cast(buf.masks[:-1]) for buf in buffer])
+        old_action_log_probs = np.vstack([ReplayBuffer._cast(buf.action_log_probs) for buf in buffer])
+        advantages = np.vstack([ReplayBuffer._cast(buf.advantages) for buf in buffer])
+        returns = np.vstack([ReplayBuffer._cast(buf.returns[:-1]) for buf in buffer])
+        value_preds = np.vstack([ReplayBuffer._cast(buf.value_preds[:-1]) for buf in buffer])
+        rnn_states_actor = np.vstack([ReplayBuffer._cast(buf.rnn_states_actor[:-1]) for buf in buffer])
+        rnn_states_critic = np.vstack([ReplayBuffer._cast(buf.rnn_states_critic[:-1]) for buf in buffer])
 
         # Get mini-batch size and shuffle chunk data
-        data_chunks = self.n_rollout_threads * self.buffer_size // data_chunk_length
+        data_chunks = n_rollout_threads * buffer_size // data_chunk_length
         mini_batch_size = data_chunks // num_mini_batch
         rand = torch.randperm(data_chunks).numpy()
         sampler = [rand[i * mini_batch_size:(i + 1) * mini_batch_size] for i in range(num_mini_batch)]
@@ -202,17 +230,17 @@ class ReplayBuffer:
             value_preds_batch = np.stack(value_preds_batch, axis=1)
 
             # States is just a (N, -1) from_numpy
-            rnn_states_actor_batch = np.stack(rnn_states_actor_batch).reshape(N, *self.rnn_states_actor.shape[2:])
-            rnn_states_critic_batch = np.stack(rnn_states_critic_batch).reshape(N, *self.rnn_states_critic.shape[2:])
+            rnn_states_actor_batch = np.stack(rnn_states_actor_batch).reshape(N, *buffer[0].rnn_states_actor.shape[2:])
+            rnn_states_critic_batch = np.stack(rnn_states_critic_batch).reshape(N, *buffer[0].rnn_states_critic.shape[2:])
 
             # Flatten the (L, N, ...) from_numpys to (L * N, ...)
-            obs_batch = self._flatten(L, N, obs_batch)
-            actions_batch = self._flatten(L, N, actions_batch)
-            masks_batch = self._flatten(L, N, masks_batch)
-            old_action_log_probs_batch = self._flatten(L, N, old_action_log_probs_batch)
-            advantages_batch = self._flatten(L, N, advantages_batch)
-            returns_batch = self._flatten(L, N, returns_batch)
-            value_preds_batch = self._flatten(L, N, value_preds_batch)
+            obs_batch = ReplayBuffer._flatten(L, N, obs_batch)
+            actions_batch = ReplayBuffer._flatten(L, N, actions_batch)
+            masks_batch = ReplayBuffer._flatten(L, N, masks_batch)
+            old_action_log_probs_batch = ReplayBuffer._flatten(L, N, old_action_log_probs_batch)
+            advantages_batch = ReplayBuffer._flatten(L, N, advantages_batch)
+            returns_batch = ReplayBuffer._flatten(L, N, returns_batch)
+            value_preds_batch = ReplayBuffer._flatten(L, N, value_preds_batch)
 
             yield obs_batch, actions_batch, masks_batch, old_action_log_probs_batch, advantages_batch, \
                 returns_batch, value_preds_batch, rnn_states_actor_batch, rnn_states_critic_batch
@@ -220,13 +248,8 @@ class ReplayBuffer:
 
 class SharedReplayBuffer(ReplayBuffer):
 
-    @classmethod
-    def _cast(cls, x: np.ndarray):
-        return x.transpose(1, 2, 0, *range(3, x.ndim)).reshape(-1, *x.shape[3:])
-
-    def __init__(self, args, num_agents, obs_space, share_obs_space, act_space):
+    def __init__(self, args, obs_space, share_obs_space, act_space):
         # env config
-        self.num_agents = num_agents
         self.n_rollout_threads = args.n_rollout_threads
         # buffer config
         self.gamma = args.gamma
@@ -243,19 +266,19 @@ class SharedReplayBuffer(ReplayBuffer):
         act_shape = get_shape_from_space(act_space)
 
         # (o_0, s_0, a_0, r_0, d_0, ..., o_T, s_T)
-        self.obs = np.zeros((self.buffer_size + 1, self.n_rollout_threads, num_agents, *obs_shape), dtype=np.float32)
-        self.share_obs = np.zeros((self.buffer_size + 1, self.n_rollout_threads, num_agents, *share_obs_shape), dtype=np.float32)
-        self.actions = np.zeros((self.buffer_size, self.n_rollout_threads, num_agents, *act_shape), dtype=np.float32)
-        self.rewards = np.zeros((self.buffer_size, self.n_rollout_threads, num_agents, 1), dtype=np.float32)
+        self.obs = np.zeros((self.buffer_size + 1, self.n_rollout_threads, *obs_shape), dtype=np.float32)
+        self.share_obs = np.zeros((self.buffer_size + 1, self.n_rollout_threads, *share_obs_shape), dtype=np.float32)
+        self.actions = np.zeros((self.buffer_size, self.n_rollout_threads, *act_shape), dtype=np.float32)
+        self.rewards = np.zeros((self.buffer_size, self.n_rollout_threads, 1), dtype=np.float32)
         # NOTE: masks[t] = 1 - dones[t-1], which represents whether obs[t] is a terminal state .... same for all agents
-        self.masks = np.ones((self.buffer_size + 1, self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
+        self.masks = np.ones((self.buffer_size + 1, self.n_rollout_threads, 1), dtype=np.float32)
         # NOTE: active_masks[t, :, i] represents whether agent[i] is alive in obs[t] .... differ in different agents
         self.active_masks = np.ones_like(self.masks)
         # pi(a)
-        self.action_log_probs = np.zeros((self.buffer_size, self.n_rollout_threads, num_agents, *act_shape), dtype=np.float32)
+        self.action_log_probs = np.zeros((self.buffer_size, self.n_rollout_threads, *act_shape), dtype=np.float32)
         # V(o), R(o) while advantage = returns - value_preds
-        self.value_preds = np.zeros((self.buffer_size + 1, self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
-        self.returns = np.zeros((self.buffer_size + 1, self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
+        self.value_preds = np.zeros((self.buffer_size + 1, self.n_rollout_threads, 1), dtype=np.float32)
+        self.returns = np.zeros((self.buffer_size + 1, self.n_rollout_threads, 1), dtype=np.float32)
         # rnn
         self.rnn_states_actor = np.zeros((self.buffer_size + 1, self.n_rollout_threads, self.num_agents,
                                           self.recurrent_hidden_layers, self.recurrent_hidden_size), dtype=np.float32)
@@ -315,10 +338,10 @@ class SharedReplayBuffer(ReplayBuffer):
                 old_action_log_probs_batch, advantages_batch, returns_batch, value_preds_batch, \
                 rnn_states_actor_batch, rnn_states_critic_batch)
         """
-        assert self.n_rollout_threads * self.num_agents * self.buffer_size >= data_chunk_length, (
-            "PPO requires the number of processes ({}) * number of agents ({}) * buffer size ({}) "
+        assert self.n_rollout_threads * self.buffer_size >= data_chunk_length, (
+            "PPO requires the number of processes ({}) * buffer size ({}) "
             "to be greater than or equal to the number of data chunk length ({}).".format(
-                self.n_rollout_threads, self.num_agents, self.buffer_size, data_chunk_length))
+                self.n_rollout_threads, self.buffer_size, data_chunk_length))
 
         # Transpose and reshape parallel data into sequential data
         obs = self._cast(self.obs[:-1])
@@ -334,7 +357,7 @@ class SharedReplayBuffer(ReplayBuffer):
         rnn_states_critic = self._cast(self.rnn_states_critic[:-1])
 
         # Get mini-batch size and shuffle chunk data
-        data_chunks = self.n_rollout_threads * self.buffer_size * self.num_agents // data_chunk_length
+        data_chunks = self.n_rollout_threads * self.buffer_size // data_chunk_length
         mini_batch_size = data_chunks // num_mini_batch
         rand = torch.randperm(data_chunks).numpy()
         sampler = [rand[i * mini_batch_size:(i + 1) * mini_batch_size] for i in range(num_mini_batch)]

@@ -132,34 +132,44 @@ class DummyVecEnv(VecEnv):
         env = self.envs[0]
         super().__init__(len(self.envs), env.observation_space, env.action_space)
 
-        self.agent_ids = getattr(env, "agent_ids", ["default"])
         self.actions = None
+        self.num_agents = getattr(self.envs[0], "num_agents", 1)
 
     def step_async(self, actions):
         self.actions = actions
 
     def step_wait(self):
         results = [env.step(a) for (a, env) in zip(self.actions, self.envs)]
-        obs, rews, dones, infos = map(np.array, zip(*results))
+        obss, rewards, dones, infos = map(list, zip(*results))
         for (i, done) in enumerate(dones):
             if 'bool' in done.__class__.__name__:
                 if done:
-                    obs[i] = self.envs[i].reset()
+                    obss[i] = self.envs[i].reset()
             elif isinstance(done, dict):
                 if np.all(list(done.values())):
-                    obs[i] = self.envs[i].reset()
+                    obss[i] = self.envs[i].reset()
             else:
                 raise NotImplementedError("Unexpected type of done!")
         self.actions = None
-        return obs, rews, dones, infos
+        return self._flatten(obss), self._flatten(rewards), self._flatten(dones), np.array(infos)
 
     def reset(self):
-        obs = [env.reset() for env in self.envs]
-        return np.array(obs)
+        obss = [env.reset() for env in self.envs]
+        return self._flatten(obss)
 
     def close(self):
         for env in self.envs:
             env.close()
+
+    @classmethod
+    def _flatten(cls, v):
+        assert isinstance(v, (list, tuple))
+        assert len(v) > 0
+
+        if isinstance(v[0], dict):
+            return {k: np.stack([v_[k] for v_ in v]) for k in v[0].keys()}
+        else:
+            return np.stack(v)
 
 
 def worker(remote: Connection, parent_remote: Connection, env_fn_wrappers):
@@ -200,8 +210,8 @@ def worker(remote: Connection, parent_remote: Connection, env_fn_wrappers):
                 break
             elif cmd == 'get_spaces':
                 remote.send(CloudpickleWrapper((envs[0].observation_space, envs[0].action_space)))
-            elif cmd == 'get_agent_ids':
-                remote.send(CloudpickleWrapper((getattr(envs[0], "agent_ids", ["default"]))))
+            elif cmd == 'get_num_agents':
+                remote.send(CloudpickleWrapper((getattr(envs[0], "num_agents", 1))))
             else:
                 raise NotImplementedError
     except KeyboardInterrupt:
@@ -247,8 +257,8 @@ class SubprocVecEnv(VecEnv):
         observation_space, action_space = self.remotes[0].recv().x
         super().__init__(nenvs, observation_space, action_space)
 
-        self.remotes[0].send(('get_agent_ids', None))
-        self.agent_ids = self.remotes[0].recv().x
+        self.remotes[0].send(('get_num_agents', None))
+        self.num_agents = self.remotes[0].recv().x
 
     def step_async(self, actions):
         self._assert_not_closed()
@@ -260,18 +270,18 @@ class SubprocVecEnv(VecEnv):
     def step_wait(self):
         self._assert_not_closed()
         results = [remote.recv() for remote in self.remotes]
-        results = self._flatten_res(results)  # [[tuple] * in_series] * nremotes => [tuple] * nenvs
+        results = self._flatten_series(results)  # [[tuple] * in_series] * nremotes => [tuple] * nenvs
         self.waiting = False
-        obss, rewards, dones, infos = map(np.array, zip(*results))
-        return obss, rewards, dones, infos
+        obss, rewards, dones, infos = zip(*results)
+        return self._flatten(obss), self._flatten(rewards), self._flatten(dones), np.array(infos)
 
     def reset(self):
         self._assert_not_closed()
         for remote in self.remotes:
             remote.send(('reset', None))
         obss = [remote.recv() for remote in self.remotes]
-        obss = self._flatten_res(obss)
-        return np.array(obss)
+        obss = self._flatten_series(obss)
+        return self._flatten(obss)
 
     def close_extras(self):
         if self.waiting:
@@ -286,7 +296,17 @@ class SubprocVecEnv(VecEnv):
         assert not self.closed, "Trying to operate on a SubprocVecEnv after calling close()"
 
     @classmethod
-    def _flatten_res(cls, v):
+    def _flatten(cls, v):
+        assert isinstance(v, (list, tuple))
+        assert len(v) > 0
+
+        if isinstance(v[0], dict):
+            return {k: np.stack([v_[k] for v_ in v]) for k in v[0].keys()}
+        else:
+            return np.stack(v)
+
+    @classmethod
+    def _flatten_series(cls, v):
         assert isinstance(v, (list, tuple))
         assert len(v) > 0
         assert all([len(v_) > 0 for v_ in v])
@@ -315,8 +335,6 @@ class ShareDummyVecEnv(DummyVecEnv, ShareVecEnv):
         self.envs = [fn() for fn in env_fns]
         env = self.envs[0]
         ShareVecEnv.__init__(self, len(self.envs), env.observation_space, env.share_observation_space, env.action_space)
-
-        self.agent_ids = getattr(env, "agent_ids", ["default"])
         self.actions = None
 
     def step_wait(self):
@@ -378,8 +396,6 @@ def shareworker(remote: Connection, parent_remote: Connection, env_fn_wrappers):
                 break
             elif cmd == 'get_spaces':
                 remote.send(CloudpickleWrapper((envs[0].observation_space, envs[0].share_observation_space, envs[0].action_space)))
-            elif cmd == 'get_agent_ids':
-                remote.send(CloudpickleWrapper((getattr(envs[0], "agent_ids", ["default"]))))
             else:
                 raise NotImplementedError
     except KeyboardInterrupt:
@@ -414,13 +430,10 @@ class ShareSubprocVecEnv(SubprocVecEnv, ShareVecEnv):
         observation_space, share_observation_space, action_space = self.remotes[0].recv().x
         ShareVecEnv.__init__(self, nenvs, observation_space, share_observation_space, action_space)
 
-        self.remotes[0].send(('get_agent_ids', None))
-        self.agent_ids = self.remotes[0].recv().x
-
     def step_wait(self):
         self._assert_not_closed()
         results = [remote.recv() for remote in self.remotes]
-        results = self._flatten_res(results)
+        results = self._flatten_series(results)
         self.waiting = False
         obss, share_obss, rewards, dones, infos = map(np.array, zip(*results))
         return obss, share_obss, rewards, dones, infos
@@ -430,6 +443,6 @@ class ShareSubprocVecEnv(SubprocVecEnv, ShareVecEnv):
         for remote in self.remotes:
             remote.send(('reset', None))
         results = [remote.recv() for remote in self.remotes]
-        results = self._flatten_res(results)
+        results = self._flatten_series(results)
         obss, share_obss = map(np.array, zip(*results))
         return obss, share_obss

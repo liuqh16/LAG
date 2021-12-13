@@ -1,7 +1,7 @@
 import gym
 from gym.utils import seeding
 import numpy as np
-from typing import Dict, List
+from typing import Dict, List, Union, Any, Tuple
 from ..core.simulatior import AircraftSimulator, BaseSimulator
 from ..tasks.task_base import BaseTask
 from ..utils.utils import parse_config
@@ -29,10 +29,6 @@ class BaseEnv(gym.Env):
         self.load()
 
     @property
-    def agent_ids(self) -> List[str]:
-        return self._agent_ids
-
-    @property
     def num_agents(self) -> int:
         return self.task.num_agents
 
@@ -45,12 +41,12 @@ class BaseEnv(gym.Env):
         return self.agent_interaction_steps / self.jsbsim_freq
 
     @property
-    def observation_space(self) -> Dict[str, gym.Space]:
+    def observation_space(self):
         return self.task.observation_space
 
     @property
-    def action_space(self) -> Dict[str, gym.Space]:
-        return self.task.action_space
+    def action_space(self):
+        return self.task.observation_space
 
     def load(self):
         self.load_task()
@@ -69,7 +65,9 @@ class BaseEnv(gym.Env):
                 config.get("init_state"),
                 getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0)),
                 self.jsbsim_freq)
-        self._agent_ids = list(self._jsbsims.keys())
+        self.agent_ids = list(self._jsbsims.keys())
+        self.ego_ids = [uid for uid in self.agent_ids if uid[0] == self.agent_ids[0][0]]
+        self.enm_ids = [uid for uid in self.agent_ids if uid[0] != self.agent_ids[0][0]]
 
         for key, sim in self._jsbsims.items():
             for k, s in self._jsbsims.items():
@@ -98,16 +96,18 @@ class BaseEnv(gym.Env):
         self._tempsims.clear()
         # reset task
         self.task.reset(self)
-        return self.get_obs()
+        obs = self.get_obs()
+        return self._pack(obs)
 
-    def step(self, action):
+    def step(self, action: Union[np.ndarray, Dict[str, np.ndarray]]) -> \
+            Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Dict[str, np.ndarray], dict]:
         """Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`
         to reset this environment's observation. Accepts an action and
         returns a tuple (observation, reward_visualize, done, info).
 
         Args:
-            action (dict): the agents' actions, each key corresponds to an agent_id
+            action (np.ndarray or dict): the agents' actions, allow opponent's action input
 
         Returns:
             (tuple):
@@ -115,15 +115,14 @@ class BaseEnv(gym.Env):
                 rewards: amount of rewards returned after previous actions
                 dones: whether the episode has ended, in which case further step() calls are undefined
                 info: auxiliary information
-
-        NOTE: shape of obs/rewards/dones: {agent_id: values}
         """
         self.current_step += 1
         info = {"current_step": self.current_step}
 
         # apply actions
+        action = self._unpack(action)
         for agent_id in self.agent_ids:
-            a_action = self.task.normalize_action(self, agent_id, action[agent_id])
+            a_action = self.task.normalize_action(self, agent_id, action.get(agent_id, None))
             self.agents[agent_id].set_property_values(self.task.action_var, a_action)
         # run simulation
         for _ in range(self.agent_interaction_steps):
@@ -143,7 +142,7 @@ class BaseEnv(gym.Env):
         for agent_id in self.agent_ids:
             dones[agent_id], info = self.task.get_termination(self, agent_id, info)
 
-        return obs, rewards, dones, info
+        return self._pack(obs), self._pack(rewards), self._pack(dones), info
 
     def get_obs(self):
         """Returns all agent observations in a list.
@@ -231,3 +230,21 @@ class BaseEnv(gym.Env):
         """
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
+
+    def _pack(self, data) -> Dict[str, np.ndarray]:
+        """Pack seperated key-value dict into grouped dict"""
+        assert isinstance(data, Dict)
+        ego_data = np.array([data[uid] for uid in self.ego_ids])
+        enm_data = np.array([data[uid] for uid in self.enm_ids])
+        return {"ego": ego_data, "enm": enm_data}
+
+    def _unpack(self, data) -> Dict[str, Any]:
+        """Unpack grouped data into seperated key-value dict"""
+        if isinstance(data, (np.ndarray, list)):
+            unpack_data = dict(zip(self.ego_ids + self.enm_ids, data))
+        elif isinstance(data, Dict):
+            unpack_data = dict(zip(self.ego_ids, data.get("ego", [])))
+            unpack_data.update(dict(zip(self.enm_ids, data.get("enm", []))))
+        else:
+            raise TypeError
+        return unpack_data

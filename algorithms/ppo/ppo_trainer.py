@@ -1,14 +1,14 @@
 import torch
 import torch.nn as nn
+from typing import Union, List
 from .ppo_policy import PPOPolicy
 from ..utils.buffer import ReplayBuffer
 from ..utils.utils import check, get_gard_norm
 
 
 class PPOTrainer():
-    def __init__(self, args, policy: PPOPolicy, device=torch.device("cpu")):
+    def __init__(self, args, device=torch.device("cpu")):
 
-        self.policy = policy
         self.device = device
         self.tpdv = dict(dtype=torch.float32, device=device)
         # ppo config
@@ -24,7 +24,7 @@ class PPOTrainer():
         self.use_recurrent_policy = args.use_recurrent_policy
         self.data_chunk_length = args.data_chunk_length
 
-    def ppo_update(self, sample):
+    def ppo_update(self, policy: PPOPolicy, sample):
 
         obs_batch, actions_batch, masks_batch, old_action_log_probs_batch, advantages_batch, \
             returns_batch, value_preds_batch, rnn_states_actor_batch, rnn_states_critic_batch = sample
@@ -35,11 +35,11 @@ class PPOTrainer():
         value_preds_batch = check(value_preds_batch).to(**self.tpdv)
 
         # Reshape to do in a single forward pass for all steps
-        values, action_log_probs, dist_entropy = self.policy.evaluate_actions(obs_batch,
-                                                                              rnn_states_actor_batch,
-                                                                              rnn_states_critic_batch,
-                                                                              actions_batch,
-                                                                              masks_batch)
+        values, action_log_probs, dist_entropy = policy.evaluate_actions(obs_batch,
+                                                                         rnn_states_actor_batch,
+                                                                         rnn_states_critic_batch,
+                                                                         actions_batch,
+                                                                         masks_batch)
 
         # Obtain the loss function
         ratio = torch.exp(action_log_probs - old_action_log_probs_batch)
@@ -62,22 +62,19 @@ class PPOTrainer():
         loss = policy_loss + value_loss * self.value_loss_coef + policy_entropy_loss * self.entropy_coef
 
         # Optimize the loss function
-        self.policy.optimizer.zero_grad()
+        policy.optimizer.zero_grad()
         loss.backward()
         if self.use_max_grad_norm:
-            actor_grad_norm = nn.utils.clip_grad_norm_(self.policy.actor.parameters(), self.max_grad_norm).item()
-            critic_grad_norm = nn.utils.clip_grad_norm_(self.policy.critic.parameters(), self.max_grad_norm).item()
+            actor_grad_norm = nn.utils.clip_grad_norm_(policy.actor.parameters(), self.max_grad_norm).item()
+            critic_grad_norm = nn.utils.clip_grad_norm_(policy.critic.parameters(), self.max_grad_norm).item()
         else:
-            actor_grad_norm = get_gard_norm(self.policy.actor.parameters())
-            critic_grad_norm = get_gard_norm(self.policy.critic.parameters())
-        self.policy.optimizer.step()
+            actor_grad_norm = get_gard_norm(policy.actor.parameters())
+            critic_grad_norm = get_gard_norm(policy.critic.parameters())
+        policy.optimizer.step()
 
         return policy_loss, value_loss, policy_entropy_loss, ratio, actor_grad_norm, critic_grad_norm
 
-    def train(self, buffer: ReplayBuffer):
-        advantages = buffer.returns[:-1] - buffer.value_preds[:-1]
-        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-5)
-
+    def train(self, policy: PPOPolicy, buffer: Union[ReplayBuffer, List[ReplayBuffer]]):
         train_info = {}
         train_info['value_loss'] = 0
         train_info['policy_loss'] = 0
@@ -88,14 +85,14 @@ class PPOTrainer():
 
         for _ in range(self.ppo_epoch):
             if self.use_recurrent_policy:
-                data_generator = buffer.recurrent_generator(advantages, self.num_mini_batch, self.data_chunk_length)
+                data_generator = ReplayBuffer.recurrent_generator(buffer, self.num_mini_batch, self.data_chunk_length)
             else:
                 raise NotImplementedError
 
             for sample in data_generator:
 
                 policy_loss, value_loss, policy_entropy_loss, ratio, \
-                    actor_grad_norm, critic_grad_norm = self.ppo_update(sample)
+                    actor_grad_norm, critic_grad_norm = self.ppo_update(policy, sample)
 
                 train_info['value_loss'] += value_loss.item()
                 train_info['policy_loss'] += policy_loss.item()
@@ -110,11 +107,3 @@ class PPOTrainer():
             train_info[k] /= num_updates
 
         return train_info
-
-    def prep_training(self):
-        self.policy.actor.train()
-        self.policy.critic.train()
-
-    def prep_rollout(self):
-        self.policy.actor.eval()
-        self.policy.critic.eval()
