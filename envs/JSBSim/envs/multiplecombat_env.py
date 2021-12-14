@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Tuple, Dict, Sequence
+from typing import Tuple, Dict, Any
 from .env_base import BaseEnv
 from ..tasks.multiplecombat_task import MultipleCombatTask
 
@@ -42,7 +42,7 @@ class MultipleCombatEnv(BaseEnv):
             sim.reload()
         self._tempsims.clear()
 
-    def step(self, action: Dict[str, Sequence]) -> \
+    def step(self, action: Dict[str, Any]) -> \
             Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Dict[str, float], Dict[str, bool], dict]:
         """Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`

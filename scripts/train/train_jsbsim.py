@@ -45,12 +45,14 @@ def make_train_env(all_args):
 
 def parse_args(args, parser):
     group = parser.add_argument_group("JSBSim Env parameters")
-    group.add_argument('--episode-length', type=int, default=900,
-                       help="the max length of an episode")
     group.add_argument('--scenario-name', type=str, default='singlecombat_simple',
                        help="Which scenario to run on")
     group.add_argument('--num-agents', type=int, default=2,
                        help="number of fighters controlled by RL policy")
+    group.add_argument('--use-selfplay', action="store_true", default=False,
+                       help="whether to use selfplay algorithm")
+    group.add_argument('--n-choose-opponents', type=int, default=0,
+                       help="number of opponents chosen for rollout")
     all_args = parser.parse_known_args(args)[0]
     return all_args
 

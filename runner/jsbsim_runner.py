@@ -13,18 +13,15 @@ def _t2n(x):
 class JSBSimRunner(Runner):
     def __init__(self, config):
         super(JSBSimRunner, self).__init__(config)
-        self.episode_length = self.all_args.episode_length
         self.total_num_steps = 0
-
-    def get_policy(self, agent_id=None):
-        if agent_id is None:
-            return self.policy
-        else:
-            return self.policy_pool[self.agent_policy[agent_id]]
+        self.n_choose_opponents = self.all_args.n_choose_opponents
 
     def load(self):
         from ..envs.env_wrappers import ShareDummyVecEnv
         assert isinstance(self.envs, ShareDummyVecEnv)
+
+        obs_space = self.envs.observation_space
+        act_space = self.envs.action_space
 
         # algorithm
         if self.algorithm_name == "ppo":
@@ -32,19 +29,19 @@ class JSBSimRunner(Runner):
             from algorithms.ppo.ppo_policy import PPOPolicy as Policy
         else:
             raise NotImplementedError
-
-        obs_space = self.envs.observation_space
-        act_space = self.envs.action_space
         self.policy = Policy(self.all_args, obs_space, act_space, device=self.device)
-
-        self.policy_pool = {"main": self.policy}
-        self.agent_policy = dict([(agent_id, "main") for agent_id in self.envs.agent_ids])
         self.trainer = Trainer(self.all_args, device=self.device)
-
         # buffer
-        self.buffer_pool = dict([
-            (agent_id, ReplayBuffer(self.all_args, obs_space, act_space)) for agent_id in self.envs.agent_ids
-        ])
+        self.buffer = ReplayBuffer(self.all_args, obs_space, act_space)
+
+        # opponent
+        if self.n_choose_opponents > 0:
+            self.opponent_policy = [
+                Policy(self.all_args, obs_space, act_space, device=self.device)
+                for _ in range(self.n_choose_opponents)]
+            self.opponent_env_split = np.array_split(np.arange(self.n_rollout_threads), len(self.policy))
+            self.opponent_obs = np.zeros_like(self.buffer.obs[0])
+            self.opponent_rnn_states_actor = np.zeros_like(self.buffer.rnn_states_actor[0])
 
         if self.model_dir is not None:
             self.restore()
@@ -116,6 +113,8 @@ class JSBSimRunner(Runner):
     def warmup(self):
         # reset env
         obs = self.envs.reset()
+        if self.n_choose_opponents > 0:
+            pass
         self.buffer.obs[0] = obs.copy()
 
     @torch.no_grad()
@@ -196,3 +195,13 @@ class JSBSimRunner(Runner):
         render_infos = {}
         render_infos['render_episode_reward'] = render_episode_rewards
         print("render episode reward of agent: " + str(render_infos['render_episode_reward']))
+
+    def save(self, sub_dir='latest'):
+        model_dir = str(self.save_dir) + '/' + sub_dir
+        if not os.path.exists(model_dir):
+            os.makedirs(model_dir)
+        torch.save(self.policy.actor.state_dict(), model_dir + "/actor.pt")
+        torch.save(self.policy.critic.state_dict(), model_dir + "/critic.pt")
+
+    def choose_opponent(self):
+        pass

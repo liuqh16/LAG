@@ -10,6 +10,7 @@ from envs.JSBSim.envs.multiplecombat_env import MultipleCombatEnv
 from envs.env_wrappers import DummyVecEnv, SubprocVecEnv, ShareDummyVecEnv, ShareSubprocVecEnv
 
 
+@pytest.mark.skip()
 class TestSingleControlEnv:
 
     def test_env(self):
@@ -78,6 +79,7 @@ class TestSingleControlEnv:
         envs.close()
 
 
+@pytest.mark.skip()
 class TestSingleCombatEnv:
 
     def test_env(self):
@@ -203,7 +205,6 @@ class TestSingleCombatEnv:
         envs.close()
 
 
-@pytest.mark.skip()
 class TestMultipleCombatEnv:
 
     def test_env(self):
@@ -271,6 +272,7 @@ class TestMultipleCombatEnv:
                     and dones[agent_id] == done_buff[t][agent_id]
             t += 1
 
+    @pytest.mark.skip()
     def test_agent_die(self):
         # if no weapon, once all enemies die, env terminate!
         env = MultipleCombatEnv("2v2/NoWeapon/Selfplay")
@@ -326,6 +328,7 @@ class TestMultipleCombatEnv:
                 assert not env._tempsims["C0000"].is_alive
                 break
 
+    @pytest.mark.skip()
     @pytest.mark.parametrize("vecenv, config", list(product(
         [ShareDummyVecEnv, ShareSubprocVecEnv], ["2v2/NoWeapon/Selfplay"])))
     def test_vec_env(self, vecenv, config):
