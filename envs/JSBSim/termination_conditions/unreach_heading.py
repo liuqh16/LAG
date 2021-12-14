@@ -50,6 +50,7 @@ class UnreachHeading(BaseTerminationCondition):
                 delta_altitude = np.random.uniform(-delta, delta) * self.max_altitude_increment
                 delta_velocities_u = np.random.uniform(-delta, delta) * self.max_velocities_u_increment
                 new_heading = env.jsbsims[ego_uid].get_property_value(c.target_heading_deg) + delta_heading
+                new_heading = (new_heading + 360) % 360
                 new_altitude = env.jsbsims[ego_uid].get_property_value(c.target_altitude_ft) + delta_altitude
                 new_velocities_u = env.jsbsims[ego_uid].get_property_value(c.target_velocities_u_mps) + delta_velocities_u
                 env.jsbsims[ego_uid].set_property_value(c.target_heading_deg, new_heading)

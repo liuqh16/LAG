@@ -32,13 +32,13 @@ class HeadingTask(BaseTask):
             c.delta_altitude,                   #  0. delta_h   (unit: m)
             c.delta_heading,                    #  1. delta_heading  (unit: °)
             c.delta_velocities_u,               #  2. delta_v   (unit: m/s)
-            c.attitude_roll_rad,                #  3. roll      (unit: rad)
-            c.attitude_pitch_rad,               #  4. pitch     (unit: rad)
-            c.velocities_u_mps,                 #  5. v_body_x   (unit: m/s)
-            c.velocities_v_mps,                 #  6. v_body_y   (unit: m/s)
-            c.velocities_w_mps,                 #  7. v_body_z   (unit: m/s)
-            c.velocities_vc_mps,                #  8. vc        (unit: m/s)
-            c.position_h_sl_m                   #  9. altitude  (unit: m)
+            c.position_h_sl_m,                  #  3. altitude  (unit: m)
+            c.attitude_roll_rad,                #  4. roll      (unit: rad)
+            c.attitude_pitch_rad,               #  5. pitch     (unit: rad)
+            c.velocities_u_mps,                 #  6. v_body_x   (unit: m/s)
+            c.velocities_v_mps,                 #  7. v_body_y   (unit: m/s)
+            c.velocities_w_mps,                 #  8. v_body_z   (unit: m/s)
+            c.velocities_vc_mps,                #  9. vc        (unit: m/s)
         ]
         self.action_var = [
             c.fcs_aileron_cmd_norm,             # [-1., 1.]
@@ -63,21 +63,39 @@ class HeadingTask(BaseTask):
         self.action_space = [spaces.MultiDiscrete([41, 41, 41, 30]) for _ in range(self.num_agents)]
 
     def normalize_observation(self, env, obsersvations: list):
+        """
+        Convert simulation states into the format of observation_space.
+
+            observation(dim 12):
+
+            0. ego delta altitude      (unit: km)
+            1. ego delta heading       (unit rad) 
+            2. ego delta velocities_u  (unit: mh)
+            3. ego_altitude            (unit: 5km)
+            4. ego_roll_sin
+            5. ego_roll_cos
+            6. ego_pitch_sin
+            7. ego_pitch_cos
+            8. ego v_body_x            (unit: mh)
+            9. ego v_body_y            (unit: mh)
+            10. ego v_body_z           (unit: mh)
+            11. ego_vc                 (unit: mh)
+        """
         ego_obs_list = obsersvations[0]
         observation = np.zeros(12)
-        observation[0] = ego_obs_list[0] / 1000         #  0. ego delta altitude  (unit: 1km)
-        observation[1] = ego_obs_list[1] / 180 * np.pi  #  1. ego delta heading   (unit rad)
-        observation[2] = ego_obs_list[2] / 340          #  2. ego delta velocities_u  (unit: mh)
-        observation[3] = np.sin(ego_obs_list[3])        #  3. ego_roll_sin
-        observation[4] = np.cos(ego_obs_list[3])        #  4. ego_roll_cos
-        observation[5] = np.sin(ego_obs_list[4])        #  5. ego_pitch_sin
-        observation[6] = np.cos(ego_obs_list[4])        #  6. ego_pitch_cos
-        observation[7] = ego_obs_list[5] / 340          #  7. ego_v_x   (unit: mh)
-        observation[8] = ego_obs_list[6] / 340          #  8. ego_v_y    (unit: mh)
-        observation[9] = ego_obs_list[7] / 340          #  9. ego_v_z    (unit: mh)
-        observation[10] = ego_obs_list[8] / 340         #  10. ego_vc        (unit: mh)
-        observation[11] = ego_obs_list[9] / 1000       #   11. ego_altitude (unit: km)
-        observation = np.expand_dims(observation, axis=0)    # dim: (1,12)
+        observation[0] = ego_obs_list[0] / 1000     
+        observation[1] = ego_obs_list[1] / 180 * np.pi  
+        observation[2] = ego_obs_list[2] / 340         
+        observation[3] = ego_obs_list[3] / 5000       
+        observation[4] = np.sin(ego_obs_list[4])     
+        observation[5] = np.cos(ego_obs_list[4])
+        observation[6] = np.sin(ego_obs_list[5])
+        observation[7] = np.cos(ego_obs_list[5])
+        observation[8] = ego_obs_list[6] / 340
+        observation[9] = ego_obs_list[7] / 340
+        observation[10] = ego_obs_list[8] / 340
+        observation[11] = ego_obs_list[9] / 340
+        observation = np.expand_dims(observation, axis=0)  # dim: (1,12)
         return observation
 
     def normalize_action(self, env, action: list):
