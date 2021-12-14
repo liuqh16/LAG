@@ -145,6 +145,9 @@ class DummyVecEnv(VecEnv):
             if 'bool' in done.__class__.__name__:
                 if done:
                     obss[i] = self.envs[i].reset()
+            elif isinstance(done, (list, tuple, np.ndarray)):
+                if np.all(done):
+                    obss[i] = self.envs[i].reset()
             elif isinstance(done, dict):
                 if np.all(list(done.values())):
                     obss[i] = self.envs[i].reset()

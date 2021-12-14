@@ -26,6 +26,7 @@ class LowAltitude(BaseTerminationCondition):
         """
         done = env.agents[agent_id].get_property_value(c.position_h_sl_m) <= self.altitude_limit
         if done:
+            env.agents[agent_id].crash()
             self.log(f'{agent_id} altitude is too low. Total Steps={env.current_step}')
         success = False
         return done, success, info

@@ -27,7 +27,7 @@ class SingleCombatTask(BaseTask):
 
     @property
     def num_agents(self) -> int:
-        return 1
+        return 2
 
     def load_variables(self):
         self.state_var = [

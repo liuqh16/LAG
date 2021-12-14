@@ -1,3 +1,4 @@
+import numpy as np
 from .env_base import BaseEnv
 from ..tasks.heading_task import HeadingTask
 
@@ -45,11 +46,9 @@ class SingleControlEnv(BaseEnv):
 
     def _pack(self, data):
         """Pack single key-value dict into single value"""
-        if isinstance(data, dict):
-            return data[self.agent_ids[0]]
-        else:
-            return data
+        assert isinstance(data, dict)
+        return np.array([data[self.agent_ids[0]]])
 
     def _unpack(self, data):
         """Unpack data into single key-value dict"""
-        return {self.agent_ids[0]: data}
+        return {self.agent_ids[0]: data[0]}

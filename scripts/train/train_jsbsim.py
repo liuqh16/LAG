@@ -5,6 +5,7 @@ import wandb
 import socket
 import torch
 import random
+import logging
 import numpy as np
 from pathlib import Path
 import setproctitle
@@ -13,7 +14,6 @@ from config import get_config
 from runner.jsbsim_runner import JSBSimRunner as Runner
 from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv, MultipleCombatEnv
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv, ShareSubprocVecEnv, ShareDummyVecEnv
-# Deal with import error
 
 
 def make_train_env(all_args):
@@ -43,16 +43,37 @@ def make_train_env(all_args):
             return SubprocVecEnv([get_env_fn(i) for i in range(all_args.n_rollout_threads)])
 
 
+def make_eval_env(all_args):
+    def get_env_fn(rank):
+        def init_env():
+            if all_args.env_name == "SingleCombat":
+                env = SingleCombatEnv(all_args.scenario_name)
+            elif all_args.env_name == "SingleControl":
+                env = SingleControlEnv(all_args.scenario_name)
+            elif all_args.env_name == "MultipleCombat":
+                env = MultipleCombatEnv(all_args.scenario_name)
+            else:
+                print("Can not support the " + all_args.env_name + "environment.")
+                raise NotImplementedError
+            env.seed(all_args.seed * 50000 + rank * 1000)
+            return env
+        return init_env
+    if all_args.env_name == "MultipleCombat":
+        if all_args.n_rollout_threads == 1:
+            return ShareDummyVecEnv([get_env_fn(0)])
+        else:
+            return ShareSubprocVecEnv([get_env_fn(i) for i in range(all_args.n_rollout_threads)])
+    else:
+        if all_args.n_rollout_threads == 1:
+            return DummyVecEnv([get_env_fn(0)])
+        else:
+            return SubprocVecEnv([get_env_fn(i) for i in range(all_args.n_rollout_threads)])
+
+
 def parse_args(args, parser):
     group = parser.add_argument_group("JSBSim Env parameters")
     group.add_argument('--scenario-name', type=str, default='singlecombat_simple',
                        help="Which scenario to run on")
-    group.add_argument('--num-agents', type=int, default=2,
-                       help="number of fighters controlled by RL policy")
-    group.add_argument('--use-selfplay', action="store_true", default=False,
-                       help="whether to use selfplay algorithm")
-    group.add_argument('--n-choose-opponents', type=int, default=0,
-                       help="number of opponents chosen for rollout")
     all_args = parser.parse_known_args(args)[0]
     return all_args
 
@@ -113,18 +134,17 @@ def main(args):
 
     # env init
     envs = make_train_env(all_args)
-    num_agents = all_args.num_agents
+    eval_envs = make_eval_env(all_args) if all_args.use_eval else None
 
     config = {
         "all_args": all_args,
         "envs": envs,
-        "num_agents": num_agents,
+        "eval_envs": eval_envs,
         "device": device,
         "run_dir": run_dir
     }
 
     # run experiments
-
     runner = Runner(config)
     runner.run()
 
@@ -136,4 +156,5 @@ def main(args):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     main(sys.argv[1:])

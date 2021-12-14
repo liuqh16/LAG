@@ -121,4 +121,4 @@ class BaseTask(ABC):
     def normalize_action(self, env, agent_id, action):
         """Normalize action to be consistent with action space.
         """
-        return np.array(action) if action is not None else self.action_space.sample()
+        return np.array(action)

@@ -14,6 +14,7 @@ def get_config():
     parser = _get_recurrent_config(parser)
     parser = _get_optimizer_config(parser)
     parser = _get_ppo_config(parser)
+    parser = _get_selfplay_config(parser)
     parser = _get_save_config(parser)
     parser = _get_log_config(parser)
     parser = _get_eval_config(parser)
@@ -205,6 +206,30 @@ def _get_ppo_config(parser: argparse.ArgumentParser):
                        help="By default, use max norm of gradients. If set, do not use.")
     group.add_argument("--max-grad-norm", type=float, default=2,
                        help='max norm of gradients (default: 2)')
+    return parser
+
+
+def _get_selfplay_config(parser: argparse.ArgumentParser):
+    """
+    Selfplay parameters:
+        --use-selfplay
+            by default false. If set, use selfplay algorithms.
+        --selfplay-algorithm <str>
+            specifiy the selfplay algorithm, including `["sp", "fsp"]`
+        --choose-interval <int>
+            time duration between choosing new opponents. (default 1)
+        --n-choose-opponents <int>
+            number of opponents chosen for rollout. (default 1)
+    """
+    group = parser.add_argument_group("Selfplay parameters")
+    group.add_argument("--use-selfplay", action='store_true', default=False,
+                       help="By default false. If set, use selfplay algorithms.")
+    group.add_argument("--selfplay-algorithm", type=str, default='sp', choices=["sp", "fsp"],
+                       help="Specifiy the selfplay algorithm (default sp)")
+    group.add_argument("--choose-interval", type=int, default=1,
+                       help="time duration between choosing new opponents. (default 1)")
+    group.add_argument('--n-choose-opponents', type=int, default=1,
+                       help="number of opponents chosen for rollout")
     return parser
 
 

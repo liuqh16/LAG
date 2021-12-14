@@ -27,7 +27,7 @@ class SafeReturn(BaseTerminationCondition):
         Returns:
             (tuple): (done, success, info)
         """
-        # the current aircraft has been shot down
+        # the current aircraft has crashed
         if not env.agents[agent_id].is_alive:
             self.log(f'{agent_id} has been shot down! Total Steps={env.current_step}')
             return True, False, info

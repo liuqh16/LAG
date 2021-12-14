@@ -7,9 +7,8 @@ from .utils import get_shape_from_space
 
 class Buffer(ABC):
 
-    def __init__(self, args):
-        self.buffer_size = args.buffer_size
-        self.n_rollout_threads = args.n_rollout_threads
+    def __init__(self):
+        pass
 
     @abstractmethod
     def insert(self, **kwargs):
@@ -17,6 +16,10 @@ class Buffer(ABC):
 
     @abstractmethod
     def after_update(self):
+        pass
+
+    @abstractmethod
+    def clear(self):
         pass
 
 
@@ -28,11 +31,13 @@ class ReplayBuffer(Buffer):
 
     @staticmethod
     def _cast(x: np.ndarray):
-        return x.transpose(1, 0, *range(2, x.ndim)).reshape(-1, *x.shape[2:])
+        return x.transpose(1, 2, 0, *range(3, x.ndim)).reshape(-1, *x.shape[3:])
 
-    def __init__(self, args, obs_space, act_space):
-        super().__init__(args)
+    def __init__(self, args, num_agents, obs_space, act_space):
         # buffer config
+        self.buffer_size = args.buffer_size
+        self.n_rollout_threads = args.n_rollout_threads
+        self.num_agents = num_agents
         self.gamma = args.gamma
         self.use_proper_time_limits = args.use_proper_time_limits
         self.use_gae = args.use_gae
@@ -45,21 +50,21 @@ class ReplayBuffer(Buffer):
         act_shape = get_shape_from_space(act_space)
 
         # (o_0, a_0, r_0, d_1, o_1, ... , d_T, o_T)
-        self.obs = np.zeros((self.buffer_size + 1, self.n_rollout_threads, *obs_shape), dtype=np.float32)
-        self.actions = np.zeros((self.buffer_size, self.n_rollout_threads, *act_shape), dtype=np.float32)
-        self.rewards = np.zeros((self.buffer_size, self.n_rollout_threads, 1), dtype=np.float32)
+        self.obs = np.zeros((self.buffer_size + 1, self.n_rollout_threads, self.num_agents, *obs_shape), dtype=np.float32)
+        self.actions = np.zeros((self.buffer_size, self.n_rollout_threads, self.num_agents, *act_shape), dtype=np.float32)
+        self.rewards = np.zeros((self.buffer_size, self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
         # NOTE: masks[t] = 1 - dones[t-1], which represents whether obs[t] is a terminal state
-        self.masks = np.ones((self.buffer_size + 1, self.n_rollout_threads, 1), dtype=np.float32)
+        self.masks = np.ones((self.buffer_size + 1, self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
         # NOTE: bad_masks[t] = 'bad_transition' in info[t-1], which indicates whether obs[t] a true terminal state or time limit end state
-        self.bad_masks = np.ones((self.buffer_size + 1, self.n_rollout_threads, 1), dtype=np.float32)
+        self.bad_masks = np.ones((self.buffer_size + 1, self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
 
         # pi(a)
-        self.action_log_probs = np.zeros((self.buffer_size, self.n_rollout_threads, 1), dtype=np.float32)
+        self.action_log_probs = np.zeros((self.buffer_size, self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
         # V(o), R(o) while advantage = returns - value_preds
-        self.value_preds = np.zeros((self.buffer_size + 1, self.n_rollout_threads, 1), dtype=np.float32)
-        self.returns = np.zeros((self.buffer_size + 1, self.n_rollout_threads, 1), dtype=np.float32)
+        self.value_preds = np.zeros((self.buffer_size + 1, self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
+        self.returns = np.zeros((self.buffer_size + 1, self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
         # rnn
-        self.rnn_states_actor = np.zeros((self.buffer_size + 1, self.n_rollout_threads,
+        self.rnn_states_actor = np.zeros((self.buffer_size + 1, self.n_rollout_threads, self.num_agents,
                                           self.recurrent_hidden_layers, self.recurrent_hidden_size), dtype=np.float32)
         self.rnn_states_critic = np.zeros_like(self.rnn_states_actor)
 
@@ -75,11 +80,11 @@ class ReplayBuffer(Buffer):
                actions: np.ndarray,
                rewards: np.ndarray,
                masks: np.ndarray,
-               bad_masks: np.ndarray,
                action_log_probs: np.ndarray,
                value_preds: np.ndarray,
                rnn_states_actor: np.ndarray,
                rnn_states_critic: np.ndarray,
+               bad_masks: Union[np.ndarray, None] = None,
                **kwargs):
         """Insert numpy data.
         Args:
@@ -96,11 +101,12 @@ class ReplayBuffer(Buffer):
         self.actions[self.step] = actions.copy()
         self.rewards[self.step] = rewards.copy()
         self.masks[self.step + 1] = masks.copy()
-        self.bad_masks[self.step + 1] = bad_masks.copy()
         self.action_log_probs[self.step] = action_log_probs.copy()
         self.value_preds[self.step] = value_preds.copy()
         self.rnn_states_actor[self.step + 1] = rnn_states_actor.copy()
         self.rnn_states_critic[self.step + 1] = rnn_states_critic.copy()
+        if bad_masks is not None:
+            self.bad_masks[self.step + 1] = bad_masks.copy()
 
         self.step = (self.step + 1) % self.buffer_size
 
@@ -111,6 +117,19 @@ class ReplayBuffer(Buffer):
         self.bad_masks[0] = self.bad_masks[-1].copy()
         self.rnn_states_actor[0] = self.rnn_states_actor[-1].copy()
         self.rnn_states_critic[0] = self.rnn_states_critic[-1].copy()
+
+    def clear(self):
+        self.step = 0
+        self.obs = np.zeros_like(self.obs, dtype=np.float32)
+        self.actions = np.zeros_like(self.actions, dtype=np.float32)
+        self.rewards = np.zeros_like(self.rewards, dtype=np.float32)
+        self.masks = np.ones_like(self.masks, dtype=np.float32)
+        self.bad_masks = np.ones_like(self.bad_masks, dtype=np.float32)
+        self.action_log_probs = np.zeros_like(self.action_log_probs, dtype=np.float32)
+        self.value_preds = np.zeros_like(self.value_preds, dtype=np.float32)
+        self.returns = np.zeros_like(self.returns, dtype=np.float32)
+        self.rnn_states_actor = np.zeros_like(self.rnn_states_critic)
+        self.rnn_states_critic = np.zeros_like(self.rnn_states_actor)
 
     def compute_returns(self, next_value: np.ndarray):
         """
@@ -164,16 +183,18 @@ class ReplayBuffer(Buffer):
         buffer = [buffer] if isinstance(buffer, ReplayBuffer) else buffer  # type: List[ReplayBuffer]
         n_rollout_threads = buffer[0].n_rollout_threads
         buffer_size = buffer[0].buffer_size
+        num_agents = buffer[0].num_agents
         assert all([b.n_rollout_threads == n_rollout_threads for b in buffer]) \
             and all([b.buffer_size == buffer_size for b in buffer]) \
+            and all([b.num_agents == num_agents for b in buffer]) \
             and all([isinstance(b, ReplayBuffer) for b in buffer]), \
             "Input buffers must has the same type and shape"
         buffer_size = buffer_size * len(buffer)
 
         assert n_rollout_threads * buffer_size >= data_chunk_length, (
-            "PPO requires the number of processes ({}) * buffer size ({}) "
+            "PPO requires the number of processes ({}) * buffer size ({}) * num_agents ({})"
             "to be greater than or equal to the number of "
-            "data chunk length ({}).".format(n_rollout_threads, buffer_size, data_chunk_length))
+            "data chunk length ({}).".format(n_rollout_threads, buffer_size, num_agents, data_chunk_length))
 
         # Transpose and reshape parallel data into sequential data
         obs = np.vstack([ReplayBuffer._cast(buf.obs[:-1]) for buf in buffer])
@@ -230,8 +251,8 @@ class ReplayBuffer(Buffer):
             value_preds_batch = np.stack(value_preds_batch, axis=1)
 
             # States is just a (N, -1) from_numpy
-            rnn_states_actor_batch = np.stack(rnn_states_actor_batch).reshape(N, *buffer[0].rnn_states_actor.shape[2:])
-            rnn_states_critic_batch = np.stack(rnn_states_critic_batch).reshape(N, *buffer[0].rnn_states_critic.shape[2:])
+            rnn_states_actor_batch = np.stack(rnn_states_actor_batch).reshape(N, *buffer[0].rnn_states_actor.shape[3:])
+            rnn_states_critic_batch = np.stack(rnn_states_critic_batch).reshape(N, *buffer[0].rnn_states_critic.shape[3:])
 
             # Flatten the (L, N, ...) from_numpys to (L * N, ...)
             obs_batch = ReplayBuffer._flatten(L, N, obs_batch)

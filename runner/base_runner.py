@@ -40,7 +40,7 @@ class Runner(object):
         if self.use_wandb:
             self.save_dir = str(wandb.run.dir)
         else:
-            self.save_dir = str(self.run_dir / 'models')
+            self.save_dir = str(self.run_dir)
             if not os.path.exists(self.save_dir):
                 os.makedirs(self.save_dir)
 
@@ -83,13 +83,14 @@ class Runner(object):
     def compute(self):
         self.policy.prep_rollout()
         next_values = self.policy.get_values(np.concatenate(self.buffer.obs[-1]),
-                                             np.concatenate(self.buffer.rnn_states_critic[-1]))
+                                             np.concatenate(self.buffer.rnn_states_critic[-1]),
+                                             np.concatenate(self.buffer.masks[-1]))
         next_values = np.array(np.split(_t2n(next_values), self.buffer.n_rollout_threads))
         self.buffer.compute_returns(next_values)
 
     def train(self):
         self.policy.prep_training()
-        train_infos = self.trainer.train(self.buffer)
+        train_infos = self.trainer.train(self.policy, self.buffer)
         self.buffer.after_update()
         return train_infos
 

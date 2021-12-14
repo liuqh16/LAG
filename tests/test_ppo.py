@@ -65,8 +65,10 @@ class TestPPO:
         assert value.shape[0] == batch_size
         assert rnn_states.shape == init_rnn_states.shape
 
-    @pytest.mark.parametrize("obs_space, act_space, num_mini_batch, data_chunk_length", list(product(
-        [       # obs_space
+    @pytest.mark.parametrize("num_agents, obs_space, act_space, num_mini_batch, data_chunk_length", list(product(
+        [       # num_agents
+            1, 2
+        ], [    # obs_space
             gym.spaces.Box(low=-1, high=1, shape=(18,))
         ], [    # act_space
             gym.spaces.Discrete(5),
@@ -74,28 +76,28 @@ class TestPPO:
             gym.spaces.MultiBinary(4),
             gym.spaces.Box(low=-1, high=1, shape=(4,)),
         ], [    # num_mini_batch
-            1, 4
+            1, 2
         ], [    # data_chunk_length
-            1, 4, 16
+            1, 2,
         ])))
-    def test_ppo_buffer(self, obs_space, act_space, num_mini_batch, data_chunk_length):
-        buffer = ReplayBuffer(get_config().parse_args(args=''), obs_space, act_space)
+    def test_ppo_buffer(self, num_agents, obs_space, act_space, num_mini_batch, data_chunk_length):
+        buffer = ReplayBuffer(get_config().parse_args(args=''), num_agents, obs_space, act_space)
 
-        obs = [obs_space.sample() for _ in range(buffer.n_rollout_threads)]
-        actions = [act_space.sample() for _ in range(buffer.n_rollout_threads)]
-        if np.array(actions).ndim < 2:
-            actions = np.expand_dims(actions, axis=1)
-        rewards = np.random.randn(buffer.n_rollout_threads, 1)
-        masks = np.ones((buffer.n_rollout_threads, 1))
-        bad_masks = np.ones((buffer.n_rollout_threads, 1))
-        action_log_probs = np.random.randn(buffer.n_rollout_threads, 1)
-        value_preds = np.random.randn(buffer.n_rollout_threads, 1)
-        rnn_states_actor = np.zeros((buffer.n_rollout_threads, buffer.recurrent_hidden_layers, buffer.recurrent_hidden_size))
-        rnn_states_critic = np.zeros((buffer.n_rollout_threads, buffer.recurrent_hidden_layers, buffer.recurrent_hidden_size))
+        obs = np.array([[obs_space.sample() for _ in range(num_agents)] for _ in range(buffer.n_rollout_threads)])
+        actions = np.array([[act_space.sample() for _ in range(num_agents)] for _ in range(buffer.n_rollout_threads)])
+        if np.array(actions).ndim < 3:
+            actions = np.expand_dims(actions, axis=-1)
+        rewards = np.random.randn(buffer.n_rollout_threads, num_agents, 1)
+        masks = np.ones((buffer.n_rollout_threads, num_agents, 1))
+        bad_masks = np.ones((buffer.n_rollout_threads, num_agents, 1))
+        action_log_probs = np.random.randn(buffer.n_rollout_threads, num_agents, 1)
+        value_preds = np.random.randn(buffer.n_rollout_threads, num_agents, 1)
+        rnn_states_actor = np.zeros((buffer.n_rollout_threads, num_agents, buffer.recurrent_hidden_layers, buffer.recurrent_hidden_size))
+        rnn_states_critic = np.zeros((buffer.n_rollout_threads, num_agents, buffer.recurrent_hidden_layers, buffer.recurrent_hidden_size))
 
         buffer.insert(obs, actions, rewards, masks, bad_masks, action_log_probs, value_preds, rnn_states_actor, rnn_states_critic)
 
-        next_value = np.random.randn(buffer.n_rollout_threads, 1)
+        next_value = np.random.randn(buffer.n_rollout_threads, num_agents, 1)
         buffer.compute_returns(next_value)
 
         batch_count = 0
@@ -107,8 +109,10 @@ class TestPPO:
 
         buffer.after_update()
 
-    @pytest.mark.parametrize("obs_space, act_space", list(product(
-        [       # obs_space
+    @pytest.mark.parametrize("num_agents, obs_space, act_space", list(product(
+        [       # num_agents
+            1, 2
+        ], [    # obs_space
             gym.spaces.Box(low=-1, high=1, shape=(18,))
         ], [    # act_space
             gym.spaces.Discrete(5),
@@ -116,9 +120,9 @@ class TestPPO:
             gym.spaces.MultiBinary(4),
             gym.spaces.Box(low=-1, high=1, shape=(4,)),
         ])))
-    def test_ppo_trainer(self, obs_space, act_space):
+    def test_ppo_trainer(self, num_agents, obs_space, act_space):
         args = get_config().parse_args(args='')
-        buffer = ReplayBuffer(args, obs_space, act_space)
+        buffer = ReplayBuffer(args, num_agents, obs_space, act_space)
         policy = PPOPolicy(args, obs_space, act_space, device=torch.device("cpu"))
         trainer = PPOTrainer(args, device=torch.device("cpu"))
         policy.prep_training()

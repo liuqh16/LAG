@@ -46,7 +46,7 @@ class BaseEnv(gym.Env):
 
     @property
     def action_space(self):
-        return self.task.observation_space
+        return self.task.action_space
 
     def load(self):
         self.load_task()
@@ -99,15 +99,14 @@ class BaseEnv(gym.Env):
         obs = self.get_obs()
         return self._pack(obs)
 
-    def step(self, action: Union[np.ndarray, Dict[str, np.ndarray]]) -> \
-            Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Dict[str, np.ndarray], dict]:
+    def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
         """Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`
         to reset this environment's observation. Accepts an action and
         returns a tuple (observation, reward_visualize, done, info).
 
         Args:
-            action (np.ndarray or dict): the agents' actions, allow opponent's action input
+            action (np.ndarray): the agents' actions, allow opponent's action input
 
         Returns:
             (tuple):
@@ -122,7 +121,7 @@ class BaseEnv(gym.Env):
         # apply actions
         action = self._unpack(action)
         for agent_id in self.agent_ids:
-            a_action = self.task.normalize_action(self, agent_id, action.get(agent_id, None))
+            a_action = self.task.normalize_action(self, agent_id, action[agent_id])
             self.agents[agent_id].set_property_values(self.task.action_var, a_action)
         # run simulation
         for _ in range(self.agent_interaction_steps):
@@ -136,11 +135,13 @@ class BaseEnv(gym.Env):
 
         rewards = {}
         for agent_id in self.agent_ids:
-            rewards[agent_id], info = self.task.get_reward(self, agent_id, info)
+            reward, info = self.task.get_reward(self, agent_id, info)
+            rewards[agent_id] = [reward]
 
         dones = {}
         for agent_id in self.agent_ids:
-            dones[agent_id], info = self.task.get_termination(self, agent_id, info)
+            done, info = self.task.get_termination(self, agent_id, info)
+            dones[agent_id] = [done]
 
         return self._pack(obs), self._pack(rewards), self._pack(dones), info
 
@@ -231,20 +232,20 @@ class BaseEnv(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def _pack(self, data) -> Dict[str, np.ndarray]:
-        """Pack seperated key-value dict into grouped dict"""
-        assert isinstance(data, Dict)
+    def _pack(self, data: Dict[str, Any]) -> np.ndarray:
+        """Pack seperated key-value dict into grouped np.ndarray"""
         ego_data = np.array([data[uid] for uid in self.ego_ids])
         enm_data = np.array([data[uid] for uid in self.enm_ids])
-        return {"ego": ego_data, "enm": enm_data}
+        data = np.concatenate((ego_data, enm_data))
+        try:
+            assert np.isnan(data).sum() == 0
+        except AssertionError:
+            import pdb
+            pdb.set_trace()
+        return data
 
-    def _unpack(self, data) -> Dict[str, Any]:
-        """Unpack grouped data into seperated key-value dict"""
-        if isinstance(data, (np.ndarray, list)):
-            unpack_data = dict(zip(self.ego_ids + self.enm_ids, data))
-        elif isinstance(data, Dict):
-            unpack_data = dict(zip(self.ego_ids, data.get("ego", [])))
-            unpack_data.update(dict(zip(self.enm_ids, data.get("enm", []))))
-        else:
-            raise TypeError
+    def _unpack(self, data: np.ndarray) -> Dict[str, Any]:
+        """Unpack grouped np.ndarray into seperated key-value dict"""
+        assert isinstance(data, (np.ndarray, list, tuple)) and len(data) == len(self.agent_ids)
+        unpack_data = dict(zip(self.ego_ids + self.enm_ids, data))
         return unpack_data
