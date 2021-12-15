@@ -18,7 +18,7 @@ class ManeuverAgent:
         self.restore()
         self.prep_rollout()
         self.step = 0
-        self.seconds_per_turn = 7  # hyperparameter
+        self.seconds_per_turn = 20  # hyperparameter
         self.init_heading = None
         if maneuver == 'l':
             self.target_heading_list = [np.pi/3, np.pi, -np.pi/3]*10
@@ -162,17 +162,17 @@ class BaselineDeltaVAgent(BaselineAgent):
         ego_AO = get_delta_heading(ego_feature, enm_feature)
         ego_obs_list = env.jsbsims[ego_uid].get_property_values(task.state_var)
         observation = np.zeros(11)
-        observation[0] = (8000-ego_obs_list[2])/1000          #  0. ego delta altitude  (unit: 1km)
-        observation[1] = in_range_rad((np.pi - ego_obs_list[5]))               #  1. ego delta heading   (unit rad)
-        observation[2] = (340-env.jsbsims[ego_uid].get_property_value(c.velocities_u_mps))/340         #  2. ego delta velocities_u  (unit: mh)
-        observation[3] = np.sin(ego_obs_list[2])            #  3. ego_roll_sin
-        observation[4] = np.cos(ego_obs_list[2])            #  4. ego_roll_cos
-        observation[5] = np.sin(ego_obs_list[3])            #  5. ego_pitch_sin
-        observation[6] = np.cos(ego_obs_list[3])            #  6. ego_pitch_cos
-        observation[7] = ego_obs_list[4]
-        observation[8] = env.jsbsims[ego_uid].get_property_value(c.velocities_u_mps) / 340          #  4. ego_v_north   (unit: mh)
-        observation[9] = env.jsbsims[ego_uid].get_property_value(c.velocities_v_mps) / 340          #  5. ego_v_east    (unit: mh)
-        observation[10] = env.jsbsims[ego_uid].get_property_value(c.velocities_w_mps) / 340          #  6. ego_v_down    (unit: mh)
+        observation[0] = (4500-ego_obs_list[2])/1000          #  0. ego delta altitude  (unit: 1km)
+        observation[1] = in_range_rad((ego_AO))               #  1. ego delta heading   (unit rad)
+        observation[2] = (150-env.jsbsims[ego_uid].get_property_value(c.velocities_u_mps)) / 340         #  2. ego delta velocities_u  (unit: mh)
+        observation[3] = np.sin(ego_obs_list[3])            #  3. ego_roll_sin
+        observation[4] = np.cos(ego_obs_list[3])            #  4. ego_roll_cos
+        observation[5] = np.sin(ego_obs_list[4])            #  5. ego_pitch_sin
+        observation[6] = np.cos(ego_obs_list[4])            #  6. ego_pitch_cos
+        observation[7] = env.jsbsims[ego_uid].get_property_value(c.velocities_u_mps) / 340
+        observation[8] = env.jsbsims[ego_uid].get_property_value(c.velocities_v_mps) / 340          #  4. ego_v_north   (unit: mh)
+        observation[9] = env.jsbsims[ego_uid].get_property_value(c.velocities_w_mps) / 340          #  5. ego_v_east    (unit: mh)
+        observation[10] = env.jsbsims[ego_uid].get_property_value(c.velocities_vc_mps) / 340          #  6. ego_v_down    (unit: mh)
                  #  7. ego_vc        (unit: mh)
         observation = np.expand_dims(observation, axis=0)    # dim: (1,11)
 
