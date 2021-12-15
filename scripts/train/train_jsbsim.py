@@ -116,10 +116,7 @@ def main(args):
     # run experiments
 
     runner = Runner(config)
-    try:
-        runner.run()
-    except:
-        import pdb; pdb.set_trace()
+    runner.run()
     
     # post process
     envs.close()

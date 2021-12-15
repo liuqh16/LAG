@@ -8,7 +8,7 @@ from ..reward_functions import AltitudeReward, MissileAttackReward, PostureRewar
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, ShootDown, Timeout
 from ..core.simulatior import MissileSimulator
 from ..core.catalog import Catalog as c
-from ..utils.utils import LLA2NEU, get_AO_TA_R, get_root_dir
+from ..utils.utils import LLA2NEU, get_AO_TA_R, get2d_AO_TA_R, get_root_dir
 
 
 class SingleCombatWithMissileTask(SingleCombatTask):
@@ -17,7 +17,7 @@ class SingleCombatWithMissileTask(SingleCombatTask):
 
         self.reward_functions = [
             MissileAttackReward(self.config),
-            MissilePostureReward(self.config),
+            # MissilePostureReward(self.config),
             AltitudeReward(self.config),
             # PostureReward(self.config),
             CrashReward(self.config)
@@ -33,7 +33,7 @@ class SingleCombatWithMissileTask(SingleCombatTask):
         self.bloods, self.remaining_missiles, self.lock_duration = None, None, None
 
     def load_observation_space(self):
-        self.observation_space = [spaces.Box(low=-10, high=10., shape=(25,)) for _ in range(self.num_agents)]
+        self.observation_space = [spaces.Box(low=-10, high=10., shape=(21,)) for _ in range(self.num_agents)]
 
     def load_action_space(self):
         # aileron, elevator, rudder, throttle
@@ -41,6 +41,31 @@ class SingleCombatWithMissileTask(SingleCombatTask):
 
     def normalize_observation(self, env, observations):
         """Convert simulation states into the format of observation_space
+        
+        (1) ego info
+            0. ego altitude           (unit: 5km)
+            1. ego_roll_sin   
+            2. ego_roll_cos
+            3. ego_pitch_sin
+            4. ego_pitch_cos
+            5. ego v_body_x           (unit: mh)
+            6. ego v_body_y           (unit: mh)
+            7. ego v_body_z           (unit: mh)
+            8. ego_vc                 (unit: mh)
+        (2) relative enm info
+            9. delta_v_body_x        (unit: mh)
+            10. delta_altitude        (unit: km)
+            11. ego_AO                (unit: rad) [0, pi]
+            12. ego_TA                (unit: rad) [0, pi]
+            13. relative distance     (unit: 10km)
+            14. side_flag             1 or 0 or -1 
+        (3) relative missile info
+            15. delta_v_body_x
+            16. delta altitude
+            17. ego_AO
+            18. ego_TA
+            19. relative distance
+            20. side flag
         """
         def _normalize(agent_id):
             ego_idx, enm_idx = agent_id, (agent_id + 1) % self.num_aircrafts
@@ -51,43 +76,39 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             enm_cur_ned = LLA2NEU(*enm_obs_list[:3], env.center_lon, env.center_lat, env.center_alt)
             ego_feature = np.array([*(ego_cur_ned/1000), *(ego_obs_list[6:9]/340)])
             enm_feature = np.array([*(enm_cur_ned/1000), *(enm_obs_list[6:9]/340)])
-            observation = np.zeros(25)
+            observation = np.zeros(21)
             # (1) ego info normalization
-            observation[0] = ego_obs_list[2] / 5000             #  0. ego altitude  (unit: 5km)
-            observation[1] = np.linalg.norm(ego_feature[3:])    #  1. ego_v         (unit: mh)
-            observation[2] = ego_obs_list[8] / 340              #  2. ego_v_down    (unit: mh)
-            observation[3] = np.sin(ego_obs_list[3])            #  3. ego_roll_sin
-            observation[4] = np.cos(ego_obs_list[3])            #  4. ego_roll_cos
-            observation[5] = np.sin(ego_obs_list[4])            #  5. ego_pitch_sin
-            observation[6] = np.cos(ego_obs_list[4])            #  6. ego_pitch_cos
-            observation[7] = ego_obs_list[9] / 340              #  7. ego_vc        (unit: mh)
-            observation[8] = ego_obs_list[10]                   #  8. ego_north_ng  (unit: 5G)
-            observation[9] = ego_obs_list[11]                   #  9. ego_east_ng   (unit: 5G)
-            observation[10] = ego_obs_list[12]                  # 10. ego_down_ng   (unit: 5G)
-            # (2) relative info w.r.t enm state
-            ego_AO, ego_TA, R, side_flag = get_AO_TA_R(ego_feature, enm_feature, return_side=True)
-            observation[11] = R / 10                            # 11. relative distance (unit: 10km)
-            observation[12] = ego_AO                            # 12. ego_enm_AO        (unit: rad)
-            observation[13] = ego_TA                            # 13. ego_enm_TA        (unit: rad)
-            observation[14] = side_flag                         # 14. enm_delta_heading: 1 or 0 or -1
-            observation[15] = enm_feature[2] / 5                # 15. enm_altitude  (unit: 5km)
-            observation[16] = np.linalg.norm(enm_feature[3:])   # 16. enm_v         (unit: mh)
-            observation[17] = enm_feature[5]                    # 17. enm_v_down    (unit: mh)
-            # (3) missile info
-            enm_missile_sim = self.check_missile_warning(env, agent_id)
-            if enm_missile_sim is not None:
-                enm_missile_feature = np.array([*(enm_missile_sim.get_position()/1000), *(enm_missile_sim.get_velocity()/340)])
-                ego_AO, ego_TA, R, side_flag = get_AO_TA_R(ego_feature, enm_missile_feature, return_side=True)
-                observation[18] = R / 10                                    # 11. relative distance (unit: 10km)
-                observation[19] = ego_AO                                    # 12. ego_missile_AO        (unit: rad)
-                observation[20] = ego_TA                                    # 13. ego_missile_TA        (unit: rad)
-                observation[21] = side_flag                                 # 14. missile_delta_heading: 1 or 0 or -1
-                observation[22] = enm_missile_feature[2] / 5                # 15. missile_altitude  (unit: 5km)
-                observation[23] = np.linalg.norm(enm_missile_feature[3:])   # 16. missile_v         (unit: mh)
-                observation[24] = enm_missile_feature[5]                    # 17. missile_v_down    (unit: mh)
+            observation[0] = ego_obs_list[2] / 5000
+            observation[1] = np.sin(ego_obs_list[3])
+            observation[2] = np.cos(ego_obs_list[3])
+            observation[3] = np.sin(ego_obs_list[4]) 
+            observation[4] = np.cos(ego_obs_list[4])
+            observation[5] = ego_obs_list[9] / 340
+            observation[6] = ego_obs_list[10] / 340
+            observation[7] = ego_obs_list[11] / 340
+            observation[8] = ego_obs_list[12] / 340
+            # (2) relative enm info
+            ego_AO, ego_TA, R, side_flag = get2d_AO_TA_R(ego_feature, enm_feature, return_side=True)
+            observation[9] = (enm_obs_list[9]- ego_obs_list[9]) / 340
+            observation[10] = (enm_obs_list[2] - ego_obs_list[2]) / 1000
+            observation[11] = ego_AO
+            observation[12] = ego_TA
+            observation[13] = R / 10000
+            observation[14] = side_flag
+            # (3) relative missile info
+            missile_sim = self.check_missile_warning(env, agent_id)
+            if missile_sim is not None:
+                missile_feature = np.concatenate((missile_sim.get_position(), missile_sim.get_velocity()))
+                ego_AO, ego_TA, R, side_flag = get2d_AO_TA_R(ego_feature, missile_feature, return_side=True)
+                observation[15] = (np.linalg.norm(missile_sim.get_velocity())-ego_obs_list[9]) / 340
+                observation[16] = (missile_feature[2]-ego_obs_list[2]) / 1000
+                observation[17] = ego_AO                                  
+                observation[18] = ego_TA   
+                observation[19] = R / 10000                                
+                observation[20] = side_flag                                  
             return observation
 
-        norm_obs = np.zeros((self.num_aircrafts, 25))
+        norm_obs = np.zeros((self.num_aircrafts, 21))
         for agent_id in range(self.num_aircrafts):
             norm_obs[agent_id] = _normalize(agent_id)
         return norm_obs

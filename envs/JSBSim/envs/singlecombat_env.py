@@ -76,8 +76,7 @@ class SingleCombatEnv(BaseEnv):
                 sim.run()
         # call task.step for extra process
         self.task.step(self, actions)
-        info['actions'] = actions
-
+        
         next_observation = self.get_observation()
 
         rewards = np.zeros(self.num_aircrafts)
