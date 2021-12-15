@@ -182,7 +182,6 @@ class SingleCombatWithMissileHierarchicalTask(SingleCombatWithMissileTask):
             uid = list(env.jsbsims.keys())[0]
             input_obs = np.zeros(8)
             input_obs[0] = (6096-env.jsbsims[uid].get_property_value(c.position_h_sl_m))/1000   # 0. ego delta altitude  (unit: 1km)
-            print(action)
             input_obs[1] = self.norm_delta_heading[action[0]]    # 1. ego delta heading   (unit rad)
             input_obs[2] = observation[3]           # 2. ego_roll       (unit: rad)
             input_obs[3] = observation[4]           # 3. ego_pitch      (unit: rad)

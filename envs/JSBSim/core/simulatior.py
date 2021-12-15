@@ -116,6 +116,7 @@ class AircraftSimulator(BaseSimulator):
         """Reload aircraft simulator
         """
         super().reload()
+        self._status = "Alive"
         # load JSBSim FDM
         self.jsbsim_exec = jsbsim.FGFDMExec(path.join(get_root_dir(), 'data'))
         self.jsbsim_exec.set_debug_level(0)
