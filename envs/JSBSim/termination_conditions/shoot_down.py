@@ -25,7 +25,7 @@ class ShootDown(BaseTerminationCondition):
         """
         done = task.bloods[agent_id] <= 0
         if done:
-            # print(f'INFO: agent[{agent_id}] has been shot down!')
+            print(f'INFO: agent[{agent_id}] has been shot down! Total Steps={env.current_step}')
             info[f'agent{agent_id}_end_reason'] = 2  # shoot down
         success = False
         return done, success, info

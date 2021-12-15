@@ -7,6 +7,7 @@ from .singlecombat_task import SingleCombatTask
 from ..reward_functions import AltitudeReward, MissileAttackReward, PostureReward, CrashReward, MissilePostureReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, ShootDown, Timeout
 from ..core.simulatior import MissileSimulator
+from ..core.catalog import Catalog as c
 from ..utils.utils import LLA2NEU, get_AO_TA_R, get_root_dir
 
 
@@ -163,7 +164,7 @@ class SingleCombatWithMissileHierarchicalTask(SingleCombatWithMissileTask):
     def __init__(self, config: str):
         super().__init__(config)
         # self.norm_delta_altitude = [-0.2, -0.1, -0.05, 0, 0.05, 0.1, 0.2]
-        # self.norm_delta_heading = [-90, 0, 90]
+        self.norm_delta_heading = [0, np.pi/12, np.pi/6]
         # assert len(self.norm_delta_altitude) == self.action_space[0].nvec[0]
         # assert len(self.norm_delta_heading) == self.action_space[0].nvec[1]
         # low-level policy: Input(18) Output(4)
@@ -172,18 +173,17 @@ class SingleCombatWithMissileHierarchicalTask(SingleCombatWithMissileTask):
         self._rnn_states = np.zeros((self.num_agents, 1, 1, 128))
 
     def load_action_space(self):
-        self.action_space = [spaces.Box(low=np.array([-2, -180]),
-                                        high=np.array([2, 180])) 
-                                        for _ in range(self.num_agents)]
+        self.action_space = [spaces.Discrete(3) for _ in range(self.num_agents)]
 
     def normalize_action(self, env, actions):
         """Convert high-level action into low value.
         """
         def _convert(action, observation, rnn_states):
-            action = np.clip(action, [-2, -180], [2, 180])
+            uid = list(env.jsbsims.keys())[0]
             input_obs = np.zeros(8)
-            input_obs[0] = action[0]                  # 0. ego delta altitude  (unit: 1km)
-            input_obs[1] = action[1] / 180 * np.pi     # 1. ego delta heading   (unit rad)
+            input_obs[0] = (6096-env.jsbsims[uid].get_property_value(c.position_h_sl_m))/1000   # 0. ego delta altitude  (unit: 1km)
+            print(action)
+            input_obs[1] = self.norm_delta_heading[action[0]]    # 1. ego delta heading   (unit rad)
             input_obs[2] = observation[3]           # 2. ego_roll       (unit: rad)
             input_obs[3] = observation[4]           # 3. ego_pitch      (unit: rad)
             input_obs[4] = observation[6] / 340     # 4. ego_v_north   (unit: mh)
