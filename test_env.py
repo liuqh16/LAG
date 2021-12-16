@@ -15,12 +15,13 @@ actions_buf = []
 env.seed(0)
 act_space.seed(0)
 obs = env.reset()
+env.render()
 obs_buf.append(obs.copy())
 
 while True:
     action = [[act_space.sample()] for _ in range(env.num_agents)]
     obs, reward, done, info = env.step(action)
-
+    env.render()
     obs_buf.append(obs.copy())
     act_buf.append(action.copy())
     rew_buf.append(reward.copy())

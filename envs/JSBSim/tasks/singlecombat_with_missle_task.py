@@ -9,7 +9,7 @@ from ..termination_conditions import ExtremeState, LowAltitude, Overload, ShootD
 from ..core.simulatior import MissileSimulator
 from ..core.catalog import Catalog as c
 from ..utils.utils import LLA2NEU, get_AO_TA_R, get2d_AO_TA_R, get_root_dir
-
+from ..model.baseline_actor import BaselineActor
 
 class SingleCombatWithMissileTask(SingleCombatTask):
     def __init__(self, config: str):
@@ -186,10 +186,9 @@ class SingleCombatWithMissileHierarchicalTask(SingleCombatWithMissileTask):
         super().__init__(config)
         # self.norm_delta_altitude = [-0.2, -0.1, -0.05, 0, 0.05, 0.1, 0.2]
         self.norm_delta_heading = [0, np.pi/12, np.pi/6]
-        # assert len(self.norm_delta_altitude) == self.action_space[0].nvec[0]
-        # assert len(self.norm_delta_heading) == self.action_space[0].nvec[1]
-        # low-level policy: Input(18) Output(4)
-        self.lowlevel_policy = torch.load((get_root_dir() + '/model/singlecontrol_baseline.pth'))
+        self.model_path = get_root_dir() + '/model/baseline_model.pt'
+        self.lowlevel_policy = BaselineActor()
+        self.lowlevel_policy.load_state_dict(torch.load(self.model_path))
         self.lowlevel_policy.eval()
         self._rnn_states = np.zeros((self.num_agents, 1, 1, 128))
 
@@ -201,17 +200,13 @@ class SingleCombatWithMissileHierarchicalTask(SingleCombatWithMissileTask):
         """
         def _convert(action, observation, rnn_states):
             uid = list(env.jsbsims.keys())[0]
-            input_obs = np.zeros(8)
-            input_obs[0] = (6096-env.jsbsims[uid].get_property_value(c.position_h_sl_m))/1000   # 0. ego delta altitude  (unit: 1km)
-            input_obs[1] = self.norm_delta_heading[action[0]]    # 1. ego delta heading   (unit rad)
-            input_obs[2] = observation[3]           # 2. ego_roll       (unit: rad)
-            input_obs[3] = observation[4]           # 3. ego_pitch      (unit: rad)
-            input_obs[4] = observation[6] / 340     # 4. ego_v_north   (unit: mh)
-            input_obs[5] = observation[7] / 340     # 5. ego_v_east    (unit: mh)
-            input_obs[6] = observation[8] / 340     # 6. ego_v_down    (unit: mh)
-            input_obs[7] = observation[9] / 340     # 7. ego_vc        (unit: mh)
+            input_obs = np.zeros(12)
+            input_obs[0] = observation[10]
+            input_obs[1] = self.norm_delta_heading[action[0]]
+            input_obs[2] = (243-observation[5]*340)/340
+            input_obs[3:12] = observation[:9]
             input_obs = np.expand_dims(input_obs, axis=0)
-            _action, _, _rnn_states = self.lowlevel_policy(input_obs, rnn_states, deterministic=True)
+            _action, _rnn_states = self.lowlevel_policy(input_obs, rnn_states)
             action = _action.detach().cpu().numpy()
             rnn_states = _rnn_states.detach().cpu().numpy()
             return action, rnn_states
@@ -224,7 +219,7 @@ class SingleCombatWithMissileHierarchicalTask(SingleCombatWithMissileTask):
             action_norm[3] = action[3] * 0.5 / 29 + 0.4
             return action_norm
 
-        observations = env.get_observation(normalize=False)
+        observations = env.get_observation(normalize=True)
         low_level_actions = np.zeros((self.num_agents, 4))
         for agent_id in range(self.num_agents):
             low_level_actions[agent_id], self._rnn_states[agent_id] = \
