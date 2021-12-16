@@ -6,6 +6,7 @@ from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, PostureReward, RelativeAltitudeReward, CrashReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout
 from ..utils.utils import get2d_AO_TA_R, in_range_rad, get_AO_TA_R, LLA2NEU, get_root_dir
+from ..model.baseline_actor import BaselineActor
 
 
 class SingleCombatTask(BaseTask):
@@ -181,8 +182,9 @@ class StraightFlyAgent:
 
 class SingleControlAgent:
     def __init__(self, agent_id=1):
-        self.model_path = get_root_dir() + '/model/singlecontrol_baseline.pth'
-        self.actor = torch.load(str(self.model_path))
+        self.model_path = get_root_dir() + '/model/baseline_model.pt'
+        self.actor = BaselineActor()
+        self.actor.load_state_dict(torch.load(self.model_path))
         self.actor.eval()
         self.reset()
         self.agent_id = agent_id
@@ -215,18 +217,22 @@ class SingleControlAgent:
         ego_feature = np.array([ego_x, ego_y, ego_vx, ego_vy])
         enm_feature = np.array([enm_x, enm_y, enm_vx, enm_vy])
         ego_AO = get_delta_heading(ego_feature, enm_feature)
+        
+        observation = np.zeros(12)
+        observation[0] = (enm_z - ego_z) / 1000             
+        observation[1] = in_range_rad(ego_AO)
+        observation[2] = (243-env.jsbsims[ego_uid].get_property_value(c.velocities_u_mps))/340
+        observation[3] = ego_z / 5000
+        observation[4] = np.sin(env.jsbsims[ego_uid].get_rpy()[0])
+        observation[5] = np.cos(env.jsbsims[ego_uid].get_rpy()[0])
+        observation[6] = np.sin(env.jsbsims[ego_uid].get_rpy()[1])
+        observation[7] = np.cos(env.jsbsims[ego_uid].get_rpy()[1])
+        observation[8] = env.jsbsims[ego_uid].get_property_value(c.velocities_u_mps) / 340                       
+        observation[9] = env.jsbsims[ego_uid].get_property_value(c.velocities_v_mps) / 340                       
+        observation[10] = env.jsbsims[ego_uid].get_property_value(c.velocities_w_mps) / 340
+        observation[11] = env.jsbsims[ego_uid].get_property_value(c.velocities_vc_mps) / 340
+        observation = np.expand_dims(observation, axis=0)   # dim: (1,12)
 
-        observation = np.zeros(8)
-        observation[0] = (enm_z - ego_z) / 1000             #  0. ego delta altitude  (unit: 1km)
-        observation[1] = in_range_rad(ego_AO)               #  1. ego delta heading   (unit rad)
-        observation[2] = env.jsbsims[ego_uid].get_rpy()[0]  #  2. ego_roll      (unit: rad)
-        observation[3] = env.jsbsims[ego_uid].get_rpy()[1]  #  3. ego_pitch     (unit: rad)
-        observation[4] = ego_vx / 340                       #  4. ego_v_north   (unit: mh)
-        observation[5] = ego_vy / 340                       #  5. ego_v_east    (unit: mh)
-        observation[6] = ego_vz / 340                       #  6. ego_v_down    (unit: mh)
-        observation[7] = env.jsbsims[ego_uid].get_property_value(c.velocities_vc_mps) / 340
-        observation = np.expand_dims(observation, axis=0)   # dim: (1,8)
-
-        _action, _, self.rnn_states = self.actor(observation, self.rnn_states, deterministic=True)
+        _action, self.rnn_states = self.actor(observation, self.rnn_states)
         action = _action.detach().cpu().numpy().squeeze()
         return action
