@@ -31,15 +31,16 @@ class HeadingTask(BaseTask):
 
     def load_variables(self):
         self.state_var = [
-            c.delta_altitude,                   # 0. delta_h    (unit: m)
-            c.delta_heading,                    # 1. delta_θ    (unit: °)
-            c.delta_velocities_u,               # 2. delta_v    (unit: m/s)
-            c.attitude_roll_rad,                # 3. roll       (unit: rad)
-            c.attitude_pitch_rad,               # 4. pitch      (unit: rad)
-            c.velocities_u_mps,                 # 5. v_body_x   (unit: m/s)
-            c.velocities_v_mps,                 # 6. v_body_y   (unit: m/s)
-            c.velocities_w_mps,                 # 7. v_body_z   (unit: m/s)
-            c.velocities_vc_mps,                # 8. vc         (unit: m/s)
+            c.delta_altitude,                   # 0. delta_h   (unit: m)
+            c.delta_heading,                    # 1. delta_heading  (unit: °)
+            c.delta_velocities_u,               # 2. delta_v   (unit: m/s)
+            c.position_h_sl_m,                  # 3. altitude  (unit: m)
+            c.attitude_roll_rad,                # 4. roll      (unit: rad)
+            c.attitude_pitch_rad,               # 5. pitch     (unit: rad)
+            c.velocities_u_mps,                 # 6. v_body_x   (unit: m/s)
+            c.velocities_v_mps,                 # 7. v_body_y   (unit: m/s)
+            c.velocities_w_mps,                 # 8. v_body_z   (unit: m/s)
+            c.velocities_vc_mps,                # 9. vc        (unit: m/s)
         ]
         self.action_var = [
             c.fcs_aileron_cmd_norm,             # [-1., 1.]
@@ -64,21 +65,37 @@ class HeadingTask(BaseTask):
         self.action_space = spaces.MultiDiscrete([41, 41, 41, 30])
 
     def get_obs(self, env, agent_id):
-        """Normalize raw observation to make training easier.
+        """
+        Convert simulation states into the format of observation_space.
+
+        observation(dim 12):
+            0. ego delta altitude      (unit: km)
+            1. ego delta heading       (unit rad)
+            2. ego delta velocities_u  (unit: mh)
+            3. ego_altitude            (unit: 5km)
+            4. ego_roll_sin
+            5. ego_roll_cos
+            6. ego_pitch_sin
+            7. ego_pitch_cos
+            8. ego v_body_x            (unit: mh)
+            9. ego v_body_y            (unit: mh)
+            10. ego v_body_z           (unit: mh)
+            11. ego_vc                 (unit: mh)
         """
         obs = np.array(env.agents[agent_id].get_property_values(self.state_var))
         norm_obs = np.zeros(11)
-        norm_obs[0] = obs[0] / 1000         # 0. ego delta altitude  (unit: 1km)
-        norm_obs[1] = obs[1] / 180 * np.pi  # 1. ego delta heading   (unit rad)
-        norm_obs[2] = obs[2] / 340          # 2. ego delta velocities_u  (unit: mh)
-        norm_obs[3] = np.sin(obs[3])        # 3. ego_roll_sin
-        norm_obs[4] = np.cos(obs[3])        # 4. ego_roll_cos
-        norm_obs[5] = np.sin(obs[4])        # 5. ego_pitch_sin
-        norm_obs[6] = np.cos(obs[4])        # 6. ego_pitch_cos
-        norm_obs[7] = obs[5] / 340          # 4. ego_v_north   (unit: mh)
-        norm_obs[8] = obs[6] / 340          # 5. ego_v_east    (unit: mh)
-        norm_obs[9] = obs[7] / 340          # 6. ego_v_down    (unit: mh)
-        norm_obs[10] = obs[8] / 340         # 7. ego_vc        (unit: mh)
+        norm_obs[0] = obs[0] / 1000         # 0. ego delta altitude (unit: 1km)
+        norm_obs[1] = obs[1] / 180 * np.pi  # 1. ego delta heading  (unit rad)
+        norm_obs[2] = obs[2] / 340          # 2. ego delta velocities_u (unit: mh)
+        norm_obs[3] = obs[3] / 5000         # 3. ego_altitude   (unit: 5km)
+        norm_obs[4] = np.sin(obs[4])        # 4. ego_roll_sin
+        norm_obs[5] = np.cos(obs[4])        # 5. ego_roll_cos
+        norm_obs[6] = np.sin(obs[5])        # 6. ego_pitch_sin
+        norm_obs[7] = np.cos(obs[5])        # 7. ego_pitch_cos
+        norm_obs[8] = obs[6] / 340          # 8. ego_v_north    (unit: mh)
+        norm_obs[9] = obs[7] / 340          # 9. ego_v_east     (unit: mh)
+        norm_obs[10] = obs[8] / 340         # 10. ego_v_down    (unit: mh)
+        norm_obs[11] = obs[9] / 340         # 11. ego_vc        (unit: mh)
         norm_obs = np.clip(norm_obs, self.observation_space.low, self.observation_space.high)
         return norm_obs
 

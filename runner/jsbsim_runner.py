@@ -76,8 +76,8 @@ class JSBSimRunner(Runner):
 
                 # Extra recorded information
                 for info in infos:
-                    if 'heading_turns' in info:
-                        heading_turns_list.append(info['heading_turns'])
+                    if 'heading_turn_counts' in info:
+                        heading_turns_list.append(info['heading_turn_counts'])
 
             # compute return and update network
             self.compute()
@@ -106,7 +106,8 @@ class JSBSimRunner(Runner):
 
                 train_infos["average_episode_rewards"] = self.buffer.rewards.sum() / (self.buffer.masks == False).sum()
                 print("average episode rewards is {}".format(train_infos["average_episode_rewards"]))
-                if len(heading_turns_list) > 0:
+
+                if len(heading_turns_list):
                     train_infos["average_heading_turns"] = np.mean(heading_turns_list)
                     print("average heading turns is {}".format(train_infos["average_heading_turns"]))
                 self.log_info(train_infos, self.total_num_steps)

@@ -32,7 +32,7 @@ class HeadingReward(BaseRewardFunction):
         roll_error_scale = 0.35  # radians ~= 20 degrees
         roll_r = math.exp(-((env.agents[agent_id].get_property_value(c.attitude_roll_rad) / roll_error_scale) ** 2))
 
-        speed_error_scale = 12  # mps (~5%)
+        speed_error_scale = 24  # mps (~10%)
         speed_r = math.exp(-((env.agents[agent_id].get_property_value(c.delta_velocities_u) / speed_error_scale) ** 2))
 
         reward = (heading_r * alt_r * roll_r * speed_r) ** (1 / 4)

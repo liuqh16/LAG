@@ -1,8 +1,6 @@
 import numpy as np
-from typing import Tuple, Dict
 from .env_base import BaseEnv
-from ..tasks.singlecombat_task import SingleCombatTask
-from ..tasks.singlecombat_with_missle_task import SingleCombatWithMissileTask
+from ..tasks import SingleCombatTask, SingleCombatWithMissileTask, SingleCombatWithArtilleryTask, SingleCombatWithMissileHierarchicalTask
 
 
 class SingleCombatEnv(BaseEnv):
@@ -21,10 +19,14 @@ class SingleCombatEnv(BaseEnv):
             self.task = SingleCombatTask(self.config)
         elif taskname == 'singlecombat_with_missile':
             self.task = SingleCombatWithMissileTask(self.config)
+        elif taskname == 'singlecombat_with_missile_hierarchical':
+            self.task = SingleCombatWithMissileHierarchicalTask(self.config)
+        elif taskname == 'singlecombat_with_artillery':
+            self.task = SingleCombatWithArtilleryTask(self.config)
         else:
             raise NotImplementedError(f"Unknown taskname: {taskname}")
 
-    def reset(self) -> Dict[str, np.ndarray]:
+    def reset(self) -> np.ndarray:
         self.current_step = 0
         self.reset_simulators()
         self.task.reset(self)

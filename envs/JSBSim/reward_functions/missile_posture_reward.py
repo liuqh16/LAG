@@ -4,24 +4,20 @@ from .reward_function_base import BaseRewardFunction
 
 class MissilePostureReward(BaseRewardFunction):
     """
-    MissilePostureReward = v_reward + d_reward:
-    v_reward: [-1,0], the bigger missile velocity, the less reward
-    d_reward: [-1,0], the longer distance between flighter and missile, the more reward
-
-    NOTE:
-    - Only support one-to-one environments.
-    - MissileAttackReward will block other reward functions, so must be placed on top!
+    MissilePostureReward
+    Use the velocity attenuation
     """
     def __init__(self, config):
         super().__init__(config)
-        # self.all_reward_scales = []
-        self.v_fn = lambda v: np.exp(-v / 200) - 1
-        self.d_fn = lambda d: -np.exp(-d / 1000)
-        self.reward_item_names = [self.__class__.__name__ + item for item in ['', '_v', '_d']]
+        self.previous_missile_v = None
+
+    def reset(self, task, env):
+        self.previous_missile_v = None
+        return super().reset(task, env)
 
     def get_reward(self, task, env, agent_id):
         """
-        Reward is the sum of all the punishments.
+        Reward is velocity attenuation of the missile
 
         Args:
             task: task instance
@@ -30,10 +26,24 @@ class MissilePostureReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        reward, v_reward, d_reward = 0, 0, 0
+        from ..envs.singlecombat_env import SingleCombatEnv, SingleCombatWithMissileHierarchicalTask
+        assert isinstance(task, SingleCombatWithMissileHierarchicalTask)
+        assert isinstance(env, SingleCombatEnv)
+        reward = 0
         missile_sim = task.check_missile_warning(env, agent_id)
         if missile_sim is not None:
-            v_reward = self.v_fn(np.linalg.norm(missile_sim.get_velocity()))
-            d_reward = self.d_fn(missile_sim.target_distance)
-            reward = v_reward + d_reward
-        return self._process(reward, agent_id, (v_reward, d_reward))
+            missile_v = missile_sim.get_velocity()
+            aircraft_v = env.jsbsims[list(env.jsbsims.keys())[agent_id]].get_velocity()
+            if self.previous_missile_v is None:
+                self.previous_missile_v = missile_v
+            v_decrease = (np.linalg.norm(self.previous_missile_v) - np.linalg.norm(missile_v)) / 340 * self.reward_scale
+            angle = np.dot(missile_v, aircraft_v) / (np.linalg.norm(missile_v) * np.linalg.norm(aircraft_v))
+            if angle < 0:
+                reward = angle / (max(v_decrease, 0) + 1)
+            else:
+                reward = angle * max(v_decrease, 0)
+        else:
+            self.previous_missile_v = None
+            reward = 0
+        self.reward_trajectory[agent_id].append([reward])
+        return reward

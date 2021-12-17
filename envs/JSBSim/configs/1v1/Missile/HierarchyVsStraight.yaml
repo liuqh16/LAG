@@ -1,5 +1,5 @@
 # task config
-task: heading
+task: singlecombat_with_missile_hierarchical
 
 # simulation config
 jsbsim_freq: 60
@@ -13,28 +13,49 @@ acceleration_limit_y: 10.0
 acceleration_limit_z: 10.0
 
 # aircraft config
+use_baseline: true
+baseline_type: straight
 aircraft_configs: {
   A0100: {
-    color: Red,
+    team: Red,
     model: f16,
-    max_heading_increment: 180,       # degree
-    max_altitude_increment: 7000,     # feet
-    max_velocities_u_increment: 100,  # meter
-    check_interval: 30,               # second
     init_state: {
       ic_long_gc_deg: 120.0,
       ic_lat_geod_deg: 60.0,
       ic_h_sl_ft: 20000,
-      ic_psi_true_deg: 0.0,
+      ic_psi_true_deg: 0,
       ic_u_fps: 800.0,
-      heading_check_time: 20.0,
-    }
+    },
+    missile: 0
+  },
+  B0100: {
+    team: Blue,
+    model: f16,
+    init_state: {
+      ic_h_sl_ft: 20000,
+      ic_lat_geod_deg: 60.17,
+      ic_long_gc_deg: 120.0,
+      ic_psi_true_deg: 180.0,
+      ic_u_fps: 800.0,
+    },
+    missile: 1,
   }
 }
 # (lontitude, latitude, altitude)
 battle_field_center: [120.0, 60.0, 0.0]
 
 # reward config
+MissileAttackReward_potential: true
+
+MissilePostureReward_scale: 30 
+
+PostureReward_scale: 15.0
+PostureReward_potential: true
+PostureReward_orientation_version: v2
+PostureReward_range_version: v3
+
 AltitudeReward_safe_altitude: 4.0
 AltitudeReward_danger_altitude: 3.5
 AltitudeReward_Kv: 0.2
+
+RelativeAltitudeReward_KH: 1.0
