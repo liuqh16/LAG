@@ -58,7 +58,7 @@ class HeadingTask(BaseTask):
         ]
 
     def load_observation_space(self):
-        self.observation_space = spaces.Box(low=-10, high=10., shape=(11,))
+        self.observation_space = spaces.Box(low=-10, high=10., shape=(12,))
 
     def load_action_space(self):
         # aileron, elevator, rudder, throttle
@@ -83,7 +83,7 @@ class HeadingTask(BaseTask):
             11. ego_vc                 (unit: mh)
         """
         obs = np.array(env.agents[agent_id].get_property_values(self.state_var))
-        norm_obs = np.zeros(11)
+        norm_obs = np.zeros(12)
         norm_obs[0] = obs[0] / 1000         # 0. ego delta altitude (unit: 1km)
         norm_obs[1] = obs[1] / 180 * np.pi  # 1. ego delta heading  (unit rad)
         norm_obs[2] = obs[2] / 340          # 2. ego delta velocities_u (unit: mh)

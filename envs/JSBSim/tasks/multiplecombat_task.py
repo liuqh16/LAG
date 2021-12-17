@@ -62,12 +62,12 @@ class MultipleCombatTask(BaseTask):
 
     def load_observation_space(self):
         self.obs_length = 11 + (self.num_agents - 1) * 7
-        self.observation_space = dict([(agend_id, spaces.Box(low=-10, high=10., shape=(self.obs_length,))) for agend_id in self.agent_ids])
-        self.share_observation_space = dict([(agend_id, spaces.Box(low=-10, high=10., shape=(self.num_agents * self.obs_length,))) for agend_id in self.agent_ids])
+        self.observation_space = spaces.Box(low=-10, high=10., shape=(self.obs_length,))
+        self.share_observation_space = spaces.Box(low=-10, high=10., shape=(self.num_agents * self.obs_length,))
 
     def load_action_space(self):
         # aileron, elevator, rudder, throttle
-        self.action_space = dict([(agend_id, spaces.MultiDiscrete([41, 41, 41, 30])) for agend_id in self.agent_ids])
+        self.action_space = spaces.MultiDiscrete([41, 41, 41, 30])
 
     def get_obs(self, env, agent_id):
         norm_obs = np.zeros(self.obs_length)

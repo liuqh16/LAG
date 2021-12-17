@@ -11,10 +11,7 @@ assert env.num_agents == 4
 obs, share_obs = env.reset()
 
 while True:
-    actions = {}
-    for agent_id in env.agent_ids:
-        actions[agent_id] = env.action_space[agent_id].sample()
-
+    actions = [env.action_space.sample() for _ in range(env.num_agents)]
     obs, share_obs, rewards, dones, info = env.step(actions)
 
     # save previous data

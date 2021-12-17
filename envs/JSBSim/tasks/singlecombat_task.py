@@ -195,7 +195,7 @@ class SingleControlAgent:
             side_flag = np.sign(np.cross([ego_vx, ego_vy], [delta_x, delta_y]))
             return ego_AO * side_flag
 
-        ego_uid, enm_uid = list(env.jsbsims.keys())[self.agent_id], list(env.jsbsims.keys())[(self.agent_id+1)%2]
+        ego_uid, enm_uid = list(env.jsbsims.keys())[self.agent_id], list(env.jsbsims.keys())[(self.agent_id + 1) % 2]
         ego_x, ego_y, ego_z = env.jsbsims[ego_uid].get_position()
         ego_vx, ego_vy, ego_vz = env.jsbsims[ego_uid].get_velocity()
         enm_x, enm_y, enm_z = env.jsbsims[enm_uid].get_position()

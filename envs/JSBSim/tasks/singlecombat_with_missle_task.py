@@ -104,27 +104,27 @@ class SingleCombatWithMissileTask(SingleCombatTask):
     def reset(self, env):
         """Reset fighter blood & missile status
         """
-        self.bloods = dict([(agent_id, 100) for agent_id in self.agent_ids])
-        self.remaining_missiles = dict([(agent_id, env.config.aircraft_configs[agent_id].get("missile", 0)) for agent_id in self.agent_ids])
-        self.lock_duration = dict([(agent_id, deque(maxlen=int(1 / env.time_interval))) for agent_id in self.agent_ids])
+        self.bloods = dict([(agent_id, 100) for agent_id in env.agents.keys()])
+        self.remaining_missiles = dict([(agent_id, env.config.aircraft_configs[agent_id].get("missile", 0)) for agent_id in env.agents.keys()])
+        self.lock_duration = dict([(agent_id, deque(maxlen=int(1 / env.time_interval))) for agent_id in env.agents.keys()])
         return super().reset(env)
 
     def step(self, env):
-        for agent_id in self.agent_ids:
+        for agent_id, agent in env.agents.items():
             # [Rule-based missile launch]
             max_attack_angle = 22.5
             max_attack_distance = 12000
-            target = env.agents[agent_id].enemies[0].get_position() - env.agents[agent_id].get_position()
-            heading = env.agents[agent_id].get_velocity()
+            target = agent.enemies[0].get_position() - agent.get_position()
+            heading = agent.get_velocity()
             distance = np.linalg.norm(target)
             attack_angle = np.rad2deg(np.arccos(np.clip(np.sum(target * heading) / (distance * np.linalg.norm(heading) + 1e-8), -1, 1)))
             self.lock_duration[agent_id].append(attack_angle < max_attack_angle)
-            shoot_flag = env.agents[agent_id].is_alive and np.sum(self.lock_duration[agent_id]) >= self.lock_duration[agent_id].maxlen \
+            shoot_flag = agent.is_alive and np.sum(self.lock_duration[agent_id]) >= self.lock_duration[agent_id].maxlen \
                 and distance <= max_attack_distance and self.remaining_missiles[agent_id] > 0
             if shoot_flag:
-                new_missile_uid = env.agents[agent_id].uid + str(self.remaining_missiles[agent_id])
+                new_missile_uid = agent_id + str(self.remaining_missiles[agent_id])
                 env.add_temp_simulator(
-                    MissileSimulator.create(parent=env.agents[agent_id], target=env.agents[agent_id].enemies[0], uid=new_missile_uid))
+                    MissileSimulator.create(parent=agent, target=agent.enemies[0], uid=new_missile_uid))
                 self.remaining_missiles[agent_id] -= 1
 
     def check_missile_warning(self, env, agent_id) -> MissileSimulator:

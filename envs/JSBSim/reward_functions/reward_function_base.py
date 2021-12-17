@@ -27,7 +27,7 @@ class BaseRewardFunction(ABC):
         """
         if self.is_potential:
             self.pre_rewards.clear()
-            for agent_id in env.agent_ids:
+            for agent_id in env.agents.keys():
                 self.pre_rewards[agent_id] = self.get_reward(task, env, agent_id)
         self.reward_trajectory.clear()
 

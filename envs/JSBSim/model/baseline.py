@@ -91,17 +91,17 @@ class ManeuverAgent(BaselineAgent):
         self.rnn_states = np.zeros((1, 1, 128))
 
     def set_delta_value(self, observation):
-        step_list = np.arange(1, len(self.delta_heading_list)+1) * self.turn_interval / self.env_time_interval
+        step_list = np.arange(1, len(self.delta_heading_list) + 1) * self.turn_interval / self.env_time_interval
         if not self.dodge_missile or (len(observation) > 15 and observation[15] != 0):
             for i, interval in enumerate(step_list):
                 if self.step <= interval:
                     break
             delta_heading = self.delta_heading_list[i]
-            delta_altitude = (self.target_altitude_list[i] - observation[0]*5000) / 1000
-            delta_velocity = (self.target_velocity_list[i] - observation[5]*340) / 340
+            delta_altitude = (self.target_altitude_list[i] - observation[0] * 5000) / 1000
+            delta_velocity = (self.target_velocity_list[i] - observation[5] * 340) / 340
             self.step += 1
         else:
             delta_heading = 0
-            delta_altitude = (6096 - observation[0]*5000) / 1000
-            delta_velocity = (243 - observation[5]*340) / 340
+            delta_altitude = (6096 - observation[0] * 5000) / 1000
+            delta_velocity = (243 - observation[5] * 340) / 340
         return np.array([delta_altitude, delta_heading, delta_velocity])

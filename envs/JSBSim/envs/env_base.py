@@ -20,11 +20,13 @@ class BaseEnv(gym.Env):
     metadata = {"render.modes": ["human", "txt"]}
 
     def __init__(self, config_name: str):
+        # basic args
         self.config = parse_config(config_name)
-        self.max_steps = getattr(self.config, 'max_steps', 100)     # type: int
-        self.jsbsim_freq = getattr(self.config, 'jsbsim_freq', 60)  # type: int
+        self.max_steps = getattr(self.config, 'max_steps', 100)  # type: int
+        self.sim_freq = getattr(self.config, 'sim_freq', 60)  # type: int
         self.agent_interaction_steps = getattr(self.config, 'agent_interaction_steps', 12)  # type: int
-        self.center_lon, self.center_lat, self.center_alt = getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0))
+        self.center_lon, self.center_lat, self.center_alt = \
+            getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0))
         self._create_records = False
         self.load()
 
@@ -33,20 +35,20 @@ class BaseEnv(gym.Env):
         return self.task.num_agents
 
     @property
-    def agents(self) -> Dict[str, AircraftSimulator]:
-        return self._jsbsims
-
-    @property
-    def time_interval(self) -> int:
-        return self.agent_interaction_steps / self.jsbsim_freq
-
-    @property
-    def observation_space(self):
+    def observation_space(self) -> gym.Space:
         return self.task.observation_space
 
     @property
-    def action_space(self):
+    def action_space(self) -> gym.Space:
         return self.task.action_space
+
+    @property
+    def agents(self) -> Dict[str, AircraftSimulator]:
+        return self.__jsbsims
+
+    @property
+    def time_interval(self) -> int:
+        return self.agent_interaction_steps / self.sim_freq
 
     def load(self):
         self.load_task()
@@ -57,20 +59,23 @@ class BaseEnv(gym.Env):
         self.task = BaseTask(self.config)
 
     def load_simulator(self):
-        self._jsbsims = {}     # type: Dict[str, AircraftSimulator]
+        self.__jsbsims = {}     # type: Dict[str, AircraftSimulator]
         for uid, config in self.config.aircraft_configs.items():
-            self._jsbsims[uid] = AircraftSimulator(
-                uid, config.get("color", "Red"),
-                config.get("model", "f16"),
-                config.get("init_state"),
-                getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0)),
-                self.jsbsim_freq)
-        self.agent_ids = list(self._jsbsims.keys())
-        self.ego_ids = [uid for uid in self.agent_ids if uid[0] == self.agent_ids[0][0]]
-        self.enm_ids = [uid for uid in self.agent_ids if uid[0] != self.agent_ids[0][0]]
+            self.__jsbsims[uid] = AircraftSimulator(
+                uid=uid,
+                color=config.get("color", "Red"),
+                model=config.get("model", "f16"),
+                init_state=config.get("init_state"),
+                origin=getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0)),
+                sim_freq=self.sim_freq)
+        # Different teams have different uid[0]
+        _default_team_uid = list(self.__jsbsims.keys())[0][0]
+        self.ego_ids = [uid for uid in self.__jsbsims.keys() if uid[0] == _default_team_uid]
+        self.enm_ids = [uid for uid in self.__jsbsims.keys() if uid[0] != _default_team_uid]
 
-        for key, sim in self._jsbsims.items():
-            for k, s in self._jsbsims.items():
+        # Link jsbsims
+        for key, sim in self.__jsbsims.items():
+            for k, s in self.__jsbsims.items():
                 if k == key:
                     pass
                 elif k[0] == key[0]:
@@ -83,15 +88,15 @@ class BaseEnv(gym.Env):
     def add_temp_simulator(self, sim: BaseSimulator):
         self._tempsims[sim.uid] = sim
 
-    def reset(self):
+    def reset(self) -> np.ndarray:
         """Resets the state of the environment and returns an initial observation.
 
         Returns:
-            obs (dict): {agent_id: initial observation}
+            obs (np.ndarray): initial observation
         """
         # reset sim
         self.current_step = 0
-        for sim in self._jsbsims.values():
+        for sim in self.__jsbsims.values():
             sim.reload()
         self._tempsims.clear()
         # reset task
@@ -120,12 +125,12 @@ class BaseEnv(gym.Env):
 
         # apply actions
         action = self._unpack(action)
-        for agent_id in self.agent_ids:
+        for agent_id in self.agents.keys():
             a_action = self.task.normalize_action(self, agent_id, action[agent_id])
             self.agents[agent_id].set_property_values(self.task.action_var, a_action)
         # run simulation
         for _ in range(self.agent_interaction_steps):
-            for sim in self._jsbsims.values():
+            for sim in self.__jsbsims.values():
                 sim.run()
             for sim in self._tempsims.values():
                 sim.run()
@@ -133,15 +138,15 @@ class BaseEnv(gym.Env):
 
         obs = self.get_obs()
 
-        rewards = {}
-        for agent_id in self.agent_ids:
-            reward, info = self.task.get_reward(self, agent_id, info)
-            rewards[agent_id] = [reward]
-
         dones = {}
-        for agent_id in self.agent_ids:
+        for agent_id in self.agents.keys():
             done, info = self.task.get_termination(self, agent_id, info)
             dones[agent_id] = [done]
+
+        rewards = {}
+        for agent_id in self.agents.keys():
+            reward, info = self.task.get_reward(self, agent_id, info)
+            rewards[agent_id] = [reward]
 
         return self._pack(obs), self._pack(rewards), self._pack(dones), info
 
@@ -151,15 +156,15 @@ class BaseEnv(gym.Env):
         NOTE: Agents should have access only to their local observations
         during decentralised execution.
         """
-        return dict([(agent_id, self.task.get_obs(self, agent_id)) for agent_id in self.agent_ids])
+        return dict([(agent_id, self.task.get_obs(self, agent_id)) for agent_id in self.agents.keys()])
 
     def get_state(self):
         """Returns the global state.
 
         NOTE: This functon should not be used during decentralised execution.
         """
-        state = np.hstack([self.task.get_obs(self, agent_id) for agent_id in self.agent_ids])
-        return dict([(agent_id, state.copy()) for agent_id in self.agent_ids])
+        state = np.hstack([self.task.get_obs(self, agent_id) for agent_id in self.agents.keys()])
+        return dict([(agent_id, state.copy()) for agent_id in self.agents.keys()])
 
     def close(self):
         """Cleans up this environment's objects
@@ -167,11 +172,11 @@ class BaseEnv(gym.Env):
         NOTE: Environments automatically close() when garbage collected or when the
         program exits.
         """
-        for sim in self._jsbsims.values():
+        for sim in self.__jsbsims.values():
             sim.close()
         for sim in self._tempsims.values():
             sim.close()
-        self._jsbsims.clear()
+        self.__jsbsims.clear()
         self._tempsims.clear()
 
     def render(self, mode="txt", filepath='./JSBSimRecording.txt.acmi'):
@@ -203,7 +208,7 @@ class BaseEnv(gym.Env):
             with open(filepath, mode='a', encoding='utf-8-sig') as f:
                 timestamp = self.current_step * self.time_interval
                 f.write(f"#{timestamp:.2f}\n")
-                for sim in self._jsbsims.values():
+                for sim in self.__jsbsims.values():
                     log_msg = sim.log()
                     if log_msg is not None:
                         f.write(log_msg + "\n")
@@ -236,7 +241,10 @@ class BaseEnv(gym.Env):
         """Pack seperated key-value dict into grouped np.ndarray"""
         ego_data = np.array([data[uid] for uid in self.ego_ids])
         enm_data = np.array([data[uid] for uid in self.enm_ids])
-        data = np.concatenate((ego_data, enm_data))
+        if enm_data.shape[0] > 0:
+            data = np.concatenate((ego_data, enm_data))
+        else:
+            data = ego_data
         try:
             assert np.isnan(data).sum() == 0
         except AssertionError:
@@ -246,6 +254,6 @@ class BaseEnv(gym.Env):
 
     def _unpack(self, data: np.ndarray) -> Dict[str, Any]:
         """Unpack grouped np.ndarray into seperated key-value dict"""
-        assert isinstance(data, (np.ndarray, list, tuple)) and len(data) == len(self.agent_ids)
+        assert isinstance(data, (np.ndarray, list, tuple)) and len(data) == len(self.agents.keys())
         unpack_data = dict(zip(self.ego_ids + self.enm_ids, data))
         return unpack_data

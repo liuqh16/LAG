@@ -2,7 +2,7 @@
 task: multiplecombat
 
 # simulation config
-jsbsim_freq: 60
+sim_freq: 60
 agent_interaction_steps: 12 # step 0.2s
 
 # termination config

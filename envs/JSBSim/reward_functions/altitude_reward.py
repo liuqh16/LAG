@@ -24,6 +24,7 @@ class AltitudeReward(BaseRewardFunction):
         Args:
             task: task instance
             env: environment instance
+            agent_id
 
         Returns:
             (float): reward

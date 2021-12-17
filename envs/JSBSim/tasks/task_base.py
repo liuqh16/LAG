@@ -13,7 +13,6 @@ class BaseTask(ABC):
     """
     def __init__(self, config):
         self.config = config
-        self.agent_ids = list(self.config.aircraft_configs.keys())  # type: List[str]
         self.reward_functions = []
         self.termination_conditions = []
         self.load_variables()
@@ -51,7 +50,6 @@ class BaseTask(ABC):
         Load action space
         """
         self.action_space = spaces.Discrete(5)
-        pass
 
     def reset(self, env):
         """Task-specific reset

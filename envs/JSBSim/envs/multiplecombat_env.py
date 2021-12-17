@@ -64,7 +64,7 @@ class MultipleCombatEnv(BaseEnv):
         info = {"current_step": self.current_step}
 
         # apply actions
-        for agent_id in self.agent_ids:
+        for agent_id in self.agents.keys():
             a_action = self.task.normalize_action(self, agent_id, action[agent_id])
             self.agents[agent_id].set_property_values(self.task.action_var, a_action)
         # run simulation
@@ -79,11 +79,11 @@ class MultipleCombatEnv(BaseEnv):
         share_obs = self.get_state()
 
         rewards = {}    # type: Dict[str, float]
-        for agent_id in self.agent_ids:
+        for agent_id in self.agents.keys():
             rewards[agent_id], info = self.task.get_reward(self, agent_id, info)
 
         dones = {}      # type: Dict[str, bool]
-        for agent_id in self.agent_ids:
+        for agent_id in self.agents.keys():
             dones[agent_id], info = self.task.get_termination(self, agent_id, info)
 
         return obs, share_obs, rewards, dones, info

@@ -1,6 +1,6 @@
 import numpy as np
 from .env_base import BaseEnv
-from ..tasks import SingleCombatTask, SingleCombatWithMissileTask, SingleCombatWithArtilleryTask, SingleCombatWithMissileHierarchicalTask
+from ..tasks import SingleCombatTask, SingleCombatWithMissileTask, SingleCombatWithMissileHierarchicalTask
 
 
 class SingleCombatEnv(BaseEnv):
@@ -10,7 +10,7 @@ class SingleCombatEnv(BaseEnv):
     def __init__(self, config_name: str):
         super().__init__(config_name)
         # Env-Specific initialization here!
-        assert len(self.agent_ids) == 2, f"{self.__class__.__name__} only supports 1v1 scenarios!"
+        assert len(self.agents.keys()) == 2, f"{self.__class__.__name__} only supports 1v1 scenarios!"
         self.init_states = None
 
     def load_task(self):
@@ -21,8 +21,6 @@ class SingleCombatEnv(BaseEnv):
             self.task = SingleCombatWithMissileTask(self.config)
         elif taskname == 'singlecombat_with_missile_hierarchical':
             self.task = SingleCombatWithMissileHierarchicalTask(self.config)
-        elif taskname == 'singlecombat_with_artillery':
-            self.task = SingleCombatWithArtilleryTask(self.config)
         else:
             raise NotImplementedError(f"Unknown taskname: {taskname}")
 
@@ -36,9 +34,9 @@ class SingleCombatEnv(BaseEnv):
     def reset_simulators(self):
         # switch side
         if self.init_states is None:
-            self.init_states = [sim.init_state for sim in self._jsbsims.values()]
+            self.init_states = [sim.init_state.copy() for sim in self.agents.values()]
         init_states = self.init_states.copy()
         self.np_random.shuffle(init_states)
-        for idx, sim in enumerate(self._jsbsims.values()):
+        for idx, sim in enumerate(self.agents.values()):
             sim.reload(init_states[idx])
         self._tempsims.clear()
