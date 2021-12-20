@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import sys
 import os
-import socket
 import torch
 import random
 import numpy as np
@@ -33,12 +32,12 @@ def make_test_env(all_args):
 
 def parse_args(args, parser):
     group = parser.add_argument_group("JSBSim Env parameters")
-    group.add_argument('--episode-length', type=int, default=900,
-                        help="the max length of an episode")
+    group.add_argument('--episode-length', type=int, default=1000,
+                       help="the max length of an episode")
     group.add_argument('--scenario-name', type=str, default='singlecombat_vsbaseline',
-                        help="number of fighters controlled by RL policy")
+                       help="number of fighters controlled by RL policy")
     group.add_argument('--num-agents', type=int, default=1,
-                        help="number of fighters controlled by RL policy")
+                       help="number of fighters controlled by RL policy")
     all_args = parser.parse_known_args(args)[0]
     return all_args
 
@@ -46,7 +45,7 @@ def parse_args(args, parser):
 def main(args):
     parser = get_config()
     all_args = parse_args(args, parser)
-    assert all_args.model_dir != None
+    assert all_args.model_dir is not None
     # seed
     np.random.seed(all_args.seed)
     random.seed(all_args.seed)
@@ -67,7 +66,7 @@ def main(args):
 
     # run dir
     run_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/results") \
-         / all_args.env_name / all_args.scenario_name / all_args.algorithm_name / all_args.experiment_name
+        / all_args.env_name / all_args.scenario_name / all_args.algorithm_name / all_args.experiment_name
     if not run_dir.exists():
         os.makedirs(str(run_dir))
     curr_run = 'render'
@@ -75,8 +74,8 @@ def main(args):
     if not run_dir.exists():
         os.makedirs(str(run_dir))
 
-    setproctitle.setproctitle(str(all_args.algorithm_name) + "-" + \
-        str(all_args.env_name) + "-" + str(all_args.experiment_name) + "@" + str(all_args.user_name))
+    setproctitle.setproctitle(str(all_args.algorithm_name) + "-" + str(all_args.env_name)
+                              + "-" + str(all_args.experiment_name) + "@" + str(all_args.user_name))
 
     # env init
     envs = make_test_env(all_args)
@@ -94,9 +93,10 @@ def main(args):
 
     runner = Runner(config)
     runner.render()
-    
+
     # post process
     envs.close()
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])

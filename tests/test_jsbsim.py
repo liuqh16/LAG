@@ -88,60 +88,6 @@ class TestSingleControlEnv:
                 break
         envs.close()
 
-    def test_train(self):
-        from scripts.train.train_jsbsim import make_train_env, make_eval_env, parse_args, get_config, Runner
-        args = '--env-name SingleControl --algorithm-name ppo --scenario-name 1/heading --experiment-name pytest ' \
-               '--seed 1 --n-training-threads 1 --n-rollout-threads 4 --cuda ' \
-               '--log-interval 1 --save-interval 1 --use-eval --eval-interval 5 --eval-episodes 10 ' \
-               '--num-mini-batch 5 --buffer-size 900 --num-env-steps 3e4 ' \
-               '--lr 3e-4 --gamma 0.99 --ppo-epoch 4 --clip-params 0.2 --max-grad-norm 2 --entropy-coef 1e-3 ' \
-               '--hidden-size 32 --act-hidden-size 32 --recurrent-hidden-size 32 --recurrent-hidden-layers 1 --data-chunk-length 8'
-        args = args.split(' ')
-        parser = get_config()
-        all_args = parse_args(args, parser)
-
-        # seed
-        np.random.seed(all_args.seed)
-        random.seed(all_args.seed)
-        torch.manual_seed(all_args.seed)
-        torch.cuda.manual_seed_all(all_args.seed)
-
-        # cuda
-        if all_args.cuda and torch.cuda.is_available():
-            device = torch.device("cuda:0")  # use cude mask to control using which GPU
-            torch.set_num_threads(all_args.n_training_threads)
-            torch.backends.cudnn.deterministic = True
-            torch.backends.cudnn.benchmark = True
-        else:
-            device = torch.device("cpu")
-            torch.set_num_threads(all_args.n_training_threads)
-
-        # run dir
-        run_dir = Path(os.path.dirname(os.path.abspath(__file__)) + "/results") \
-            / all_args.env_name / all_args.scenario_name / all_args.algorithm_name / all_args.experiment_name
-        assert not all_args.use_wandb
-        if not run_dir.exists():
-            os.makedirs(str(run_dir))
-        # env init
-        assert all_args.use_eval
-        envs = make_train_env(all_args)
-        eval_envs = make_eval_env(all_args)
-
-        config = {
-            "all_args": all_args,
-            "envs": envs,
-            "eval_envs": eval_envs,
-            "device": device,
-            "run_dir": run_dir
-        }
-
-        # run experiments
-        runner = Runner(config)
-        runner.run()
-
-        # post process
-        envs.close()
-
 
 class TestSingleCombatEnv:
 
@@ -263,6 +209,68 @@ class TestSingleCombatEnv:
             # terminate if any of the parallel envs has been done
             if np.any(np.all(dones, axis=1)):
                 break
+        envs.close()
+
+
+class TestJSBSimRunner:
+
+    @pytest.mark.parametrize("args", [
+        "--env-name SingleControl --algorithm-name ppo --scenario-name 1/heading",
+        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/Missile/Selfplay --use-selfplay --selfplay-algorithm fsp",
+        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/Missile/vsBaseline",
+        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/Missile/HierarchySelfplay",  # whether to use selfplay is optional
+        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/Missile/HierarchyVsBaseline"])
+    def test_training(self, args):
+        from scripts.train.train_jsbsim import make_train_env, make_eval_env, parse_args, get_config, Runner
+        args += ' --experiment-name pytest --seed 1 --n-training-threads 1 --n-rollout-threads 5 --cuda' \
+                ' --log-interval 1 --save-interval 1 --use-eval --eval-interval 1 --eval-episodes 10' \
+                ' --num-mini-batch 5 --buffer-size 1000 --num-env-steps 1e4' \
+                ' --lr 3e-4 --gamma 0.99 --ppo-epoch 4 --clip-params 0.2 --max-grad-norm 2 --entropy-coef 1e-3' \
+                ' --hidden-size 32 --act-hidden-size 32 --recurrent-hidden-size 32 --recurrent-hidden-layers 1 --data-chunk-length 8'
+        args = args.split(' ')
+        parser = get_config()
+        all_args = parse_args(args, parser)
+
+        # seed
+        np.random.seed(all_args.seed)
+        random.seed(all_args.seed)
+        torch.manual_seed(all_args.seed)
+        torch.cuda.manual_seed_all(all_args.seed)
+
+        # cuda
+        if all_args.cuda and torch.cuda.is_available():
+            device = torch.device("cuda:0")  # use cude mask to control using which GPU
+            torch.set_num_threads(all_args.n_training_threads)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = True
+        else:
+            device = torch.device("cpu")
+            torch.set_num_threads(all_args.n_training_threads)
+
+        # run dir
+        run_dir = Path(os.path.dirname(os.path.abspath(__file__)) + "/results") \
+            / all_args.env_name / all_args.scenario_name / all_args.algorithm_name / all_args.experiment_name
+        assert not all_args.use_wandb
+        if not run_dir.exists():
+            os.makedirs(str(run_dir))
+        # env init
+        assert all_args.use_eval
+        envs = make_train_env(all_args)
+        eval_envs = make_eval_env(all_args)
+
+        config = {
+            "all_args": all_args,
+            "envs": envs,
+            "eval_envs": eval_envs,
+            "device": device,
+            "run_dir": run_dir
+        }
+
+        # run experiments
+        runner = Runner(config)
+        runner.run()
+
+        # post process
         envs.close()
 
 

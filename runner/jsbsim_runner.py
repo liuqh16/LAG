@@ -96,9 +96,6 @@ class JSBSimRunner(Runner):
             # save model
             if (episode % self.save_interval == 0) or (episode == episodes - 1):
                 self.save(episode)
-                # [Selfplay] save policy & performance
-                if self.use_selfplay:
-                    self.policy_pool[episode] = self.all_args.init_elo
 
             # log information
             if episode % self.log_interval == 0:
@@ -206,6 +203,7 @@ class JSBSimRunner(Runner):
             eval_obs = eval_obs[:, :self.num_agents // 2, ...]
             eval_opponent_masks = np.ones_like(eval_masks, dtype=np.float32)
             eval_opponent_rnn_states = np.zeros_like(eval_rnn_states, dtype=np.float32)
+            eval_opponent_env_split = np.array_split(np.arange(self.n_eval_rollout_threads), len(self.opponent_policy))
 
         while total_episodes < self.eval_episodes:
             self.policy.prep_rollout()
@@ -217,14 +215,14 @@ class JSBSimRunner(Runner):
 
             # [Selfplay] get actions of opponent policy
             if self.use_selfplay:
-                eval_opponent_actions = np.zeros_like(eval_actions, dtype=np.float32)
+                eval_opponent_actions = np.zeros_like(eval_actions)
                 for policy_idx, policy in enumerate(self.opponent_policy):
-                    env_idx = self.opponent_env_split[policy_idx]
-                    eval_opponent_action, eval_opponent_rnn_states \
+                    env_idx = eval_opponent_env_split[policy_idx]
+                    eval_opponent_action, eval_opponent_rnn_state \
                         = policy.act(np.concatenate(eval_opponent_obs[env_idx]),
                                      np.concatenate(eval_opponent_rnn_states[env_idx]),
                                      np.concatenate(eval_opponent_masks[env_idx]))
-                    eval_opponent_rnn_states[env_idx] = np.array(np.split(_t2n(eval_opponent_rnn_states), len(env_idx)))
+                    eval_opponent_rnn_states[env_idx] = np.array(np.split(_t2n(eval_opponent_rnn_state), len(env_idx)))
                     eval_opponent_actions[env_idx] = np.array(np.split(_t2n(eval_opponent_action), len(env_idx)))
                 eval_actions = np.concatenate((eval_actions, eval_opponent_actions), axis=1)
 
@@ -245,6 +243,8 @@ class JSBSimRunner(Runner):
             eval_rnn_states[eval_dones_env == True] = np.zeros(((eval_dones_env == True).sum(), *eval_rnn_states.shape[1:]), dtype=np.float32)
             # [Selfplay] reset opponent mask/rnn_states
             if self.use_selfplay:
+                eval_opponent_obs = eval_obs[:, self.num_agents // 2:, ...]
+                eval_obs = eval_obs[:, :self.num_agents // 2, ...]
                 eval_opponent_masks[eval_dones_env == True] = \
                     np.zeros(((eval_dones_env == True).sum(), *eval_opponent_masks.shape[1:]), dtype=np.float32)
                 eval_opponent_rnn_states[eval_dones_env == True] = \
@@ -252,7 +252,7 @@ class JSBSimRunner(Runner):
 
         eval_infos = {}
         eval_infos['eval_average_episode_rewards'] = np.concatenate(eval_episode_rewards).mean(axis=1)
-        print("eval average episode rewards of agent: " + str(np.mean(eval_infos['eval_average_episode_rewards'])))
+        print("\neval average episode rewards: " + str(np.mean(eval_infos['eval_average_episode_rewards'])))
         self.log_info(eval_infos, total_num_steps)
 
     @torch.no_grad()
@@ -284,9 +284,12 @@ class JSBSimRunner(Runner):
     def save(self, episode):
         policy_actor_state_dict = self.policy.actor.state_dict()
         torch.save(policy_actor_state_dict, str(self.save_dir) + '/actor.pt')
-        torch.save(policy_actor_state_dict, str(self.save_dir) + f'/actor_{episode}.pt')
         policy_critic_state_dict = self.policy.critic.state_dict()
         torch.save(policy_critic_state_dict, str(self.save_dir) + '/critic.pt')
+        # [Selfplay] save policy & performance
+        if self.use_selfplay:
+            torch.save(policy_actor_state_dict, str(self.save_dir) + f'/actor_{episode}.pt')
+            self.policy_pool[episode] = self.all_args.init_elo
 
     def reset_opponent(self):
         # selfplay
