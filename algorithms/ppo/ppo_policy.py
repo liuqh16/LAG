@@ -6,6 +6,7 @@ from .ppo_critic import PPOCritic
 class PPOPolicy:
     def __init__(self, args, obs_space, act_space, device=torch.device("cpu")):
 
+        self.args = args
         self.device = device
         # optimizer config
         self.lr = args.lr
@@ -38,12 +39,12 @@ class PPOPolicy:
         values, _ = self.critic(obs, rnn_states_critic, masks)
         return values
 
-    def evaluate_actions(self, obs, rnn_states_actor, rnn_states_critic, action, masks):
+    def evaluate_actions(self, obs, rnn_states_actor, rnn_states_critic, action, masks, active_masks=None):
         """
         Returns:
             values, action_log_probs, dist_entropy
         """
-        action_log_probs, dist_entropy = self.actor.evaluate_actions(obs, rnn_states_actor, action, masks)
+        action_log_probs, dist_entropy = self.actor.evaluate_actions(obs, rnn_states_actor, action, masks, active_masks)
         values, _ = self.critic(obs, rnn_states_critic, masks)
         return values, action_log_probs, dist_entropy
 
@@ -62,3 +63,6 @@ class PPOPolicy:
     def prep_rollout(self):
         self.actor.eval()
         self.critic.eval()
+
+    def copy(self):
+        return PPOPolicy(self.args, self.obs_space, self.act_space, self.device)

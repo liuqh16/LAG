@@ -73,7 +73,7 @@ class ACTLayer(nn.Module):
             action_log_probs = action_dists.log_probs(actions)
         return actions, action_log_probs
 
-    def evaluate_actions(self, x, action, active_masks=None, mean_entropy=True):
+    def evaluate_actions(self, x, action, active_masks=None):
         """
         Compute log probability and entropy of given actions.
 

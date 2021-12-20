@@ -37,7 +37,9 @@ def _get_prepare_config(parser: argparse.ArgumentParser):
         --n-training-threads <int>
             number of training threads working in parallel. by default 1
         --n-rollout-threads <int>
-            number of parallel envs for training/evaluating rollout. by default 4
+            number of parallel envs for training rollout. by default 4
+        --n-render-rollout-threads <int>
+            number of parallel envs for rendering, could only be set as 1 for some environments.
         --num-env-steps <float>
             number of env steps to train (default: 1e7)
         --model-dir <str>
@@ -64,6 +66,8 @@ def _get_prepare_config(parser: argparse.ArgumentParser):
                        help="Number of torch threads for training (default 1)")
     group.add_argument("--n-rollout-threads", type=int, default=4,
                        help="Number of parallel envs for training/evaluating rollout (default 4)")
+    group.add_argument("--n-render-rollout-threads", type=int, default=1,
+                       help="Number of parallel envs for rendering, could only be set as 1 for some environments.")
     group.add_argument("--num-env-steps", type=float, default=1e7,
                        help='Number of environment steps to train (default: 1e7)')
     group.add_argument("--model-dir", type=str, default=None,
@@ -216,20 +220,20 @@ def _get_selfplay_config(parser: argparse.ArgumentParser):
             by default false. If set, use selfplay algorithms.
         --selfplay-algorithm <str>
             specifiy the selfplay algorithm, including `["sp", "fsp"]`
-        --choose-interval <int>
-            time duration between choosing new opponents. (default 1)
         --n-choose-opponents <int>
-            number of opponents chosen for rollout. (default 1)
+            number of different opponents chosen for rollout. (default 1)
+        --init-elo <float>
+            initial ELO for policy performance. (default 1000.0)
     """
     group = parser.add_argument_group("Selfplay parameters")
     group.add_argument("--use-selfplay", action='store_true', default=False,
                        help="By default false. If set, use selfplay algorithms.")
     group.add_argument("--selfplay-algorithm", type=str, default='sp', choices=["sp", "fsp"],
-                       help="Specifiy the selfplay algorithm (default sp)")
-    group.add_argument("--choose-interval", type=int, default=1,
-                       help="time duration between choosing new opponents. (default 1)")
+                       help="Specifiy the selfplay algorithm (default 'sp')")
     group.add_argument('--n-choose-opponents', type=int, default=1,
-                       help="number of opponents chosen for rollout")
+                       help="number of different opponents chosen for rollout. (default 1)")
+    group.add_argument('--init-elo', type=float, default=1000.0,
+                       help="initial ELO for policy performance. (default 1000.0)")
     return parser
 
 
@@ -262,6 +266,8 @@ def _get_eval_config(parser: argparse.ArgumentParser):
     Eval parameters:
         --use-eval
             by default, do not start evaluation. If set, start evaluation alongside with training.
+        --n-eval-rollout-threads <int>
+            number of parallel envs for evaluating rollout. by default 1
         --eval-interval <int>
             time duration between contiunous twice evaluation progress.
         --eval-episodes <int>
@@ -270,6 +276,8 @@ def _get_eval_config(parser: argparse.ArgumentParser):
     group = parser.add_argument_group("Eval parameters")
     group.add_argument("--use-eval", action='store_true', default=False,
                        help="by default, do not start evaluation. If set, start evaluation alongside with training.")
+    group.add_argument("--n-eval-rollout-threads", type=int, default=1,
+                       help="Number of parallel envs for evaluating rollout (default 1)")
     group.add_argument("--eval-interval", type=int, default=25,
                        help="time duration between contiunous twice evaluation progress. (default 25)")
     group.add_argument("--eval-episodes", type=int, default=32,

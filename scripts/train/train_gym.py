@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import sys
 import os
+import gym
 import wandb
 import socket
 import torch
@@ -8,11 +9,9 @@ import random
 import numpy as np
 from pathlib import Path
 import setproctitle
-# Deal with import error
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 from config import get_config
 from runner.jsbsim_runner import JSBSimRunner as Runner
-import gym
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
 
 
@@ -25,16 +24,16 @@ class GymEnv:
 
     def reset(self):
         observation = self.env.reset()
-        return np.array(observation).reshape((1,-1))
+        return np.array(observation).reshape((1, -1))
 
     def step(self, action):
         action = np.array(action).reshape(self.action_shape)
         observation, reward, done, info = self.env.step(action)
-        observation = np.array(observation).reshape((1,-1))
+        observation = np.array(observation).reshape((1, -1))
         done = np.array(done).reshape((1,))
-        reward = np.array(reward).reshape((1,-1))
+        reward = np.array(reward).reshape((1, -1))
         return observation, reward, done, info
-    
+
     def render(self, mode="human"):
         self.env.render(mode)
 
@@ -55,11 +54,11 @@ def make_train_env(all_args):
 def parse_args(args, parser):
     group = parser.add_argument_group("Gym Env parameters")
     group.add_argument('--scenario-name', type=str, default='CartPole-v1',
-                        help="the name of gym env")
+                       help="the name of gym env")
     group.add_argument('--episode-length', type=int, default=900,
-                        help="the max length of an episode")
+                       help="the max length of an episode")
     group.add_argument('--num-agents', type=int, default=1,
-                    help="number of agents controlled by RL policy")
+                       help="number of agents controlled by RL policy")
     all_args = parser.parse_known_args(args)[0]
     return all_args
 
@@ -88,7 +87,7 @@ def main(args):
 
     # run dir
     run_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/results") \
-         / all_args.env_name / all_args.scenario_name / all_args.algorithm_name / all_args.experiment_name
+        / all_args.env_name / all_args.scenario_name / all_args.algorithm_name / all_args.experiment_name
     if not run_dir.exists():
         os.makedirs(str(run_dir))
 
@@ -116,8 +115,7 @@ def main(args):
         if not run_dir.exists():
             os.makedirs(str(run_dir))
 
-    setproctitle.setproctitle(str(all_args.algorithm_name) + "-" + \
-        str(all_args.env_name) + "-" + str(all_args.experiment_name) + "@" + str(all_args.user_name))
+    setproctitle.setproctitle(str(all_args.algorithm_name) + "-" + str(all_args.env_name) + "-" + str(all_args.experiment_name) + "@" + str(all_args.user_name))
 
     # env init
     envs = make_train_env(all_args)
@@ -134,12 +132,13 @@ def main(args):
     # run experiments
     runner = Runner(config)
     runner.run()
-    
+
     # post process
     envs.close()
 
     if all_args.use_wandb:
         run.finish()
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])

@@ -59,15 +59,15 @@ def make_eval_env(all_args):
             return env
         return init_env
     if all_args.env_name == "MultipleCombat":
-        if all_args.n_rollout_threads == 1:
+        if all_args.n_eval_rollout_threads == 1:
             return ShareDummyVecEnv([get_env_fn(0)])
         else:
-            return ShareSubprocVecEnv([get_env_fn(i) for i in range(all_args.n_rollout_threads)])
+            return ShareSubprocVecEnv([get_env_fn(i) for i in range(all_args.n_eval_rollout_threads)])
     else:
-        if all_args.n_rollout_threads == 1:
+        if all_args.n_eval_rollout_threads == 1:
             return DummyVecEnv([get_env_fn(0)])
         else:
-            return SubprocVecEnv([get_env_fn(i) for i in range(all_args.n_rollout_threads)])
+            return SubprocVecEnv([get_env_fn(i) for i in range(all_args.n_eval_rollout_threads)])
 
 
 def parse_args(args, parser):

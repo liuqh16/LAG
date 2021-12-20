@@ -16,14 +16,17 @@ class Runner(object):
 
         self.all_args = config['all_args']
         self.envs = config['envs']
+        self.eval_envs = config['eval_envs']
         self.device = config['device']
 
         # parameters
         self.env_name = self.all_args.env_name
         self.algorithm_name = self.all_args.algorithm_name
         self.experiment_name = self.all_args.experiment_name
-        self.num_env_steps = self.all_args.num_env_steps
+        self.num_env_steps = int(self.all_args.num_env_steps)
         self.n_rollout_threads = self.all_args.n_rollout_threads
+        self.n_eval_rollout_threads = self.all_args.n_eval_rollout_threads
+        self.n_render_rollout_threads = self.all_args.n_render_rollout_threads
         self.buffer_size = self.all_args.buffer_size
         self.use_wandb = self.all_args.use_wandb
 

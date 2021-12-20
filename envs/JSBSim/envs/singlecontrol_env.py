@@ -46,12 +46,3 @@ class SingleControlEnv(BaseEnv):
         for idx, sim in enumerate(self.agents.values()):
             sim.reload(self.init_states[idx])
         self._tempsims.clear()
-
-    # def _pack(self, data):
-    #     """Pack single key-value dict into single value"""
-    #     assert isinstance(data, dict)
-    #     return np.array([data[self.agents[0]]])
-
-    # def _unpack(self, data):
-    #     """Unpack data into single key-value dict"""
-    #     return {self.agents[0]: data[0]}

@@ -54,11 +54,10 @@ class UnreachHeading(BaseTerminationCondition):
                 env.agents[agent_id].set_property_value(c.target_velocities_u_mps, new_velocities_u)
                 env.agents[agent_id].set_property_value(c.heading_check_time, check_time + self.check_interval)
                 env.heading_turn_counts += 1
-                self.log(f'current_step:{cur_step} target_heading:{new_heading}'
-                         f'current_step:{cur_step} target_altitude_ft:{new_altitude}'
-                         f'current_step:{cur_step} target_velocities_u_mps:{new_velocities_u}')
+                self.log(f'current_step:{cur_step} target_heading:{new_heading} '
+                         f'target_altitude_ft:{new_altitude} target_velocities_u_mps:{new_velocities_u}')
         if done:
-            self.log(f'INFO: agent[{agent_id}] unreached heading, Total Steps={env.current_step}')
+            self.log(f'agent[{agent_id}] unreached heading, Total Steps={env.current_step}')
             info['heading_turn_counts'] = env.heading_turn_counts
         success = False
         return done, success, info

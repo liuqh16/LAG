@@ -1,7 +1,10 @@
 import sys
 import os
 import pytest
+import torch
+import random
 import numpy as np
+from pathlib import Path
 from itertools import product
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from envs.JSBSim.envs.singlecontrol_env import SingleControlEnv
@@ -23,6 +26,7 @@ class TestSingleControlEnv:
 
         # DataType test
         obs_shape = (env.num_agents, *env.observation_space.shape)
+        act_shape = (env.num_agents, *env.action_space.shape)
         reward_shape = (env.num_agents, 1)
         done_shape = (env.num_agents, 1)
 
@@ -36,15 +40,15 @@ class TestSingleControlEnv:
         rew_buf = []
         done_buff = []
         while True:
-            actions = [action_space.sample() for _ in range(env.num_agents)]
+            actions = np.array([action_space.sample() for _ in range(env.num_agents)])
             obs, reward, done, info = env.step(actions)
-            assert obs.shape == obs_shape and reward.shape == reward_shape and done.shape == done_shape
+            assert obs.shape == obs_shape and actions.shape == act_shape \
+                and reward.shape == reward_shape and done.shape == done_shape
             act_buf.append(actions)
             obs_buf.append(obs)
             rew_buf.append(reward)
             done_buff.append(done)
             if done:
-                import pdb; pdb.set_trace()
                 assert env.current_step <= env.max_steps
                 break
 
@@ -66,20 +70,76 @@ class TestSingleControlEnv:
 
         # DataType test
         obs_shape = (parallel_num, envs.num_agents, *envs.observation_space.shape)
+        act_shape = (parallel_num, envs.num_agents, *envs.action_space.shape)
         reward_shape = (parallel_num, envs.num_agents, 1)
         done_shape = (parallel_num, envs.num_agents, 1)
 
         obss = envs.reset()
         assert obss.shape == obs_shape
 
-        actions = [[envs.action_space.sample() for _ in range(envs.num_agents)] for _ in range(parallel_num)]
+        actions = np.array([[envs.action_space.sample() for _ in range(envs.num_agents)] for _ in range(parallel_num)])
         while True:
             obss, rewards, dones, infos = envs.step(actions)
-            assert obss.shape == obs_shape and rewards.shape == reward_shape and dones.shape == done_shape \
+            assert obss.shape == obs_shape and actions.shape == act_shape \
+                and rewards.shape == reward_shape and dones.shape == done_shape \
                 and infos.shape[0] == parallel_num and isinstance(infos[0], dict)
             # terminate if any of the parallel envs has been done
             if np.any(dones):
                 break
+        envs.close()
+
+    def test_train(self):
+        from scripts.train.train_jsbsim import make_train_env, make_eval_env, parse_args, get_config, Runner
+        args = '--env-name SingleControl --algorithm-name ppo --scenario-name 1/heading --experiment-name pytest ' \
+               '--seed 1 --n-training-threads 1 --n-rollout-threads 4 --cuda ' \
+               '--log-interval 1 --save-interval 1 --use-eval --eval-interval 5 --eval-episodes 10 ' \
+               '--num-mini-batch 5 --buffer-size 900 --num-env-steps 3e4 ' \
+               '--lr 3e-4 --gamma 0.99 --ppo-epoch 4 --clip-params 0.2 --max-grad-norm 2 --entropy-coef 1e-3 ' \
+               '--hidden-size 32 --act-hidden-size 32 --recurrent-hidden-size 32 --recurrent-hidden-layers 1 --data-chunk-length 8'
+        args = args.split(' ')
+        parser = get_config()
+        all_args = parse_args(args, parser)
+
+        # seed
+        np.random.seed(all_args.seed)
+        random.seed(all_args.seed)
+        torch.manual_seed(all_args.seed)
+        torch.cuda.manual_seed_all(all_args.seed)
+
+        # cuda
+        if all_args.cuda and torch.cuda.is_available():
+            device = torch.device("cuda:0")  # use cude mask to control using which GPU
+            torch.set_num_threads(all_args.n_training_threads)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = True
+        else:
+            device = torch.device("cpu")
+            torch.set_num_threads(all_args.n_training_threads)
+
+        # run dir
+        run_dir = Path(os.path.dirname(os.path.abspath(__file__)) + "/results") \
+            / all_args.env_name / all_args.scenario_name / all_args.algorithm_name / all_args.experiment_name
+        assert not all_args.use_wandb
+        if not run_dir.exists():
+            os.makedirs(str(run_dir))
+        # env init
+        assert all_args.use_eval
+        envs = make_train_env(all_args)
+        eval_envs = make_eval_env(all_args)
+
+        config = {
+            "all_args": all_args,
+            "envs": envs,
+            "eval_envs": eval_envs,
+            "device": device,
+            "run_dir": run_dir
+        }
+
+        # run experiments
+        runner = Runner(config)
+        runner.run()
+
+        # post process
         envs.close()
 
 

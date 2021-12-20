@@ -4,14 +4,14 @@ from gym import spaces
 from .task_base import BaseTask
 from ..core.catalog import Catalog as c
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout, SafeReturn
-from ..reward_functions import AltitudeReward, PostureReward, CrashReward
+from ..reward_functions import AltitudeReward, PostureReward, EventDrivenReward
 from ..utils.utils import get2d_AO_TA_R, in_range_rad, LLA2NEU, get_root_dir
 from ..model.baseline_actor import BaselineActor
 
 
 class SingleCombatTask(BaseTask):
     def __init__(self, config):
-        self.config = config
+        super().__init__(config)
         self.num_aircrafts = len(getattr(self.config, 'aircraft_configs', {}).keys())
         assert self.num_aircrafts == 2, 'Only support one-to-one air combat!'
         self.use_baseline = getattr(self.config, 'use_baseline', False)
@@ -21,7 +21,7 @@ class SingleCombatTask(BaseTask):
         self.reward_functions = [
             AltitudeReward(self.config),
             PostureReward(self.config),
-            CrashReward(self.config)
+            EventDrivenReward(self.config)
         ]
 
         self.termination_conditions = [

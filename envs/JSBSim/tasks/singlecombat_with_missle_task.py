@@ -4,22 +4,21 @@ import numpy as np
 from gym import spaces
 
 from .singlecombat_task import SingleCombatTask, BaselineActor
-from ..reward_functions import AltitudeReward, MissileAttackReward, PostureReward, MissilePostureReward, CrashReward
+from ..reward_functions import AltitudeReward, PostureReward, MissilePostureReward, EventDrivenReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, SafeReturn, Timeout
 from ..core.simulatior import MissileSimulator
 from ..utils.utils import LLA2NEU, get2d_AO_TA_R, get_root_dir
 
 
 class SingleCombatWithMissileTask(SingleCombatTask):
-    def __init__(self, config: str):
+    def __init__(self, config):
         super().__init__(config)
 
         self.reward_functions = [
-            MissileAttackReward(self.config),
+            PostureReward(self.config),
             MissilePostureReward(self.config),
             AltitudeReward(self.config),
-            PostureReward(self.config),
-            CrashReward(self.config)
+            EventDrivenReward(self.config)
         ]
 
         self.termination_conditions = [

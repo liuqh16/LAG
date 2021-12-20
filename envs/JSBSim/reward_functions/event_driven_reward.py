@@ -22,8 +22,6 @@ class EventDrivenReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        from ..envs.singlecombat_env import SingleCombatEnv
-        assert isinstance(env, SingleCombatEnv)
         reward = 0
         if env.agents[agent_id].is_shotdown:
             reward -= 100
