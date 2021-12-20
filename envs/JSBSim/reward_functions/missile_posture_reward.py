@@ -26,14 +26,11 @@ class MissilePostureReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
-        from ..envs.singlecombat_env import SingleCombatEnv, SingleCombatWithMissileHierarchicalTask
-        assert isinstance(task, SingleCombatWithMissileHierarchicalTask)
-        assert isinstance(env, SingleCombatEnv)
         reward = 0
         missile_sim = task.check_missile_warning(env, agent_id)
         if missile_sim is not None:
             missile_v = missile_sim.get_velocity()
-            aircraft_v = env.jsbsims[list(env.jsbsims.keys())[agent_id]].get_velocity()
+            aircraft_v = env.agents[agent_id].get_velocity()
             if self.previous_missile_v is None:
                 self.previous_missile_v = missile_v
             v_decrease = (np.linalg.norm(self.previous_missile_v) - np.linalg.norm(missile_v)) / 340 * self.reward_scale

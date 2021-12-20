@@ -143,13 +143,14 @@ class TestSingleControlEnv:
         envs.close()
 
 
-@pytest.mark.skip()
 class TestSingleCombatEnv:
 
-    def test_env(self):
+    @pytest.mark.parametrize("config", ["1v1/NoWeapon/vsBaseline", "1v1/NoWeapon/Selfplay",
+                                        "1v1/Missile/vsBaseline", "1v1/Missile/Selfplay",
+                                        "1v1/Missile/HierarchyVsBaseline", "1v1/Missile/HierarchySelfplay"])
+    def test_env(self, config):
         # Env Settings test
-        env = SingleCombatEnv("1v1/NoWeapon/Selfplay")
-        assert env.num_agents == 2
+        env = SingleCombatEnv(config)
         for agent in env.agents.values():
             assert len(agent.partners) == 0
             assert len(agent.enemies) == 1
@@ -197,42 +198,49 @@ class TestSingleCombatEnv:
                 and np.all(rewards == rew_buf[t]) and np.all(dones == done_buff[t])
             t += 1
 
-    def test_agent_die(self):
+    @pytest.mark.parametrize("config", ["1v1/NoWeapon/vsBaseline", "1v1/NoWeapon/Selfplay"])
+    def test_agent_crash(self, config):
         # if no weapon, once enemy die, env terminate!
-        env = SingleCombatEnv("1v1/NoWeapon/Selfplay")
+        env = SingleCombatEnv(config)
         env.seed(0)
         obs = env.reset()
         env.agents[env.ego_ids[0]].crash()
-        actions = np.array([[20, 18.6, 20, 0] for _ in range(env.num_agents)])
+        actions = np.array([env.action_space.sample() for _ in range(env.num_agents)])
         obs, rewards, dones, info = env.step(actions)
+        assert np.min(rewards) < -100  # crash reward!
         assert np.all(dones)
 
+    @pytest.mark.parametrize("config", ["1v1/Missile/vsBaseline", "1v1/Missile/Selfplay"])
+    def test_agent_shotdown(self, config):
         # if has weapon, once enemy die, env terminate until no missile warning!
-        env = SingleCombatEnv("1v1/Missile/Selfplay")
+        env = SingleCombatEnv(config)
         env.seed(0)
         obs = env.reset()
-        crash_id = env.ego_ids[0]   # ego crash
+        crash_id = env.ego_ids[0]   # ego shotdown
         while True:
             # mannual crash
             if env.current_step == 1:
                 from envs.JSBSim.core.simulatior import MissileSimulator
                 env.add_temp_simulator(MissileSimulator.create(env.agents[crash_id], env.agents[crash_id].enemies[0], 'C0000'))
-                env.agents[crash_id].crash()
+                env.agents[crash_id].shotdown()
                 crash_obs = obs[0]
-            actions = np.array([[20, 18.6, 20, 0] for _ in range(env.num_agents)])
+            actions = np.array([env.action_space.sample() for _ in range(env.num_agents)])
 
             obs, rewards, dones, info = env.step(actions)
 
             if np.all(dones):
                 break
-            elif env.current_step > 1:
+            elif env.current_step == 2:
+                assert np.min(rewards) < -50  # shot down reward!
+            elif env.current_step > 2:
+                # ego obs is not changed!
                 assert dones[0][0] == True \
-                    and np.linalg.norm(obs[0, :11] - crash_obs[:11]) < 1e-8 \
+                    and np.linalg.norm(obs[0, :9] - crash_obs[:9]) < 1e-8 \
                     and rewards[0][0] == 0.0 \
                     and any([missile.is_alive for missile in env.agents[crash_id].launch_missiles])
 
     @pytest.mark.parametrize("vecenv, config", list(product(
-        [DummyVecEnv, SubprocVecEnv], ["1v1/NoWeapon/Selfplay", "1v1/Missile/Selfplay"])))
+        [DummyVecEnv, SubprocVecEnv], ["1v1/Missile/Selfplay", "1v1/Missile/HierarchyVsBaseline"])))
     def test_vec_env(self, vecenv, config):
         parallel_num = 4
         envs = vecenv([lambda: SingleCombatEnv(config) for _ in range(parallel_num)])
@@ -298,9 +306,7 @@ class TestMultipleCombatEnv:
         # Repetition test (same seed => same data)
         env.seed(0)
         obs, share_obs = env.reset()
-        t = 0
 
-    @pytest.mark.skip()
     def test_agent_die(self):
         # if no weapon, once all enemies die, env terminate!
         env = MultipleCombatEnv("2v2/NoWeapon/Selfplay")
@@ -356,7 +362,6 @@ class TestMultipleCombatEnv:
                 assert not env._tempsims["C0000"].is_alive
                 break
 
-    @pytest.mark.skip()
     @pytest.mark.parametrize("vecenv, config", list(product(
         [ShareDummyVecEnv, ShareSubprocVecEnv], ["2v2/NoWeapon/Selfplay"])))
     def test_vec_env(self, vecenv, config):

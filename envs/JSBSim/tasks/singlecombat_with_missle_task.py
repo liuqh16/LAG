@@ -5,7 +5,6 @@ from gym import spaces
 
 from .singlecombat_task import SingleCombatTask, BaselineActor
 from ..reward_functions import AltitudeReward, PostureReward, MissilePostureReward, EventDrivenReward
-from ..termination_conditions import ExtremeState, LowAltitude, Overload, SafeReturn, Timeout
 from ..core.simulatior import MissileSimulator
 from ..utils.utils import LLA2NEU, get2d_AO_TA_R, get_root_dir
 
@@ -19,14 +18,6 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             MissilePostureReward(self.config),
             AltitudeReward(self.config),
             EventDrivenReward(self.config)
-        ]
-
-        self.termination_conditions = [
-            SafeReturn(self.config),
-            ExtremeState(self.config),
-            Overload(self.config),
-            LowAltitude(self.config),
-            Timeout(self.config),
         ]
 
     def load_observation_space(self):
@@ -98,12 +89,10 @@ class SingleCombatWithMissileTask(SingleCombatTask):
             norm_obs[19] = R / 10000
             norm_obs[20] = side_flag
         return norm_obs
-        return norm_obs
 
     def reset(self, env):
         """Reset fighter blood & missile status
         """
-        self.bloods = dict([(agent_id, 100) for agent_id in env.agents.keys()])
         self.remaining_missiles = dict([(agent_id, env.config.aircraft_configs[agent_id].get("missile", 0)) for agent_id in env.agents.keys()])
         self.lock_duration = dict([(agent_id, deque(maxlen=int(1 / env.time_interval))) for agent_id in env.agents.keys()])
         return super().reset(env)
@@ -137,55 +126,44 @@ class SingleCombatWithMissileHierarchicalTask(SingleCombatWithMissileTask):
 
     def __init__(self, config: str):
         super().__init__(config)
-        # self.norm_delta_altitude = [-0.2, -0.1, -0.05, 0, 0.05, 0.1, 0.2]
-        self.norm_delta_heading = [0, np.pi / 12, np.pi / 6]
-        self.model_path = get_root_dir() + '/model/baseline_model.pt'
         self.lowlevel_policy = BaselineActor()
-        self.lowlevel_policy.load_state_dict(torch.load(self.model_path))
+        self.lowlevel_policy.load_state_dict(torch.load(get_root_dir() + '/model/baseline_model.pt'))
         self.lowlevel_policy.eval()
-        self._rnn_states = np.zeros((self.num_agents, 1, 1, 128))
+        # self.norm_delta_altitude = [-0.2, -0.1, -0.05, 0, 0.05, 0.1, 0.2]
+        self.norm_delta_heading = np.array([0, np.pi / 12, np.pi / 6])
 
     def load_action_space(self):
-        self.action_space = [spaces.Discrete(3) for _ in range(self.num_agents)]
+        self.action_space = spaces.MultiDiscrete([3])
 
-    def normalize_action(self, env, actions):
-        """Convert high-level action into low value.
+    def normalize_action(self, env, agent_id, action):
+        """Convert high-level action into low-level action.
         """
-        def _convert(action, observation, rnn_states):
-            input_obs = np.zeros(12)
-            input_obs[0] = observation[10]
-            input_obs[1] = self.norm_delta_heading[action[0]]
-            input_obs[2] = (243 - observation[5] * 340) / 340
-            input_obs[3:12] = observation[:9]
-            input_obs = np.expand_dims(input_obs, axis=0)
-            _action, _rnn_states = self.lowlevel_policy(input_obs, rnn_states)
-            action = _action.detach().cpu().numpy()
-            rnn_states = _rnn_states.detach().cpu().numpy()
-            return action, rnn_states
-
-        def _normalize(action):
-            action_norm = np.zeros(4)
-            action_norm[0] = action[0] / 20 - 1.
-            action_norm[1] = action[1] / 20 - 1.
-            action_norm[2] = action[2] / 20 - 1.
-            action_norm[3] = action[3] * 0.5 / 29 + 0.4
-            return action_norm
-
-        observations = env.get_observation(normalize=True)
-        low_level_actions = np.zeros((self.num_agents, 4))
-        for agent_id in range(self.num_agents):
-            low_level_actions[agent_id], self._rnn_states[agent_id] = \
-                _convert(actions[agent_id], observations[agent_id], self._rnn_states[agent_id])
-
-        norm_act = np.zeros((self.num_aircrafts, 4))
-        if self.use_baseline:
-            norm_act[0] = _normalize(low_level_actions[0])
-            norm_act[1] = _normalize(self.baseline_agent.get_action(env, self))
+        if self.use_baseline and agent_id in env.enm_ids:
+            action = self.baseline_agent.get_action(env.agents[agent_id])
+            return action
         else:
-            for agent_id in range(self.num_aircrafts):
-                norm_act[agent_id] = _normalize(low_level_actions[agent_id])
-        return norm_act
+            # generate low-level input_obs
+            raw_obs = self.get_obs(env, agent_id)
+            input_obs = np.zeros(12)
+            input_obs[0] = raw_obs[10]
+            input_obs[1] = self.norm_delta_heading[action]
+            input_obs[2] = raw_obs[9]
+            input_obs[3:12] = raw_obs[:9]
+            input_obs = np.expand_dims(input_obs, axis=0)
+            # output low-level action
+            _action, _rnn_states = self.lowlevel_policy(input_obs, self._inner_rnn_states[agent_id], )
+            action = _action.detach().cpu().numpy().squeeze(0)
+            self._inner_rnn_states[agent_id] = _rnn_states.detach().cpu().numpy()
+            # normalize low-level action
+            norm_act = np.zeros(4)
+            norm_act[0] = action[0] / 20 - 1.
+            norm_act[1] = action[1] / 20 - 1.
+            norm_act[2] = action[2] / 20 - 1.
+            norm_act[3] = action[3] / 58 + 0.4
+            return norm_act
 
     def reset(self, env):
-        self._rnn_states = np.zeros((self.num_agents, 1, 1, 128))
+        """Task-specific reset, include reward function reset.
+        """
+        self._inner_rnn_states = {agent_id: np.zeros((1, 1, 128)) for agent_id in env.agents.keys()}
         return super().reset(env)

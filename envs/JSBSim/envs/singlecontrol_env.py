@@ -1,4 +1,3 @@
-import numpy as np
 from .env_base import BaseEnv
 from ..tasks.heading_task import HeadingTask
 

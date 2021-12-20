@@ -13,6 +13,8 @@ acceleration_limit_y: 10.0
 acceleration_limit_z: 10.0
 
 # aircraft config
+use_baseline: true
+baseline_type: control
 aircraft_configs: {
   A0100: {
     color: Red,
@@ -37,16 +39,12 @@ aircraft_configs: {
       ic_u_fps: 800.0,
     },
     missile: 1,
-    use_baseline: true,
-    baseline_type: control
   }
 }
 # (lontitude, latitude, altitude)
 battle_field_center: [120.0, 60.0, 0.0]
 
 # reward config
-MissileAttackReward_potential: true
-
 PostureReward_scale: 15.0
 PostureReward_potential: true
 PostureReward_orientation_version: v2
@@ -56,4 +54,5 @@ AltitudeReward_safe_altitude: 4.0
 AltitudeReward_danger_altitude: 3.5
 AltitudeReward_Kv: 0.2
 
-RelativeAltitudeReward_KH: 1.0
+EventDrivenReward_scale: 1
+EventDrivenReward_potential: true

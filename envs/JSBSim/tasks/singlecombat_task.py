@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from gym import spaces
 from .task_base import BaseTask
+from ..core.simulatior import AircraftSimulator
 from ..core.catalog import Catalog as c
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout, SafeReturn
 from ..reward_functions import AltitudeReward, PostureReward, EventDrivenReward
@@ -12,11 +13,9 @@ from ..model.baseline_actor import BaselineActor
 class SingleCombatTask(BaseTask):
     def __init__(self, config):
         super().__init__(config)
-        self.num_aircrafts = len(getattr(self.config, 'aircraft_configs', {}).keys())
-        assert self.num_aircrafts == 2, 'Only support one-to-one air combat!'
         self.use_baseline = getattr(self.config, 'use_baseline', False)
         if self.use_baseline:
-            self.baseline_agent = self.load_agent(self.config.baseline_type, agent_id=1)
+            self.baseline_agent = self.load_agent(self.config.baseline_type)
 
         self.reward_functions = [
             AltitudeReward(self.config),
@@ -25,16 +24,16 @@ class SingleCombatTask(BaseTask):
         ]
 
         self.termination_conditions = [
-            SafeReturn(self.config),
+            LowAltitude(self.config),
             ExtremeState(self.config),
             Overload(self.config),
-            LowAltitude(self.config),
+            SafeReturn(self.config),
             Timeout(self.config),
         ]
 
     @property
     def num_agents(self) -> int:
-        return 2
+        return 2 if not self.use_baseline else 1
 
     def load_variables(self):
         self.state_var = [
@@ -131,29 +130,35 @@ class SingleCombatTask(BaseTask):
     def normalize_action(self, env, agent_id, action):
         """Convert discrete action index into continuous value.
         """
-        norm_act = np.zeros(4)
-        norm_act[0] = action[0] * 2. / (self.action_space.nvec[0] - 1.) - 1.
-        norm_act[1] = action[1] * 2. / (self.action_space.nvec[1] - 1.) - 1.
-        norm_act[2] = action[2] * 2. / (self.action_space.nvec[2] - 1.) - 1.
-        norm_act[3] = action[3] * 0.5 / (self.action_space.nvec[3] - 1.) + 0.4
-        return norm_act
-
-    def get_reward(self, env, agent_id, info=...):
-        if env.agents[agent_id].is_alive:
-            return super().get_reward(env, agent_id, info=info)
+        if self.use_baseline and agent_id in env.enm_ids:
+            action = self.baseline_agent.get_action(env.agents[agent_id])
+            return action
         else:
-            return 0.0, info
+            norm_act = np.zeros(4)
+            norm_act[0] = action[0] * 2. / (self.action_space.nvec[0] - 1.) - 1.
+            norm_act[1] = action[1] * 2. / (self.action_space.nvec[1] - 1.) - 1.
+            norm_act[2] = action[2] * 2. / (self.action_space.nvec[2] - 1.) - 1.
+            norm_act[3] = action[3] * 0.5 / (self.action_space.nvec[3] - 1.) + 0.4
+            return norm_act
 
     def reset(self, env):
         """Task-specific reset, include reward function reset.
         """
+        self._agent_die_flag = {}
         if self.use_baseline:
             self.baseline_agent.reset()
         return super().reset(env)
 
-    def load_agent(self, name, agent_id):
+    def get_reward(self, env, agent_id, info=...):
+        if self._agent_die_flag.get(agent_id, False):
+            return 0.0, info
+        else:
+            self._agent_die_flag[agent_id] = not env.agents[agent_id].is_alive
+            return super().get_reward(env, agent_id, info=info)
+
+    def load_agent(self, name):
         if name == 'control':
-            return SingleControlAgent(agent_id)
+            return SingleControlAgent()
         elif name == 'straight':
             return StraightFlyAgent()
         else:
@@ -161,26 +166,43 @@ class SingleCombatTask(BaseTask):
 
 
 class StraightFlyAgent:
-    def get_action(self, env, task):
-        return np.array([20, 18.6, 20, 0])
+
+    def normalize_action(self, action):
+        norm_act = np.zeros(4)
+        norm_act[0] = action[0] / 20 - 1.   # 0~40 => -1~1
+        norm_act[1] = action[1] / 20 - 1.   # 0~40 => -1~1
+        norm_act[2] = action[2] / 20 - 1.   # 0~40 => -1~1
+        norm_act[3] = action[3] / 58 + 0.4  # 0~29 => 0.4~0.9
+        return norm_act
+
+    def get_action(self, sim: AircraftSimulator):
+        action = np.array([20, 18.6, 20, 0])
+        return self.normalize_action(action)
 
     def reset(self):
         pass
 
 
 class SingleControlAgent:
-    def __init__(self, agent_id=1):
+    def __init__(self):
         self.model_path = get_root_dir() + '/model/baseline_model.pt'
         self.actor = BaselineActor()
         self.actor.load_state_dict(torch.load(self.model_path))
         self.actor.eval()
         self.reset()
-        self.agent_id = agent_id
 
     def reset(self):
         self.rnn_states = np.zeros((1, 1, 128))  # hard code
 
-    def get_action(self, env, task):
+    def normalize_action(self, action):
+        norm_act = np.zeros(4)
+        norm_act[0] = action[0] / 20 - 1.   # 0~40 => -1~1
+        norm_act[1] = action[1] / 20 - 1.   # 0~40 => -1~1
+        norm_act[2] = action[2] / 20 - 1.   # 0~40 => -1~1
+        norm_act[3] = action[3] / 58 + 0.4  # 0~29 => 0.4~0.9
+        return norm_act
+
+    def get_action(self, sim: AircraftSimulator):
         # get single control baseline observation
         def get_delta_heading(ego_feature, enm_feature):
             ego_x, ego_y, ego_vx, ego_vy = ego_feature
@@ -195,11 +217,10 @@ class SingleControlAgent:
             side_flag = np.sign(np.cross([ego_vx, ego_vy], [delta_x, delta_y]))
             return ego_AO * side_flag
 
-        ego_uid, enm_uid = list(env.jsbsims.keys())[self.agent_id], list(env.jsbsims.keys())[(self.agent_id + 1) % 2]
-        ego_x, ego_y, ego_z = env.jsbsims[ego_uid].get_position()
-        ego_vx, ego_vy, ego_vz = env.jsbsims[ego_uid].get_velocity()
-        enm_x, enm_y, enm_z = env.jsbsims[enm_uid].get_position()
-        enm_vx, enm_vy, enm_vz = env.jsbsims[enm_uid].get_velocity()
+        ego_x, ego_y, ego_z = sim.get_position()
+        ego_vx, ego_vy, ego_vz = sim.get_velocity()
+        enm_x, enm_y, enm_z = sim.enemies[0].get_position()
+        enm_vx, enm_vy, enm_vz = sim.enemies[0].get_velocity()
 
         ego_feature = np.array([ego_x, ego_y, ego_vx, ego_vy])
         enm_feature = np.array([enm_x, enm_y, enm_vx, enm_vy])
@@ -208,18 +229,20 @@ class SingleControlAgent:
         observation = np.zeros(12)
         observation[0] = (enm_z - ego_z) / 1000
         observation[1] = in_range_rad(ego_AO)
-        observation[2] = (243 - env.jsbsims[ego_uid].get_property_value(c.velocities_u_mps)) / 340
+        # maintain same speed as enemy
+        observation[2] = (sim.enemies[0].get_property_value(c.velocities_u_mps)
+                          - sim.get_property_value(c.velocities_u_mps)) / 340
         observation[3] = ego_z / 5000
-        observation[4] = np.sin(env.jsbsims[ego_uid].get_rpy()[0])
-        observation[5] = np.cos(env.jsbsims[ego_uid].get_rpy()[0])
-        observation[6] = np.sin(env.jsbsims[ego_uid].get_rpy()[1])
-        observation[7] = np.cos(env.jsbsims[ego_uid].get_rpy()[1])
-        observation[8] = env.jsbsims[ego_uid].get_property_value(c.velocities_u_mps) / 340
-        observation[9] = env.jsbsims[ego_uid].get_property_value(c.velocities_v_mps) / 340
-        observation[10] = env.jsbsims[ego_uid].get_property_value(c.velocities_w_mps) / 340
-        observation[11] = env.jsbsims[ego_uid].get_property_value(c.velocities_vc_mps) / 340
+        observation[4] = np.sin(sim.get_rpy()[0])
+        observation[5] = np.cos(sim.get_rpy()[0])
+        observation[6] = np.sin(sim.get_rpy()[1])
+        observation[7] = np.cos(sim.get_rpy()[1])
+        observation[8] = sim.get_property_value(c.velocities_u_mps) / 340
+        observation[9] = sim.get_property_value(c.velocities_v_mps) / 340
+        observation[10] = sim.get_property_value(c.velocities_w_mps) / 340
+        observation[11] = sim.get_property_value(c.velocities_vc_mps) / 340
         observation = np.expand_dims(observation, axis=0)   # dim: (1,12)
 
         _action, self.rnn_states = self.actor(observation, self.rnn_states)
         action = _action.detach().cpu().numpy().squeeze()
-        return action
+        return self.normalize_action(action)

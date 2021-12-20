@@ -8,6 +8,7 @@ def check(input):
     output = torch.from_numpy(input) if type(input) == np.ndarray else input
     return output
 
+
 class MLPLayer(nn.Module):
     def __init__(self, input_dim, hidden_size) -> None:
         super().__init__()
@@ -21,7 +22,7 @@ class MLPLayer(nn.Module):
                 nn.Linear(self._size[j], self._size[j + 1]), active_func, nn.LayerNorm(self._size[j + 1])
             ]
         self.fc = nn.Sequential(*fc_h)
-    
+
     def forward(self, x):
         x = self.fc(x)
         return x
@@ -35,6 +36,7 @@ class MLPBase(nn.Module):
     def forward(self, x):
         x = self.mlp(x)
         return x
+
 
 class GRULayer(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers):
@@ -72,7 +74,7 @@ class ACTLayer(nn.Module):
         for action_dim in action_dims:
             action_outs.append(Categorical(input_dim, action_dim))
         self.action_outs = nn.ModuleList(action_outs)
-    
+
     def forward(self, x):
         if self._mlp_actlayer:
             x = self.mlp(x)
@@ -90,7 +92,7 @@ class BaselineActor(nn.Module):
         self.tpdv = dict(dtype=torch.float32, device=torch.device('cpu'))
         self.base = MLPBase(12, '128 128')
         self.rnn = GRULayer(128, 128, 1)
-        self.act = ACTLayer(128, [41,41,41,30])
+        self.act = ACTLayer(128, [41, 41, 41, 30])
         self.to(torch.device('cpu'))
 
     def check(self, input):

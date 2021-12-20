@@ -1,7 +1,7 @@
 import gym
 from gym.utils import seeding
 import numpy as np
-from typing import Dict, List, Union, Any, Tuple
+from typing import Dict, Any, Tuple
 from ..core.simulatior import AircraftSimulator, BaseSimulator
 from ..tasks.task_base import BaseTask
 from ..utils.utils import parse_config
@@ -242,18 +242,23 @@ class BaseEnv(gym.Env):
         ego_data = np.array([data[uid] for uid in self.ego_ids])
         enm_data = np.array([data[uid] for uid in self.enm_ids])
         if enm_data.shape[0] > 0:
-            data = np.concatenate((ego_data, enm_data))
+            data = np.concatenate((ego_data, enm_data))  # type: np.ndarray
         else:
-            data = ego_data
+            data = ego_data  # type: np.ndarray
         try:
             assert np.isnan(data).sum() == 0
         except AssertionError:
             import pdb
             pdb.set_trace()
-        return data
+        # only return data that belongs to RL agents
+        return data[:self.num_agents, ...]
 
     def _unpack(self, data: np.ndarray) -> Dict[str, Any]:
         """Unpack grouped np.ndarray into seperated key-value dict"""
-        assert isinstance(data, (np.ndarray, list, tuple)) and len(data) == len(self.agents.keys())
-        unpack_data = dict(zip(self.ego_ids + self.enm_ids, data))
+        assert isinstance(data, (np.ndarray, list, tuple)) and len(data) == self.num_agents
+        # unpack data in the same order to packing process
+        unpack_data = dict(zip((self.ego_ids + self.enm_ids)[:self.num_agents], data))
+        # fill in None for other not-RL agents
+        for agent_id in (self.ego_ids + self.enm_ids)[self.num_agents:]:
+            unpack_data[agent_id] = None
         return unpack_data

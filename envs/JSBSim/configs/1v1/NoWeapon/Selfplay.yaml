@@ -51,4 +51,5 @@ AltitudeReward_safe_altitude: 4.0
 AltitudeReward_danger_altitude: 3.5
 AltitudeReward_Kv: 0.2
 
-RelativeAltitudeReward_KH: 1.0
+EventDrivenReward_scale: 1
+EventDrivenReward_potential: true

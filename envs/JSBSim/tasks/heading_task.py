@@ -104,7 +104,7 @@ class HeadingTask(BaseTask):
         """
         norm_act = np.zeros(4)
         norm_act[0] = action[0] * 2. / (self.action_space.nvec[0] - 1.) - 1.
-        norm_act[1] = action[0] * 2. / (self.action_space.nvec[1] - 1.) - 1.
-        norm_act[2] = action[0] * 2. / (self.action_space.nvec[2] - 1.) - 1.
-        norm_act[3] = action[0] * 0.5 / (self.action_space.nvec[3] - 1.) + 0.4
+        norm_act[1] = action[1] * 2. / (self.action_space.nvec[1] - 1.) - 1.
+        norm_act[2] = action[2] * 2. / (self.action_space.nvec[2] - 1.) - 1.
+        norm_act[3] = action[3] * 0.5 / (self.action_space.nvec[3] - 1.) + 0.4
         return norm_act

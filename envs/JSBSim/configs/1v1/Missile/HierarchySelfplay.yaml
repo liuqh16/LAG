@@ -15,7 +15,7 @@ acceleration_limit_z: 10.0
 # aircraft config
 aircraft_configs: {
   A0100: {
-    team: Red,
+    color: Red,
     model: f16,
     init_state: {
       ic_long_gc_deg: 120.0,
@@ -27,7 +27,7 @@ aircraft_configs: {
     missile: 1
   },
   B0100: {
-    team: Blue,
+    color: Blue,
     model: f16,
     init_state: {
       ic_h_sl_ft: 20000,
@@ -43,8 +43,6 @@ aircraft_configs: {
 battle_field_center: [120.0, 60.0, 0.0]
 
 # reward config
-MissileAttackReward_potential: true
-
 PostureReward_scale: 15.0
 PostureReward_potential: true
 PostureReward_orientation_version: v2
@@ -54,4 +52,5 @@ AltitudeReward_safe_altitude: 4.0
 AltitudeReward_danger_altitude: 3.5
 AltitudeReward_Kv: 0.2
 
-RelativeAltitudeReward_KH: 1.0
+EventDrivenReward_scale: 1
+EventDrivenReward_potential: true
