@@ -8,6 +8,7 @@ import torch
 import random
 import numpy as np
 from pathlib import Path
+import logging
 import setproctitle
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 from config import get_config
@@ -19,8 +20,8 @@ class GymEnv:
     def __init__(self, env):
         self.env = env
         self.action_shape = self.env.action_space.shape
-        self.action_space = [self.env.action_space]
-        self.observation_space = [self.env.observation_space]
+        self.action_space = self.env.action_space
+        self.observation_space = self.env.observation_space
 
     def reset(self):
         observation = self.env.reset()
@@ -30,12 +31,15 @@ class GymEnv:
         action = np.array(action).reshape(self.action_shape)
         observation, reward, done, info = self.env.step(action)
         observation = np.array(observation).reshape((1, -1))
-        done = np.array(done).reshape((1,))
+        done = np.array(done).reshape((1,-1))
         reward = np.array(reward).reshape((1, -1))
         return observation, reward, done, info
 
     def render(self, mode="human"):
         self.env.render(mode)
+    
+    def close(self):
+        pass
 
 
 def make_train_env(all_args):
@@ -125,6 +129,7 @@ def main(args):
     config = {
         "all_args": all_args,
         "envs": envs,
+        "eval_envs": None,
         "device": device,
         "num_agents": num_agents,
         "run_dir": run_dir
@@ -142,4 +147,5 @@ def main(args):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     main(sys.argv[1:])

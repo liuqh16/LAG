@@ -83,6 +83,7 @@ def main(args):
 
     config = {
         "all_args": all_args,
+        "eval_envs": None,
         "envs": envs,
         "num_agents": num_agents,
         "device": device,

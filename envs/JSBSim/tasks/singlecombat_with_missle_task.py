@@ -95,13 +95,14 @@ class SingleCombatWithMissileTask(SingleCombatTask):
         """
         self.remaining_missiles = dict([(agent_id, env.config.aircraft_configs[agent_id].get("missile", 0)) for agent_id in env.agents.keys()])
         self.lock_duration = dict([(agent_id, deque(maxlen=int(1 / env.time_interval))) for agent_id in env.agents.keys()])
+        self.max_attack_distance = env.np_random.uniform(5000, 10000)
         return super().reset(env)
 
     def step(self, env):
         for agent_id, agent in env.agents.items():
             # [Rule-based missile launch]
             max_attack_angle = 22.5
-            max_attack_distance = 12000
+            max_attack_distance = self.max_attack_distance
             target = agent.enemies[0].get_position() - agent.get_position()
             heading = agent.get_velocity()
             distance = np.linalg.norm(target)
@@ -127,13 +128,13 @@ class SingleCombatWithMissileHierarchicalTask(SingleCombatWithMissileTask):
     def __init__(self, config: str):
         super().__init__(config)
         self.lowlevel_policy = BaselineActor()
-        self.lowlevel_policy.load_state_dict(torch.load(get_root_dir() + '/model/baseline_model.pt'))
+        self.lowlevel_policy.load_state_dict(torch.load(get_root_dir() + '/model/baseline_model.pt', map_location=torch.device('cpu')))
         self.lowlevel_policy.eval()
         # self.norm_delta_altitude = [-0.2, -0.1, -0.05, 0, 0.05, 0.1, 0.2]
-        self.norm_delta_heading = np.array([0, np.pi / 12, np.pi / 6])
+        self.norm_delta_heading = np.array([-np.pi/6, -np.pi/12, 0, np.pi / 12, np.pi / 6])
 
     def load_action_space(self):
-        self.action_space = spaces.MultiDiscrete([3])
+        self.action_space = spaces.MultiDiscrete([5])
 
     def normalize_action(self, env, agent_id, action):
         """Convert high-level action into low-level action.
@@ -151,7 +152,7 @@ class SingleCombatWithMissileHierarchicalTask(SingleCombatWithMissileTask):
             input_obs[3:12] = raw_obs[:9]
             input_obs = np.expand_dims(input_obs, axis=0)
             # output low-level action
-            _action, _rnn_states = self.lowlevel_policy(input_obs, self._inner_rnn_states[agent_id], )
+            _action, _rnn_states = self.lowlevel_policy(input_obs, self._inner_rnn_states[agent_id])
             action = _action.detach().cpu().numpy().squeeze(0)
             self._inner_rnn_states[agent_id] = _rnn_states.detach().cpu().numpy()
             # normalize low-level action

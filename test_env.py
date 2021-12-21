@@ -2,19 +2,27 @@ import numpy as np
 from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv, MultipleCombatEnv
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
 from envs.JSBSim.core.catalog import Catalog as c
+import logging
 
-
-env = MultipleCombatEnv("2v2/NoWeapon/Selfplay")
-assert env.num_agents == 4
+parallel_num = 1
+envs = DummyVecEnv([lambda: SingleCombatEnv("1v1/Missile/vsBaseline") for _ in range(parallel_num)])
 
 # DataType test
-obs, share_obs = env.reset()
+obs_shape = (parallel_num, envs.num_agents, *envs.observation_space.shape)
+act_shape = (parallel_num, envs.num_agents, *envs.action_space.shape)
+reward_shape = (parallel_num, envs.num_agents, 1)
+done_shape = (parallel_num, envs.num_agents, 1)
 
+obss = envs.reset()
+assert obss.shape == obs_shape
+
+actions = np.array([[envs.action_space.sample() for _ in range(envs.num_agents)] for _ in range(parallel_num)])
 while True:
-    actions = [env.action_space.sample() for _ in range(env.num_agents)]
-    obs, share_obs, rewards, dones, info = env.step(actions)
-
-    # save previous data
-    if all(dones.values()):
-        print(info)
+    obss, rewards, dones, infos = envs.step(actions)
+    assert obss.shape == obs_shape and actions.shape == act_shape \
+        and rewards.shape == reward_shape and dones.shape == done_shape \
+        and infos.shape[0] == parallel_num and isinstance(infos[0], dict)
+    # terminate if any of the parallel envs has been done
+    if np.any(dones):
         break
+envs.close()

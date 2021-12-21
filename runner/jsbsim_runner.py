@@ -260,12 +260,14 @@ class JSBSimRunner(Runner):
         assert self.n_render_rollout_threads == 1, 'JSBSim Env only support n_render_rollout_threads = 1'
         render_episode_rewards = 0
         render_obs = self.envs.reset()
+        render_masks = np.ones((1, *self.buffer.masks.shape[2:]), dtype=np.float32)
         render_rnn_states = np.zeros((1, *self.buffer.rnn_states_actor.shape[2:]), dtype=np.float32)
-        self.envs.render(mode='txt', filepath=f'{self.run_dir}/Recording_{self.experiment_name}.txt.acmi')
+        self.envs.render(mode='txt', filepath=f'{self.run_dir}/{self.experiment_name}.txt.acmi')
         while True:
-            self.trainer.prep_rollout()
-            render_actions, render_rnn_states = self.trainer.policy.act(np.concatenate(render_obs),
+            self.policy.prep_rollout()
+            render_actions, render_rnn_states = self.policy.act(np.concatenate(render_obs),
                                                                         np.concatenate(render_rnn_states),
+                                                                        np.concatenate(render_masks),
                                                                         deterministic=True)
             render_actions = np.expand_dims(_t2n(render_actions), axis=0)
             render_rnn_states = np.expand_dims(_t2n(render_rnn_states), axis=0)
@@ -273,7 +275,7 @@ class JSBSimRunner(Runner):
             # Obser reward and next obs
             render_obs, render_rewards, render_dones, render_infos = self.envs.step(render_actions)
             render_episode_rewards += render_rewards
-            self.envs.render(mode='txt', filepath=f'{self.run_dir}/Recording_{self.experiment_name}.txt.acmi')
+            self.envs.render(mode='txt', filepath=f'{self.run_dir}/{self.experiment_name}.txt.acmi')
             if render_dones.any():
                 break
 

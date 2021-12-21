@@ -5,7 +5,7 @@ import os
 import contextlib
 import numpy as np
 from abc import ABC, abstractmethod
-import multiprocessing as mp
+from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 
 
@@ -163,6 +163,10 @@ class DummyVecEnv(VecEnv):
     def close(self):
         for env in self.envs:
             env.close()
+        
+    def render(self, mode, filepath):
+        if mode == 'txt':
+            self.envs[0].render(mode, filepath)
 
     @classmethod
     def _flatten(cls, v):
@@ -245,9 +249,8 @@ class SubprocVecEnv(VecEnv):
         self.nremotes = nenvs // in_series
         env_fns = np.array_split(env_fns, self.nremotes)
         # create Pipe connections to send/recv data from subprocesses,
-        ctx = mp.get_context(context)
-        self.remotes, self.work_remotes = zip(*[ctx.Pipe() for _ in range(self.nremotes)])
-        self.ps = [ctx.Process(target=worker, args=(work_remote, remote, CloudpickleWrapper(env_fn)))
+        self.remotes, self.work_remotes = zip(*[Pipe() for _ in range(self.nremotes)])
+        self.ps = [Process(target=worker, args=(work_remote, remote, CloudpickleWrapper(env_fn)))
                    for (work_remote, remote, env_fn) in zip(self.work_remotes, self.remotes, env_fns)]
         for p in self.ps:
             p.daemon = True  # if the main process crashes, we should not cause things to hang
@@ -418,9 +421,8 @@ class ShareSubprocVecEnv(SubprocVecEnv, ShareVecEnv):
         self.nremotes = nenvs // in_series
         env_fns = np.array_split(env_fns, self.nremotes)
         # create Pipe connections to send/recv data from subprocesses,
-        ctx = mp.get_context(context)
-        self.remotes, self.work_remotes = zip(*[ctx.Pipe() for _ in range(self.nremotes)])
-        self.ps = [ctx.Process(target=shareworker, args=(work_remote, remote, CloudpickleWrapper(env_fn)))
+        self.remotes, self.work_remotes = zip(*[Pipe() for _ in range(self.nremotes)])
+        self.ps = [Process(target=shareworker, args=(work_remote, remote, CloudpickleWrapper(env_fn)))
                    for (work_remote, remote, env_fn) in zip(self.work_remotes, self.remotes, env_fns)]
         for p in self.ps:
             p.daemon = True  # if the main process crashes, we should not cause things to hang

@@ -27,7 +27,6 @@ aircraft_configs: {
       ic_h_sl_ft: 20000,
       ic_psi_true_deg: 0.0,
       ic_u_fps: 800.0,
-      heading_check_time: 20.0,
     }
   }
 }

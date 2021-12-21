@@ -17,12 +17,12 @@ class UnreachHeading(BaseTerminationCondition):
         self.max_altitude_increment = aircraft_config['max_altitude_increment']
         self.max_velocities_u_increment = aircraft_config['max_velocities_u_increment']
         self.check_interval = aircraft_config['check_interval']
-        self.increment_size = [0.2, 0.4, 0.6, 0.8, 1.0, 1.0]
+        self.increment_size = [0.2, 0.4, 0.6, 0.8, 1.0] + [1.0] * 10
 
     def get_termination(self, task, env, agent_id, info={}):
         """
         Return whether the episode should terminate.
-        End up the simulation if the aircraft didn't reach the target heading or attitude in limited time.
+        End up the simulation if the aircraft didn't reach the target heading in limited time.
 
         Args:
             task: task instance
@@ -57,7 +57,7 @@ class UnreachHeading(BaseTerminationCondition):
                 self.log(f'current_step:{cur_step} target_heading:{new_heading} '
                          f'target_altitude_ft:{new_altitude} target_velocities_u_mps:{new_velocities_u}')
         if done:
-            self.log(f'agent[{agent_id}] unreached heading, Total Steps={env.current_step}')
+            self.log(f'agent[{agent_id}] unreached heading. Total Steps={env.current_step}')
             info['heading_turn_counts'] = env.heading_turn_counts
         success = False
         return done, success, info

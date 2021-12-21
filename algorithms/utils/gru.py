@@ -43,7 +43,7 @@ class GRULayer(nn.Module):
             # We will always assume t=0 has a zero in it as that makes the logic cleaner
             has_zeros = ((masks[1:] == 0.0)
                          .any(dim=-1)       # [T, N] => [T, 1]
-                         .nonzero()
+                         .nonzero(as_tuple=False)
                          .squeeze(dim=-1)   # [T, 1] => [T]
                          .cpu())
             # +1 to correct the masks[1:]

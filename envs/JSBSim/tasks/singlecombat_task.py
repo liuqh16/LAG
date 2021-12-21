@@ -187,7 +187,7 @@ class SingleControlAgent:
     def __init__(self):
         self.model_path = get_root_dir() + '/model/baseline_model.pt'
         self.actor = BaselineActor()
-        self.actor.load_state_dict(torch.load(self.model_path))
+        self.actor.load_state_dict(torch.load(self.model_path, map_location=torch.device('cpu')))
         self.actor.eval()
         self.reset()
 
