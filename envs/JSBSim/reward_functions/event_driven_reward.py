@@ -7,6 +7,7 @@ class EventDrivenReward(BaseRewardFunction):
     Achieve reward when the following event happens:
     - Shot down by missile: -100
     - Crash accidentally: -200
+    - Shoot down other aircraft: +100
     """
     def __init__(self, config):
         super().__init__(config)
@@ -27,4 +28,7 @@ class EventDrivenReward(BaseRewardFunction):
             reward -= 100
         elif env.agents[agent_id].is_crash:
             reward -= 200
+        for missile in env._tempsims.values():
+            if missile.parent_aircraft.uid == agent_id and missile.is_success:
+                reward += 100
         return self._process(reward, agent_id)

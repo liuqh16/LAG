@@ -97,7 +97,7 @@ class PursueAgent(BaselineAgent):
 
 
 class ManeuverAgent(BaselineAgent):
-    def __init__(self, agent_id, maneuver: Literal['l', 'r', 'n', 'o', '0']) -> None:
+    def __init__(self, agent_id, maneuver: Literal['l', 'r', 'n']) -> None:
         super().__init__(agent_id)
         self.turn_interval = 30
         self.dodge_missile = False # if set true, start turn when missile is detected

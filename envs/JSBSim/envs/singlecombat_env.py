@@ -1,6 +1,7 @@
 import numpy as np
 from .env_base import BaseEnv
-from ..tasks import SingleCombatTask, SingleCombatWithMissileTask, SingleCombatWithMissileHierarchicalTask
+from ..tasks import SingleCombatTask, SingleCombatWithMissileTask, SingleCombatWithMissileHierarchicalTask, \
+    SingleCombatShootHierarchicalTask
 
 
 class SingleCombatEnv(BaseEnv):
@@ -21,6 +22,8 @@ class SingleCombatEnv(BaseEnv):
             self.task = SingleCombatWithMissileTask(self.config)
         elif taskname == 'singlecombat_with_missile_hierarchical':
             self.task = SingleCombatWithMissileHierarchicalTask(self.config)
+        elif taskname == 'singlecombat_with_missile_hierarchical_shoot':
+            self.task = SingleCombatShootHierarchicalTask(self.config)
         else:
             raise NotImplementedError(f"Unknown taskname: {taskname}")
 
@@ -36,7 +39,7 @@ class SingleCombatEnv(BaseEnv):
         if self.init_states is None:
             self.init_states = [sim.init_state.copy() for sim in self.agents.values()]
         self.init_states[0].update({
-            'ic_psi_true_deg': self.np_random.uniform(90, 270),
+            'ic_psi_true_deg': (self.np_random.uniform(270, 540))%360,
             'ic_h_sl_ft': self.np_random.uniform(17000, 23000),
         })
         init_states = self.init_states.copy()

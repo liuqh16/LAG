@@ -168,3 +168,45 @@ class SingleCombatWithMissileHierarchicalTask(SingleCombatWithMissileTask):
         """
         self._inner_rnn_states = {agent_id: np.zeros((1, 1, 128)) for agent_id in env.agents.keys()}
         return super().reset(env)
+
+
+class SingleCombatShootHierarchicalTask(SingleCombatWithMissileHierarchicalTask):
+    def __init__(self, config: str):
+        super().__init__(config)
+        self.shoot_action = None
+        self.reward_functions = [
+            PostureReward(self.config),
+            AltitudeReward(self.config),
+            EventDrivenReward(self.config)
+        ]
+    
+    def reset(self, env):
+        super().reset(env)
+        self.max_attack_distance = 8000
+
+    def load_action_space(self):
+        self.action_space = spaces.MultiDiscrete([5, 2])
+
+    def normalize_action(self, env, agent_id, action):
+        """Convert high-level action into low-level action.
+        """
+        if self.use_baseline and agent_id in env.enm_ids:
+            action = self.baseline_agent.get_action(env.agents[agent_id])
+            return action
+        if agent_id in env.ego_ids:
+            self.shoot_action = action[1]
+        return super().normalize_action(env, agent_id, action[0])
+
+    def step(self, env):
+        for agent_id, agent in env.agents.items():
+            # [RL-based missile launch]
+            target = agent.enemies[0].get_position() - agent.get_position()
+            distance = np.linalg.norm(target)
+            max_attack_distance = self.max_attack_distance
+            shoot_flag = agent.is_alive and self.shoot_action \
+                and distance <= max_attack_distance and self.remaining_missiles[agent_id] > 0
+            if shoot_flag:
+                new_missile_uid = agent_id + str(self.remaining_missiles[agent_id])
+                env.add_temp_simulator(
+                    MissileSimulator.create(parent=agent, target=agent.enemies[0], uid=new_missile_uid))
+                self.remaining_missiles[agent_id] -= 1

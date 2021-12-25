@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from gym import spaces
+from typing import Literal
 from .task_base import BaseTask
 from ..core.simulatior import AircraftSimulator
 from ..core.catalog import Catalog as c
@@ -157,8 +158,10 @@ class SingleCombatTask(BaseTask):
             return super().get_reward(env, agent_id, info=info)
 
     def load_agent(self, name):
-        if name == 'control':
-            return SingleControlAgent()
+        if name == 'pursue':
+            return PursueAgent()
+        elif name == 'maneuver':
+            return ManeuverAgent(maneuver='n')
         elif name == 'straight':
             return StraightFlyAgent()
         else:
@@ -183,16 +186,25 @@ class StraightFlyAgent:
         pass
 
 
-class SingleControlAgent:
-    def __init__(self):
+class BaselineAgent:
+    def __init__(self) -> None:
         self.model_path = get_root_dir() + '/model/baseline_model.pt'
         self.actor = BaselineActor()
         self.actor.load_state_dict(torch.load(self.model_path, map_location=torch.device('cpu')))
         self.actor.eval()
+        self.state_var = [
+            c.delta_altitude,                   #  0. delta_h   (unit: m)
+            c.delta_heading,                    #  1. delta_heading  (unit: °)
+            c.delta_velocities_u,               #  2. delta_v   (unit: m/s)
+            c.attitude_roll_rad,                #  3. roll      (unit: rad)
+            c.attitude_pitch_rad,               #  4. pitch     (unit: rad)
+            c.velocities_u_mps,                 #  5. v_body_x   (unit: m/s)
+            c.velocities_v_mps,                 #  6. v_body_y   (unit: m/s)
+            c.velocities_w_mps,                 #  7. v_body_z   (unit: m/s)
+            c.velocities_vc_mps,                #  8. vc        (unit: m/s)
+            c.position_h_sl_m                   #  9. altitude  (unit: m)
+        ]
         self.reset()
-
-    def reset(self):
-        self.rnn_states = np.zeros((1, 1, 128))  # hard code
 
     def normalize_action(self, action):
         norm_act = np.zeros(4)
@@ -201,48 +213,101 @@ class SingleControlAgent:
         norm_act[2] = action[2] / 20 - 1.   # 0~40 => -1~1
         norm_act[3] = action[3] / 58 + 0.4  # 0~29 => 0.4~0.9
         return norm_act
+        
+    def reset(self):
+        self.rnn_states = np.zeros((1, 1, 128))
+
+    def set_delta_value(self, sim: AircraftSimulator):
+        raise NotImplementedError
+
+    def get_observation(self, sim: AircraftSimulator, delta_value):
+        obs = sim.get_property_values(self.state_var)
+        norm_obs = np.zeros(12)
+        norm_obs[0] = delta_value[0] / 1000          #  0. ego delta altitude  (unit: 1km)
+        norm_obs[1] = in_range_rad(delta_value[1])   #  1. ego delta heading   (unit rad)
+        norm_obs[2] = delta_value[2] / 340           #  2. ego delta velocities_u  (unit: mh)
+        norm_obs[3] = obs[9] / 5000                  #  3. ego_altitude (unit: km)
+        norm_obs[4] = np.sin(obs[3])                 #  4. ego_roll_sin
+        norm_obs[5] = np.cos(obs[3])                 #  5. ego_roll_cos
+        norm_obs[6] = np.sin(obs[4])                 #  6. ego_pitch_sin
+        norm_obs[7] = np.cos(obs[4])                 #  7. ego_pitch_cos
+        norm_obs[8] = obs[5] / 340                   #  8. ego_v_x   (unit: mh)
+        norm_obs[9] = obs[6] / 340                   #  9. ego_v_y    (unit: mh)
+        norm_obs[10] = obs[7] / 340                  #  10. ego_v_z    (unit: mh)
+        norm_obs[11] = obs[8] / 340                  #  11. ego_vc        (unit: mh)
+        norm_obs = np.expand_dims(norm_obs, axis=0)  # dim: (1,12)
+        return norm_obs
 
     def get_action(self, sim: AircraftSimulator):
-        # get single control baseline observation
-        def get_delta_heading(ego_feature, enm_feature):
-            ego_x, ego_y, ego_vx, ego_vy = ego_feature
-            ego_v = np.linalg.norm([ego_vx, ego_vy])
-            enm_x, enm_y, enm_vx, enm_vy = enm_feature
-            delta_x, delta_y = enm_x - ego_x, enm_y - ego_y
-            R = np.linalg.norm([delta_x, delta_y])
-
-            proj_dist = delta_x * ego_vx + delta_y * ego_vy
-            ego_AO = np.arccos(np.clip(proj_dist / (R * ego_v + 1e-8), -1, 1))
-
-            side_flag = np.sign(np.cross([ego_vx, ego_vy], [delta_x, delta_y]))
-            return ego_AO * side_flag
-
-        ego_x, ego_y, ego_z = sim.get_position()
-        ego_vx, ego_vy, ego_vz = sim.get_velocity()
-        enm_x, enm_y, enm_z = sim.enemies[0].get_position()
-        enm_vx, enm_vy, enm_vz = sim.enemies[0].get_velocity()
-
-        ego_feature = np.array([ego_x, ego_y, ego_vx, ego_vy])
-        enm_feature = np.array([enm_x, enm_y, enm_vx, enm_vy])
-        ego_AO = get_delta_heading(ego_feature, enm_feature)
-
-        observation = np.zeros(12)
-        observation[0] = (enm_z - ego_z) / 1000
-        observation[1] = in_range_rad(ego_AO)
-        # maintain same speed as enemy
-        observation[2] = (sim.enemies[0].get_property_value(c.velocities_u_mps)
-                          - sim.get_property_value(c.velocities_u_mps)) / 340
-        observation[3] = ego_z / 5000
-        observation[4] = np.sin(sim.get_rpy()[0])
-        observation[5] = np.cos(sim.get_rpy()[0])
-        observation[6] = np.sin(sim.get_rpy()[1])
-        observation[7] = np.cos(sim.get_rpy()[1])
-        observation[8] = sim.get_property_value(c.velocities_u_mps) / 340
-        observation[9] = sim.get_property_value(c.velocities_v_mps) / 340
-        observation[10] = sim.get_property_value(c.velocities_w_mps) / 340
-        observation[11] = sim.get_property_value(c.velocities_vc_mps) / 340
-        observation = np.expand_dims(observation, axis=0)   # dim: (1,12)
-
+        delta_value = self.set_delta_value(sim)
+        observation = self.get_observation(sim, delta_value)
         _action, self.rnn_states = self.actor(observation, self.rnn_states)
         action = _action.detach().cpu().numpy().squeeze()
         return self.normalize_action(action)
+
+
+class PursueAgent(BaselineAgent):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def set_delta_value(self, sim: AircraftSimulator):
+        # NOTE: only adapt for 1v1
+        ego_x, ego_y, ego_z = sim.get_position()
+        ego_vx, ego_vy, ego_vz = sim.get_velocity()
+        enm_x, enm_y, enm_z = sim.enemies[0].get_position()
+        # delta altitude
+        delta_altitude = enm_z - ego_z
+        # delta heading
+        ego_v = np.linalg.norm([ego_vx, ego_vy])
+        delta_x, delta_y = enm_x - ego_x, enm_y - ego_y
+        R = np.linalg.norm([delta_x, delta_y])
+        proj_dist = delta_x * ego_vx + delta_y * ego_vy
+        ego_AO = np.arccos(np.clip(proj_dist / (R * ego_v + 1e-8), -1, 1))
+        side_flag = np.sign(np.cross([ego_vx, ego_vy], [delta_x, delta_y]))
+        delta_heading = ego_AO * side_flag
+        # delta velocity
+        delta_velocity = sim.enemies[0].get_property_value(c.velocities_u_mps) - \
+                         sim.get_property_value(c.velocities_u_mps)
+        return np.array([delta_altitude, delta_heading, delta_velocity])
+
+
+class ManeuverAgent(BaselineAgent):
+    def __init__(self, maneuver: Literal['l', 'r', 'n']) -> None:
+        super().__init__()
+        self.turn_interval = 30
+        self.dodge_missile = True # if set true, start turn when missile is detected
+        if maneuver == 'l':
+            self.target_heading_list = [0]
+        elif maneuver == 'r':
+            self.target_heading_list = [np.pi/2, np.pi/2, np.pi/2, np.pi/2]
+        elif maneuver == 'n':
+            self.target_heading_list = [np.pi, np.pi, np.pi, np.pi]
+        # self.target_altitude_list = [8000, 7000, 7500, 5500, 6000, 6000]
+        # self.target_velocity_list = [340, 340, 340, 340, 243, 243]
+        self.target_altitude_list = [6096] * 4
+        self.target_velocity_list = [243] * 4
+
+    def reset(self):
+        self.step = 0
+        self.rnn_states = np.zeros((1, 1, 128))
+        self.init_heading = None
+
+    def set_delta_value(self, sim: AircraftSimulator):
+        step_list = np.arange(1, len(self.target_heading_list)+1) * self.turn_interval / 0.2
+        cur_heading = sim.get_property_value(c.attitude_heading_true_rad)
+        if self.init_heading is None:
+            self.init_heading = cur_heading
+        if not self.dodge_missile or len(sim.under_missiles) != 0:
+            for i, interval in enumerate(step_list):
+                if self.step <= interval:
+                    break
+            delta_heading = self.init_heading + self.target_heading_list[i] - cur_heading
+            delta_altitude = self.target_altitude_list[i] - sim.get_property_value(c.position_h_sl_m)
+            delta_velocity = self.target_velocity_list[i] - sim.get_property_value(c.velocities_u_mps)
+            self.step += 1
+        else:
+            delta_heading = self.init_heading  - cur_heading
+            delta_altitude = 6096 - sim.get_property_value(c.position_h_sl_m)
+            delta_velocity = 243 - sim.get_property_value(c.velocities_u_mps)
+
+        return np.array([delta_altitude, delta_heading, delta_velocity])

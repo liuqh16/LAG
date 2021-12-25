@@ -14,7 +14,7 @@ acceleration_limit_z: 10.0
 
 # aircraft config
 use_baseline: true
-baseline_type: control
+baseline_type: pursue
 aircraft_configs: {
   A0100: {
     color: Red,

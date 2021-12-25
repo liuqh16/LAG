@@ -122,7 +122,6 @@ class BaseEnv(gym.Env):
         """
         self.current_step += 1
         info = {"current_step": self.current_step}
-
         # apply actions
         action = self._unpack(action)
         for agent_id in self.agents.keys():

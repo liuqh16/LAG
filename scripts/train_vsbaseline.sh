@@ -1,8 +1,8 @@
 #!/bin/sh
 env="SingleCombat"
-scenario="1v1/Missile/HierarchyVsBaseline"
+scenario="1v1/Missile/ShootHierarchyVsBaseline"
 algo="ppo"
-exp="new_random"
+exp="shoot"
 seed=0
 
 echo "env is ${env}, scenario is ${scenario}, algo is ${algo}, exp is ${exp}, seed is ${seed}"
