@@ -67,9 +67,11 @@ class Categorical(nn.Module):
 
 
 class ACTLayer(nn.Module):
-    def __init__(self, input_dim, action_dims):
+    def __init__(self, input_dim, action_dims, use_mlp_actlayer=False):
         super(ACTLayer, self).__init__()
-        self._mlp_actlayer = False
+        self._mlp_actlayer = use_mlp_actlayer
+        if self._mlp_actlayer:
+            self.mlp = MLPLayer(128, '128 128')
         action_outs = []
         for action_dim in action_dims:
             action_outs.append(Categorical(input_dim, action_dim))
@@ -87,12 +89,12 @@ class ACTLayer(nn.Module):
 
 
 class BaselineActor(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, input_dim=12, use_mlp_actlayer=False) -> None:
         super().__init__()
         self.tpdv = dict(dtype=torch.float32, device=torch.device('cpu'))
-        self.base = MLPBase(12, '128 128')
+        self.base = MLPBase(input_dim, '128 128')
         self.rnn = GRULayer(128, 128, 1)
-        self.act = ACTLayer(128, [41, 41, 41, 30])
+        self.act = ACTLayer(128, [41, 41, 41, 30], use_mlp_actlayer)
         self.to(torch.device('cpu'))
 
     def check(self, input):
@@ -109,7 +111,7 @@ class BaselineActor(nn.Module):
 
 
 if __name__ == '__main__':
-    actor = BaselineActor()
+    actor = BaselineActor(use_mlp_actlayer=True)
     state_dict = torch.load('envs/JSBSim/model/baseline_actor.pt')
     actor.load_state_dict(state_dict)
     print(actor)

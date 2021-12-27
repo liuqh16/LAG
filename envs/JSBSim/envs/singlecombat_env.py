@@ -38,10 +38,10 @@ class SingleCombatEnv(BaseEnv):
         # switch side
         if self.init_states is None:
             self.init_states = [sim.init_state.copy() for sim in self.agents.values()]
-        self.init_states[0].update({
-            'ic_psi_true_deg': (self.np_random.uniform(270, 540))%360,
-            'ic_h_sl_ft': self.np_random.uniform(17000, 23000),
-        })
+        # self.init_states[0].update({
+        #     'ic_psi_true_deg': (self.np_random.uniform(270, 540))%360,
+        #     'ic_h_sl_ft': self.np_random.uniform(17000, 23000),
+        # })
         init_states = self.init_states.copy()
         self.np_random.shuffle(init_states)
         for idx, sim in enumerate(self.agents.values()):
