@@ -5,7 +5,7 @@ from envs.JSBSim.core.catalog import Catalog as c
 import logging
 
 parallel_num = 1
-envs = DummyVecEnv([lambda: SingleCombatEnv("1v1/Missile/vsBaseline") for _ in range(parallel_num)])
+envs = DummyVecEnv([lambda: SingleCombatEnv("1v1/DodgeMissile/vsBaseline") for _ in range(parallel_num)])
 
 # DataType test
 obs_shape = (parallel_num, envs.num_agents, *envs.observation_space.shape)

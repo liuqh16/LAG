@@ -1,6 +1,6 @@
 #!/bin/sh
 env="SingleCombat"
-scenario="1v1/Missile/ShootHierarchyVsBaseline"
+scenario="1v1/ShootMissile/ShootHierarchyVsBaseline"
 algo="ppo"
 exp="shoot"
 seed=0

@@ -37,7 +37,7 @@ class GymEnv:
 
     def render(self, mode="human"):
         self.env.render(mode)
-    
+
     def close(self):
         pass
 
@@ -79,13 +79,13 @@ def main(args):
 
     # cuda
     if all_args.cuda and torch.cuda.is_available():
-        print("choose to use gpu...")
+        logging.info("choose to use gpu...")
         device = torch.device("cuda:0")  # use cude mask to control using which GPU
         torch.set_num_threads(all_args.n_training_threads)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = True
     else:
-        print("choose to use cpu...")
+        logging.info("choose to use cpu...")
         device = torch.device("cpu")
         torch.set_num_threads(all_args.n_training_threads)
 
@@ -147,5 +147,5 @@ def main(args):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     main(sys.argv[1:])

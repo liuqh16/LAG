@@ -1,5 +1,5 @@
 # task config
-task: singlecombat_with_missile
+task: hierarchical_singlecombat_dodge_missile
 
 # simulation config
 sim_freq: 60
@@ -23,7 +23,7 @@ aircraft_configs: {
       ic_long_gc_deg: 120.0,
       ic_lat_geod_deg: 60.0,
       ic_h_sl_ft: 20000,
-      ic_psi_true_deg: 0.0,
+      ic_psi_true_deg: 0,
       ic_u_fps: 800.0,
     },
     missile: 0
@@ -45,6 +45,8 @@ aircraft_configs: {
 battle_field_center: [120.0, 60.0, 0.0]
 
 # reward config
+MissilePostureReward_scale: 30
+
 PostureReward_scale: 15.0
 PostureReward_potential: true
 PostureReward_orientation_version: v2

@@ -1,7 +1,7 @@
 import numpy as np
 from .env_base import BaseEnv
-from ..tasks import SingleCombatTask, SingleCombatWithMissileTask, SingleCombatWithMissileHierarchicalTask, \
-    SingleCombatShootHierarchicalTask
+from ..tasks import SingleCombatTask, SingleCombatDodgeMissileTask, HierarchicalSingleCombatDodgeMissileTask, \
+    HierarchicalSingleCombatShootTask
 
 
 class SingleCombatEnv(BaseEnv):
@@ -18,12 +18,12 @@ class SingleCombatEnv(BaseEnv):
         taskname = getattr(self.config, 'task', None)
         if taskname == 'singlecombat':
             self.task = SingleCombatTask(self.config)
-        elif taskname == 'singlecombat_with_missile':
-            self.task = SingleCombatWithMissileTask(self.config)
-        elif taskname == 'singlecombat_with_missile_hierarchical':
-            self.task = SingleCombatWithMissileHierarchicalTask(self.config)
-        elif taskname == 'singlecombat_with_missile_hierarchical_shoot':
-            self.task = SingleCombatShootHierarchicalTask(self.config)
+        elif taskname == 'singlecombat_dodge_missile':
+            self.task = SingleCombatDodgeMissileTask(self.config)
+        elif taskname == 'hierarchical_singlecombat_dodge_missile':
+            self.task = HierarchicalSingleCombatDodgeMissileTask(self.config)
+        elif taskname == 'hierarchical_singlecombat_shoot':
+            self.task = HierarchicalSingleCombatShootTask(self.config)
         else:
             raise NotImplementedError(f"Unknown taskname: {taskname}")
 

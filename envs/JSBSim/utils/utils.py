@@ -116,19 +116,3 @@ def in_range_rad(angle):
     if angle > np.pi:
         angle -= 2 * np.pi
     return angle
-
-
-if __name__ == "__main__":
-    p1 = (120.05, 59.9)
-    p2 = (120.1, 60.05)
-    o = (120.0, 60.0)
-    from pyproj import Geod, Proj, Transformer
-    print(Geod(ellps="WGS84").line_length(*list(zip(p1, p2))))
-    print(Geod(ellps="clrk66").line_length(*list(zip(p1, p2))))
-
-    print("***" * 10)
-    print(NEU2LLA(*LLA2NEU(*p1, 4000)))
-    print("***" * 10)
-    print(LLA2NEU(*o, 4000))
-    print("***" * 10)
-    print(np.linalg.norm(LLA2NEU(*p1, 4000) - LLA2NEU(*p2, 4000)))

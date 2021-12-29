@@ -92,8 +92,8 @@ class TestSingleControlEnv:
 class TestSingleCombatEnv:
 
     @pytest.mark.parametrize("config", ["1v1/NoWeapon/vsBaseline", "1v1/NoWeapon/Selfplay",
-                                        "1v1/Missile/vsBaseline", "1v1/Missile/Selfplay",
-                                        "1v1/Missile/HierarchyVsBaseline", "1v1/Missile/HierarchySelfplay"])
+                                        "1v1/DodgeMissile/vsBaseline", "1v1/DodgeMissile/Selfplay",
+                                        "1v1/DodgeMissile/HierarchyVsBaseline", "1v1/DodgeMissile/HierarchySelfplay"])
     def test_env(self, config):
         # Env Settings test
         env = SingleCombatEnv(config)
@@ -156,7 +156,7 @@ class TestSingleCombatEnv:
         assert np.min(rewards) < -100  # crash reward!
         assert np.all(dones)
 
-    @pytest.mark.parametrize("config", ["1v1/Missile/vsBaseline", "1v1/Missile/Selfplay"])
+    @pytest.mark.parametrize("config", ["1v1/DodgeMissile/vsBaseline", "1v1/DodgeMissile/Selfplay"])
     def test_agent_shotdown(self, config):
         # if has weapon, once enemy die, env terminate until no missile warning!
         env = SingleCombatEnv(config)
@@ -186,7 +186,7 @@ class TestSingleCombatEnv:
                     and any([missile.is_alive for missile in env.agents[crash_id].launch_missiles])
 
     @pytest.mark.parametrize("vecenv, config", list(product(
-        [DummyVecEnv, SubprocVecEnv], ["1v1/Missile/Selfplay", "1v1/Missile/HierarchyVsBaseline"])))
+        [DummyVecEnv, SubprocVecEnv], ["1v1/DodgeMissile/Selfplay", "1v1/DodgeMissile/HierarchyVsBaseline"])))
     def test_vec_env(self, vecenv, config):
         parallel_num = 4
         envs = vecenv([lambda: SingleCombatEnv(config) for _ in range(parallel_num)])
@@ -216,10 +216,10 @@ class TestJSBSimRunner:
 
     @pytest.mark.parametrize("args", [
         "--env-name SingleControl --algorithm-name ppo --scenario-name 1/heading",
-        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/Missile/Selfplay --use-selfplay --selfplay-algorithm fsp",
-        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/Missile/vsBaseline",
-        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/Missile/HierarchySelfplay",  # whether to use selfplay is optional
-        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/Missile/HierarchyVsBaseline"])
+        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/DodgeMissile/Selfplay --use-selfplay --selfplay-algorithm fsp",
+        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/DodgeMissile/vsBaseline",
+        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/DodgeMissile/HierarchySelfplay",  # whether to use selfplay is optional
+        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/DodgeMissile/HierarchyVsBaseline"])
     def test_training(self, args):
         from scripts.train.train_jsbsim import make_train_env, make_eval_env, parse_args, get_config, Runner
         args += ' --experiment-name pytest --seed 1 --n-training-threads 1 --n-rollout-threads 5 --cuda' \

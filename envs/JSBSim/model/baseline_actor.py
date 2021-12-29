@@ -108,10 +108,3 @@ class BaselineActor(nn.Module):
         x, h_s = self.rnn(x, h_s)
         actions = self.act(x)
         return actions, h_s
-
-
-if __name__ == '__main__':
-    actor = BaselineActor(use_mlp_actlayer=True)
-    state_dict = torch.load('envs/JSBSim/model/baseline_actor.pt')
-    actor.load_state_dict(state_dict)
-    print(actor)

@@ -81,23 +81,25 @@ class SingleCombatTask(BaseTask):
         """
         Convert simulation states into the format of observation_space
 
-        (1) ego info
-            0. ego altitude         (unit: 5km)
-            1. ego_roll_sin
-            2. ego_roll_cos
-            3. ego_pitch_sin
-            4. ego_pitch_cos
-            5. ego v_body_x         (unit: mh)
-            6. ego v_body_y         (unit: mh)
-            7. ego v_body_z         (unit: mh)
-            8. ego_vc               (unit: mh)
-        (2) relative info
-            9. delta_v_body_x       (unit: mh)
-            10. delta_altitude      (unit: km)
-            11. ego_AO              (unit: rad) [0, pi]
-            12. ego_TA              (unit: rad) [0, pi]
-            13. relative distance   (unit: 10km)
-            14. side_flag           1 or 0 or -1
+        ------
+        Returns: (np.ndarray)
+        - ego info
+            - [0] ego altitude           (unit: 5km)
+            - [1] ego_roll_sin
+            - [2] ego_roll_cos
+            - [3] ego_pitch_sin
+            - [4] ego_pitch_cos
+            - [5] ego v_body_x           (unit: mh)
+            - [6] ego v_body_y           (unit: mh)
+            - [7] ego v_body_z           (unit: mh)
+            - [8] ego_vc                 (unit: mh)
+        - relative enm info
+            - [9] delta_v_body_x         (unit: mh)
+            - [10] delta_altitude        (unit: km)
+            - [11] ego_AO                (unit: rad) [0, pi]
+            - [12] ego_TA                (unit: rad) [0, pi]
+            - [13] relative distance     (unit: 10km)
+            - [14] side_flag             1 or 0 or -1
         """
         norm_obs = np.zeros(15)
         ego_obs_list = np.array(env.agents[agent_id].get_property_values(self.state_var))
@@ -170,6 +172,54 @@ class SingleCombatTask(BaseTask):
             raise NotImplementedError
 
 
+class HierarchicalSingleCombatTask(SingleCombatTask):
+
+    def __init__(self, config: str):
+        super().__init__(config)
+        self.lowlevel_policy = BaselineActor()
+        self.lowlevel_policy.load_state_dict(torch.load(get_root_dir() + '/model/baseline_model.pt', map_location=torch.device('cpu')))
+        self.lowlevel_policy.eval()
+        self.norm_delta_heading = np.array([-np.pi / 6, -np.pi / 12, 0, np.pi / 12, np.pi / 6])
+
+    def load_action_space(self):
+        self.action_space = spaces.MultiDiscrete([5])
+
+    def normalize_action(self, env, agent_id, action):
+        """Convert high-level action into low-level action.
+        """
+        if self.use_baseline and agent_id in env.enm_ids:
+            action = self.baseline_agent.get_action(env.agents[agent_id])
+            return action
+        else:
+            # generate low-level input_obs
+            raw_obs = self.get_obs(env, agent_id)
+            input_obs = np.zeros(12)
+            # (1) delta altitude/heading/velocity
+            input_obs[0] = raw_obs[10]
+            input_obs[1] = self.norm_delta_heading[action]
+            input_obs[2] = raw_obs[9]
+            # (2) ego info
+            input_obs[3:12] = raw_obs[:9]
+            input_obs = np.expand_dims(input_obs, axis=0)
+            # output low-level action
+            _action, _rnn_states = self.lowlevel_policy(input_obs, self._inner_rnn_states[agent_id])
+            action = _action.detach().cpu().numpy().squeeze(0)
+            self._inner_rnn_states[agent_id] = _rnn_states.detach().cpu().numpy()
+            # normalize low-level action
+            norm_act = np.zeros(4)
+            norm_act[0] = action[0] / 20 - 1.
+            norm_act[1] = action[1] / 20 - 1.
+            norm_act[2] = action[2] / 20 - 1.
+            norm_act[3] = action[3] / 58 + 0.4
+            return norm_act
+
+    def reset(self, env):
+        """Task-specific reset, include reward function reset.
+        """
+        self._inner_rnn_states = {agent_id: np.zeros((1, 1, 128)) for agent_id in env.agents.keys()}
+        return super().reset(env)
+
+
 class StraightFlyAgent:
 
     def normalize_action(self, action):
@@ -215,7 +265,7 @@ class BaselineAgent:
         norm_act[2] = action[2] / 20 - 1.   # 0~40 => -1~1
         norm_act[3] = action[3] / 58 + 0.4  # 0~29 => 0.4~0.9
         return norm_act
-        
+
     def reset(self):
         self.rnn_states = np.zeros((1, 1, 128))
 
@@ -336,7 +386,7 @@ class DodgeMissileAgent:
             c.velocities_vc_mps,                # 12. vc        (unit: m/s)
         ]
         self.reset()
-    
+
     def get_observation(self, sim: AircraftSimulator):
         norm_obs = np.zeros(21)
         ego_obs_list = np.array(sim.get_property_values(self.state_var))

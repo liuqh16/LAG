@@ -110,7 +110,7 @@ class ManeuverAgent(BaselineAgent):
 
 
 def test_maneuver():
-    env = SingleCombatEnv(config_name='1v1/Missile/test/opposite')
+    env = SingleCombatEnv(config_name='1v1/DodgeMissile/test/opposite')
     obs = env.reset()
     env.render()
     agent0 = ManeuverAgent(agent_id=0, maneuver='n')

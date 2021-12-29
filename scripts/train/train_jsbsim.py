@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import sys
 import os
+import traceback
 import wandb
 import socket
 import torch
@@ -26,7 +27,7 @@ def make_train_env(all_args):
             elif all_args.env_name == "MultipleCombat":
                 env = MultipleCombatEnv(all_args.scenario_name)
             else:
-                print("Can not support the " + all_args.env_name + "environment.")
+                logging.error("Can not support the " + all_args.env_name + "environment.")
                 raise NotImplementedError
             env.seed(all_args.seed + rank * 1000)
             return env
@@ -53,7 +54,7 @@ def make_eval_env(all_args):
             elif all_args.env_name == "MultipleCombat":
                 env = MultipleCombatEnv(all_args.scenario_name)
             else:
-                print("Can not support the " + all_args.env_name + "environment.")
+                logging.error("Can not support the " + all_args.env_name + "environment.")
                 raise NotImplementedError
             env.seed(all_args.seed * 50000 + rank * 1000)
             return env
@@ -90,13 +91,13 @@ def main(args):
 
     # cuda
     if all_args.cuda and torch.cuda.is_available():
-        print("choose to use gpu...")
+        logging.info("choose to use gpu...")
         device = torch.device("cuda:0")  # use cude mask to control using which GPU
         torch.set_num_threads(all_args.n_training_threads)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = True
     else:
-        print("choose to use cpu...")
+        logging.info("choose to use cpu...")
         device = torch.device("cpu")
         torch.set_num_threads(all_args.n_training_threads)
 
@@ -147,15 +148,18 @@ def main(args):
 
     # run experiments
     runner = Runner(config)
-    runner.run()
+    try:
+        runner.run()
+    except BaseException:
+        traceback.print_exc()
+    finally:
+        # post process
+        envs.close()
 
-    # post process
-    envs.close()
-
-    if all_args.use_wandb:
-        run.finish()
+        if all_args.use_wandb:
+            run.finish()
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     main(sys.argv[1:])

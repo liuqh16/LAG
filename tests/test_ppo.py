@@ -95,7 +95,7 @@ class TestPPO:
         rnn_states_actor = np.zeros((buffer.n_rollout_threads, num_agents, buffer.recurrent_hidden_layers, buffer.recurrent_hidden_size))
         rnn_states_critic = np.zeros((buffer.n_rollout_threads, num_agents, buffer.recurrent_hidden_layers, buffer.recurrent_hidden_size))
 
-        buffer.insert(obs, actions, rewards, masks, bad_masks, action_log_probs, value_preds, rnn_states_actor, rnn_states_critic)
+        buffer.insert(obs, actions, rewards, masks, action_log_probs, value_preds, rnn_states_actor, rnn_states_critic, bad_masks)
 
         next_value = np.random.randn(buffer.n_rollout_threads, num_agents, 1)
         buffer.compute_returns(next_value)

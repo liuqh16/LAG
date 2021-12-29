@@ -3,6 +3,7 @@ import sys
 import os
 import torch
 import random
+import logging
 import numpy as np
 from pathlib import Path
 import setproctitle
@@ -14,7 +15,7 @@ from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv
 from envs.env_wrappers import DummyVecEnv
 
 
-def make_test_env(all_args):
+def make_render_env(all_args):
     def get_env_fn(rank):
         def init_env():
             if all_args.env_name == "SingleCombat":
@@ -22,7 +23,7 @@ def make_test_env(all_args):
             elif all_args.env_name == "SingleControl":
                 env = SingleControlEnv(all_args.scenario_name)
             else:
-                print("Can not support the " + all_args.env_name + "environment.")
+                logging.error("Can not support the " + all_args.env_name + "environment.")
                 raise NotImplementedError
             # env.seed(all_args.seed + rank * 1000)
             return env
@@ -54,13 +55,13 @@ def main(args):
 
     # cuda
     if all_args.cuda and torch.cuda.is_available():
-        print("choose to use gpu...")
+        logging.info("choose to use gpu...")
         device = torch.device("cuda:0")  # use cude mask to control using which GPU
         torch.set_num_threads(all_args.n_training_threads)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = True
     else:
-        print("choose to use cpu...")
+        logging.info("choose to use cpu...")
         device = torch.device("cpu")
         torch.set_num_threads(all_args.n_training_threads)
 
@@ -78,7 +79,7 @@ def main(args):
                               + "-" + str(all_args.experiment_name) + "@" + str(all_args.user_name))
 
     # env init
-    envs = make_test_env(all_args)
+    envs = make_render_env(all_args)
     num_agents = all_args.num_agents
 
     config = {

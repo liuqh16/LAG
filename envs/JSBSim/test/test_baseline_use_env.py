@@ -123,7 +123,7 @@ class ManeuverAgent(BaselineAgent):
         cur_heading = env.jsbsims[uid].get_property_value(c.attitude_heading_true_rad)
         if self.init_heading is None:
             self.init_heading = cur_heading
-        if not self.dodge_missile or task.check_missile_warning(env, self.agent_id) is not None:
+        if not self.dodge_missile or task._check_missile_warning(env, self.agent_id) is not None:
             for i, interval in enumerate(step_list):
                 if self.step <= interval:
                     break

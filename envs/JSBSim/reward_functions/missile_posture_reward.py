@@ -27,7 +27,7 @@ class MissilePostureReward(BaseRewardFunction):
             (float): reward
         """
         reward = 0
-        missile_sim = task.check_missile_warning(env, agent_id)
+        missile_sim = env.agents[agent_id].check_missile_warning()
         if missile_sim is not None:
             missile_v = missile_sim.get_velocity()
             aircraft_v = env.agents[agent_id].get_velocity()

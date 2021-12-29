@@ -100,7 +100,7 @@ class AircraftSimulator(BaseSimulator):
                  model: str = 'f16',
                  init_state: dict = {},
                  origin: tuple = (120.0, 60.0, 0.0),
-                 sim_freq: int = 60):
+                 sim_freq: int = 60, **kwargs):
         """Constructor. Creates an instance of JSBSim, loads an aircraft and sets initial conditions.
 
         Args:
@@ -111,13 +111,16 @@ class AircraftSimulator(BaseSimulator):
             init_state (dict): dict mapping properties to their initial values. Input empty dict to use a default set of initial props.
             origin (tuple): origin point (longitude, latitude, altitude) of the Global Combat Field. Default = `(120.0, 60.0, 0.0)`
             sim_freq (int): JSBSim integration frequency. Default = `60`.
-            agent_interaction_steps (int): simulation steps before the agent interact. Default = `5`.
         """
         super().__init__(uid, color, 1 / sim_freq)
         self.model = model
         self.init_state = init_state
         self.lon0, self.lat0, self.alt0 = origin
         self.__status = AircraftSimulator.ALIVE
+        for key, value in kwargs.items():
+            if key == 'num_missiles':
+                self.num_missiles = value  # type: int
+                self.num_left_missiles = self.num_missiles  # type: int
         # fixed simulator links
         self.partners = []  # type: List[AircraftSimulator]
         self.enemies = []   # type: List[AircraftSimulator]
@@ -154,6 +157,7 @@ class AircraftSimulator(BaseSimulator):
         self.__status = AircraftSimulator.ALIVE
         self.launch_missiles.clear()
         self.under_missiles.clear()
+        self.num_left_missiles = self.num_missiles
 
         # load JSBSim FDM
         self.jsbsim_exec = jsbsim.FGFDMExec(os.path.join(get_root_dir(), 'data'))
@@ -309,6 +313,12 @@ class AircraftSimulator(BaseSimulator):
                     prop.update(self)
         else:
             raise ValueError(f"prop type unhandled: {type(prop)} ({prop})")
+
+    def check_missile_warning(self):
+        for missile in self.under_missiles:
+            if missile.is_alive:
+                return missile
+        return None
 
 
 class MissileSimulator(BaseSimulator):

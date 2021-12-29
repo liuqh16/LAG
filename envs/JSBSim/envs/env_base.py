@@ -67,7 +67,8 @@ class BaseEnv(gym.Env):
                 model=config.get("model", "f16"),
                 init_state=config.get("init_state"),
                 origin=getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0)),
-                sim_freq=self.sim_freq)
+                sim_freq=self.sim_freq,
+                num_missiles=config.get("missile", 0))
         # Different teams have different uid[0]
         _default_team_uid = list(self.__jsbsims.keys())[0][0]
         self.ego_ids = [uid for uid in self.__jsbsims.keys() if uid[0] == _default_team_uid]

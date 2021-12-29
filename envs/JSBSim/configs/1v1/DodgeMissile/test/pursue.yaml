@@ -1,5 +1,5 @@
 # task config
-task: singlecombat_with_missile
+task: singlecombat_dodge_missile
 
 # simulation config
 sim_freq: 60

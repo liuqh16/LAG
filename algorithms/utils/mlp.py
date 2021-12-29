@@ -49,17 +49,3 @@ class MLPBase(nn.Module):
     @property
     def output_size(self) -> int:
         return self.mlp.output_size
-
-
-if __name__ == "__main__":
-    print("\n---------test MLPLayer---------\n")
-    input_dim = 5
-    print("One layer MLP")
-    mlplayer = MLPLayer(input_dim, '10', 1)
-    print(mlplayer)
-    print("Two same layer MLP")
-    mlplayer = MLPLayer(input_dim, '10 10', 1)
-    print(mlplayer)
-    print("Two different layer MLP")
-    mlplayer = MLPLayer(input_dim, '10 5', 1)
-    print(mlplayer)
