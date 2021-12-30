@@ -140,7 +140,7 @@ class DummyVecEnv(VecEnv):
 
     def step_wait(self):
         results = [env.step(a) for (a, env) in zip(self.actions, self.envs)]
-        obss, rewards, dones, infos = map(list, zip(*results))
+        obss, _, rewards, dones, infos = map(list, zip(*results))
         for (i, done) in enumerate(dones):
             if 'bool' in done.__class__.__name__:
                 if done:
@@ -434,6 +434,8 @@ class ShareSubprocVecEnv(SubprocVecEnv, ShareVecEnv):
         self.remotes[0].send(('get_spaces', None))
         observation_space, share_observation_space, action_space = self.remotes[0].recv().x
         ShareVecEnv.__init__(self, nenvs, observation_space, share_observation_space, action_space)
+        # TODO: get num agents
+        self.num_agents = 4
 
     def step_wait(self):
         self._assert_not_closed()

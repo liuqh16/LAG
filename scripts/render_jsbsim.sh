@@ -1,6 +1,6 @@
 #!/bin/sh
-env="SingleCombat"
-scenario="1v1/Missile/HierarchyVsBaseline"    
+env="MultipleCombat"
+scenario="2v2/NoWeapon/Selfplay"    
 algo="ppo"
 exp="new_v2"
 seed=2021

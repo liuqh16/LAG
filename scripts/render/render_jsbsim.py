@@ -10,7 +10,7 @@ import setproctitle
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 from config import get_config
 from runner.jsbsim_runner import JSBSimRunner as Runner
-from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv
+from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv, MultipleCombatEnv
 from envs.env_wrappers import DummyVecEnv
 
 
@@ -21,6 +21,8 @@ def make_test_env(all_args):
                 env = SingleCombatEnv(all_args.scenario_name)
             elif all_args.env_name == "SingleControl":
                 env = SingleControlEnv(all_args.scenario_name)
+            elif all_args.env_name == "MultipleCombat":
+                env = MultipleCombatEnv(all_args.scenario_name)
             else:
                 print("Can not support the " + all_args.env_name + "environment.")
                 raise NotImplementedError

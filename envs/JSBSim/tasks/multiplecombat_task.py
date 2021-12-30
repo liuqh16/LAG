@@ -1,11 +1,14 @@
+import torch
 import numpy as np
 from gym import spaces
 from typing import Tuple
 from .task_base import BaseTask
+from ..core.simulatior import AircraftSimulator
 from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, RelativeAltitudeReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout, SafeReturn
-from ..utils.utils import get_AO_TA_R, LLA2NEU
+from ..utils.utils import get_AO_TA_R, in_range_rad, LLA2NEU, get_root_dir
+from ..model.baseline_actor import BaselineActor
 
 
 class MultipleCombatTask(BaseTask):
@@ -24,6 +27,8 @@ class MultipleCombatTask(BaseTask):
             LowAltitude(self.config),
             Timeout(self.config),
         ]
+
+        self.baseline_agents = {}   # will be initialized on first call of self.normalize_action
 
     @property
     def num_agents(self) -> int:
@@ -106,15 +111,86 @@ class MultipleCombatTask(BaseTask):
     def normalize_action(self, env, agent_id, action):
         """Convert discrete action index into continuous value.
         """
-        norm_act = np.zeros(4)
-        norm_act[0] = action[0] * 2. / (self.action_space[agent_id].nvec[0] - 1.) - 1.
-        norm_act[1] = action[1] * 2. / (self.action_space[agent_id].nvec[1] - 1.) - 1.
-        norm_act[2] = action[2] * 2. / (self.action_space[agent_id].nvec[2] - 1.) - 1.
-        norm_act[3] = action[3] * 0.5 / (self.action_space[agent_id].nvec[3] - 1.) + 0.4
-        return norm_act
+        # 1. Baseline action
+        if agent_id not in self.baseline_agents:
+            self.baseline_agents[agent_id] = Baseline2v2Agent()
+        baseline_action = self.baseline_agents[agent_id].get_action(env.agents[agent_id])
+
+        # # 2. RL action
+        # norm_act = np.zeros(4)
+        # norm_act[0] = action[0] * 2. / (self.action_space[agent_id].nvec[0] - 1.) - 1.
+        # norm_act[1] = action[1] * 2. / (self.action_space[agent_id].nvec[1] - 1.) - 1.
+        # norm_act[2] = action[2] * 2. / (self.action_space[agent_id].nvec[2] - 1.) - 1.
+        # norm_act[3] = action[3] * 0.5 / (self.action_space[agent_id].nvec[3] - 1.) + 0.4
+
+        return baseline_action
 
     def get_reward(self, env, agent_id, info: dict = ...) -> Tuple[float, dict]:
         if env.agents[agent_id].is_alive:
             return super().get_reward(env, agent_id, info=info)
         else:
             return 0.0, info
+
+class Baseline2v2Agent:
+    def __init__(self):
+        self.model_path = get_root_dir() + '/model/baseline_model.pt'
+        self.actor = BaselineActor()
+        self.actor.load_state_dict(torch.load(self.model_path, map_location=torch.device('cpu')))
+        self.actor.eval()
+        self.reset()
+
+    def reset(self):
+        self.rnn_states = np.zeros((1, 1, 128))  # hard code
+
+    def normalize_action(self, action):
+        norm_act = np.zeros(4)
+        norm_act[0] = action[0] / 20 - 1.   # 0~40 => -1~1
+        norm_act[1] = action[1] / 20 - 1.   # 0~40 => -1~1
+        norm_act[2] = action[2] / 20 - 1.   # 0~40 => -1~1
+        norm_act[3] = action[3] / 58 + 0.4  # 0~29 => 0.4~0.9
+        return norm_act
+
+    def get_action(self, sim: AircraftSimulator):
+        # get single control baseline observation
+        def get_delta_heading(ego_feature, enm_feature):
+            ego_x, ego_y, ego_vx, ego_vy = ego_feature
+            ego_v = np.linalg.norm([ego_vx, ego_vy])
+            enm_x, enm_y, enm_vx, enm_vy = enm_feature
+            delta_x, delta_y = enm_x - ego_x, enm_y - ego_y
+            R = np.linalg.norm([delta_x, delta_y])
+
+            proj_dist = delta_x * ego_vx + delta_y * ego_vy
+            ego_AO = np.arccos(np.clip(proj_dist / (R * ego_v + 1e-8), -1, 1))
+
+            side_flag = np.sign(np.cross([ego_vx, ego_vy], [delta_x, delta_y]))
+            return ego_AO * side_flag
+
+        ego_x, ego_y, ego_z = sim.get_position()
+        ego_vx, ego_vy, ego_vz = sim.get_velocity()
+        enm_x, enm_y, enm_z = sim.enemies[0].get_position()
+        enm_vx, enm_vy, enm_vz = sim.enemies[0].get_velocity()
+
+        ego_feature = np.array([ego_x, ego_y, ego_vx, ego_vy])
+        enm_feature = np.array([enm_x, enm_y, enm_vx, enm_vy])
+        ego_AO = get_delta_heading(ego_feature, enm_feature)
+
+        observation = np.zeros(12)
+        observation[0] = (enm_z - ego_z) / 1000
+        observation[1] = in_range_rad(ego_AO)
+        # maintain same speed as enemy
+        observation[2] = (sim.enemies[0].get_property_value(c.velocities_u_mps)
+                          - sim.get_property_value(c.velocities_u_mps)) / 340
+        observation[3] = ego_z / 5000
+        observation[4] = np.sin(sim.get_rpy()[0])
+        observation[5] = np.cos(sim.get_rpy()[0])
+        observation[6] = np.sin(sim.get_rpy()[1])
+        observation[7] = np.cos(sim.get_rpy()[1])
+        observation[8] = sim.get_property_value(c.velocities_u_mps) / 340
+        observation[9] = sim.get_property_value(c.velocities_v_mps) / 340
+        observation[10] = sim.get_property_value(c.velocities_w_mps) / 340
+        observation[11] = sim.get_property_value(c.velocities_vc_mps) / 340
+        observation = np.expand_dims(observation, axis=0)   # dim: (1,12)
+
+        _action, self.rnn_states = self.actor(observation, self.rnn_states)
+        action = _action.detach().cpu().numpy().squeeze()
+        return self.normalize_action(action)

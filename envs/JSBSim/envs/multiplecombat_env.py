@@ -38,11 +38,12 @@ class MultipleCombatEnv(BaseEnv):
 
     def reset_simulators(self):
         # Assign new initial condition here!
-        for sim in self._jsbsims.values():
+        for sim in self._BaseEnv__jsbsims.values():
             sim.reload()
         self._tempsims.clear()
 
-    def step(self, action: Dict[str, Any]) -> \
+    # def step(self, action: Dict[str, Any]) -> \
+    def step(self, action) -> \
             Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Dict[str, float], Dict[str, bool], dict]:
         """Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`
@@ -65,11 +66,12 @@ class MultipleCombatEnv(BaseEnv):
 
         # apply actions
         for agent_id in self.agents.keys():
-            a_action = self.task.normalize_action(self, agent_id, action[agent_id])
+            # a_action = self.task.normalize_action(self, agent_id, action[agent_id])
+            a_action = self.task.normalize_action(self, agent_id, None)
             self.agents[agent_id].set_property_values(self.task.action_var, a_action)
         # run simulation
         for _ in range(self.agent_interaction_steps):
-            for sim in self._jsbsims.values():
+            for sim in self._BaseEnv__jsbsims.values():
                 sim.run()
             for sim in self._tempsims.values():
                 sim.run()

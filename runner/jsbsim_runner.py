@@ -55,8 +55,8 @@ class JSBSimRunner(Runner):
                     Policy(self.all_args, self.obs_space, self.act_space, device=self.device)
                     for _ in range(self.all_args.n_choose_opponents)]
 
-        if self.model_dir is not None:
-            self.restore()
+        # if self.model_dir is not None:
+        #     self.restore()
 
     def run(self):
         self.warmup()
@@ -133,7 +133,7 @@ class JSBSimRunner(Runner):
             self.opponent_obs = obs[:, self.num_agents // 2:, ...]
             obs = obs[:, :self.num_agents // 2, ...]
         self.buffer.step = 0
-        self.buffer.obs[0] = obs.copy()
+        # self.buffer.obs[0] = obs.copy()
 
     @torch.no_grad()
     def collect(self, step):
@@ -264,20 +264,20 @@ class JSBSimRunner(Runner):
         render_rnn_states = np.zeros((1, *self.buffer.rnn_states_actor.shape[2:]), dtype=np.float32)
         self.envs.render(mode='txt', filepath=f'{self.run_dir}/{self.experiment_name}.txt.acmi')
         while True:
-            self.policy.prep_rollout()
-            render_actions, render_rnn_states = self.policy.act(np.concatenate(render_obs),
-                                                                        np.concatenate(render_rnn_states),
-                                                                        np.concatenate(render_masks),
-                                                                        deterministic=True)
-            render_actions = np.expand_dims(_t2n(render_actions), axis=0)
-            render_rnn_states = np.expand_dims(_t2n(render_rnn_states), axis=0)
+            # self.policy.prep_rollout()
+            # render_actions, render_rnn_states = self.policy.act(np.concatenate(render_obs),
+            #                                                             np.concatenate(render_rnn_states),
+            #                                                             np.concatenate(render_masks),
+            #                                                             deterministic=True)
+            # render_actions = np.expand_dims(_t2n(render_actions), axis=0)
+            # render_rnn_states = np.expand_dims(_t2n(render_rnn_states), axis=0)
 
-            # Obser reward and next obs
-            render_obs, render_rewards, render_dones, render_infos = self.envs.step(render_actions)
-            render_episode_rewards += render_rewards
+            # # Obser reward and next obs
+            render_obs, render_rewards, render_dones, render_infos = self.envs.step([None])
+            # render_episode_rewards += render_rewards
             self.envs.render(mode='txt', filepath=f'{self.run_dir}/{self.experiment_name}.txt.acmi')
-            if render_dones.any():
-                break
+            # if render_dones.any():
+            #     break
 
         render_infos = {}
         render_infos['render_episode_reward'] = render_episode_rewards
