@@ -1,5 +1,5 @@
 # task config
-task: hierarchical_singlecombat_dodge_missile
+task: hierarchical_singlecombat_shoot
 
 # simulation config
 sim_freq: 60
@@ -14,7 +14,7 @@ acceleration_limit_z: 10.0
 
 # aircraft config
 use_baseline: true
-baseline_type: pursue
+baseline_type: maneuver
 aircraft_configs: {
   A0100: {
     color: Red,
@@ -26,7 +26,7 @@ aircraft_configs: {
       ic_psi_true_deg: 0,
       ic_u_fps: 800.0,
     },
-    missile: 0
+    missile: 2
   },
   B0100: {
     color: Blue,
@@ -38,13 +38,9 @@ aircraft_configs: {
       ic_psi_true_deg: 180.0,
       ic_u_fps: 800.0,
     },
-    missile: 1,
+    missile: 0,
   }
 }
-
-max_attack_angle: 45        # unit: degree
-max_attack_distance: 14000  # unit: m
-min_attack_interval: 125     # unit: step
 
 # (lontitude, latitude, altitude)
 battle_field_center: [120.0, 60.0, 0.0]

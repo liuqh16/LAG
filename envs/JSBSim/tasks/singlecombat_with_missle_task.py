@@ -14,6 +14,9 @@ class SingleCombatDodgeMissileTask(SingleCombatTask):
     def __init__(self, config):
         super().__init__(config)
 
+        self.max_attack_angle = getattr(self.config, 'max_attack_angle', 180)
+        self.max_attack_distance = getattr(self.config, 'max_attack_distance', np.inf)
+        self.min_attack_interval = getattr(self.config, 'min_attack_interval', 125)
         self.reward_functions = [
             PostureReward(self.config),
             MissilePostureReward(self.config),
@@ -61,8 +64,8 @@ class SingleCombatDodgeMissileTask(SingleCombatTask):
         # (0) extract feature: [north(km), east(km), down(km), v_n(mh), v_e(mh), v_d(mh)]
         ego_cur_ned = LLA2NEU(*ego_obs_list[:3], env.center_lon, env.center_lat, env.center_alt)
         enm_cur_ned = LLA2NEU(*enm_obs_list[:3], env.center_lon, env.center_lat, env.center_alt)
-        ego_feature = np.array([*(ego_cur_ned / 1000), *(ego_obs_list[6:9] / 340)])
-        enm_feature = np.array([*(enm_cur_ned / 1000), *(enm_obs_list[6:9] / 340)])
+        ego_feature = np.array([*ego_cur_ned, *ego_obs_list[6:9]])
+        enm_feature = np.array([*enm_cur_ned, *enm_obs_list[6:9]])
         # (1) ego info normalization
         norm_obs[0] = ego_obs_list[2] / 5000
         norm_obs[1] = np.sin(ego_obs_list[3])
@@ -97,28 +100,29 @@ class SingleCombatDodgeMissileTask(SingleCombatTask):
     def reset(self, env):
         """Reset fighter blood & missile status
         """
+        self._last_shoot_time = {agent_id: 0 for agent_id in env.agents.keys()}
         self.remaining_missiles = {agent_id: agent.num_missiles for agent_id, agent in env.agents.items()}
         self.lock_duration = {agent_id: deque(maxlen=int(1 / env.time_interval)) for agent_id in env.agents.keys()}
-        self.max_attack_distance = env.np_random.uniform(5000, 10000)
         return super().reset(env)
 
     def step(self, env):
         for agent_id, agent in env.agents.items():
             # [Rule-based missile launch]
-            max_attack_angle = 22.5
-            max_attack_distance = self.max_attack_distance
             target = agent.enemies[0].get_position() - agent.get_position()
             heading = agent.get_velocity()
             distance = np.linalg.norm(target)
             attack_angle = np.rad2deg(np.arccos(np.clip(np.sum(target * heading) / (distance * np.linalg.norm(heading) + 1e-8), -1, 1)))
-            self.lock_duration[agent_id].append(attack_angle < max_attack_angle)
+            self.lock_duration[agent_id].append(attack_angle < self.max_attack_angle)
+            shoot_interval = env.current_step - self._last_shoot_time[agent_id]
+
             shoot_flag = agent.is_alive and np.sum(self.lock_duration[agent_id]) >= self.lock_duration[agent_id].maxlen \
-                and distance <= max_attack_distance and self.remaining_missiles[agent_id] > 0
+                and distance <= self.max_attack_distance and self.remaining_missiles[agent_id] > 0 and shoot_interval >= self.min_attack_interval
             if shoot_flag:
                 new_missile_uid = agent_id + str(self.remaining_missiles[agent_id])
                 env.add_temp_simulator(
                     MissileSimulator.create(parent=agent, target=agent.enemies[0], uid=new_missile_uid))
                 self.remaining_missiles[agent_id] -= 1
+                self._last_shoot_time[agent_id] = env.current_step
 
 
 class HierarchicalSingleCombatDodgeMissileTask(HierarchicalSingleCombatTask, SingleCombatDodgeMissileTask):
@@ -158,7 +162,7 @@ class HierarchicalSingleCombatShootTask(HierarchicalSingleCombatTask, SingleComb
         HierarchicalSingleCombatTask.__init__(self, config)
         self.max_attack_angle = getattr(self.config, 'max_attack_angle', 180)
         self.max_attack_distance = getattr(self.config, 'max_attack_distance', np.inf)
-        self.min_attack_interval = getattr(self.config, 'min_attack_interval', 0)
+        self.min_attack_interval = getattr(self.config, 'min_attack_interval', 125)
 
         self.reward_functions = [
             PostureReward(self.config),
@@ -171,8 +175,8 @@ class HierarchicalSingleCombatShootTask(HierarchicalSingleCombatTask, SingleComb
         return SingleCombatDodgeMissileTask.load_observation_space(self)
 
     def load_action_space(self):
-        # heading control + shoot control
-        self.action_space = spaces.MultiDiscrete([5, 2])
+        # altitude control + heading control + velocity control + shoot control
+        self.action_space = spaces.MultiDiscrete([3, 5, 3, 2])
 
     def get_obs(self, env, agent_id):
         return SingleCombatDodgeMissileTask.get_obs(self, env, agent_id)
@@ -180,8 +184,12 @@ class HierarchicalSingleCombatShootTask(HierarchicalSingleCombatTask, SingleComb
     def normalize_action(self, env, agent_id, action):
         """Convert high-level action into low-level action.
         """
-        self._shoot_action[agent_id] = action[1] > 0
-        return HierarchicalSingleCombatTask.normalize_action(self, env, agent_id, action[0])
+        if self.use_baseline and agent_id in env.enm_ids:
+            action = self.baseline_agent.get_action(env.agents[agent_id])
+            return action
+        else:
+            self._shoot_action[agent_id] = action[3] > 0
+            return HierarchicalSingleCombatTask.normalize_action(self, env, agent_id, action[:3])
 
     def reset(self, env):
         self._shoot_action = {agent_id: False for agent_id in env.agents.keys()}

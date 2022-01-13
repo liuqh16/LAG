@@ -1,12 +1,12 @@
 #!/bin/sh
 env="SingleCombat"
-scenario="1v1/ShootMissile/ShootHierarchyVsBaseline"
+scenario="1v1/DodgeMissile/vsBaseline"
 algo="ppo"
-exp="shoot"
-seed=0
+exp="3d"
+seed=1
 
 echo "env is ${env}, scenario is ${scenario}, algo is ${algo}, exp is ${exp}, seed is ${seed}"
-CUDA_VISIBLE_DEVICES=0 python train/train_jsbsim.py \
+CUDA_VISIBLE_DEVICES=1 python train/train_jsbsim.py \
     --env-name ${env} --algorithm-name ${algo} --scenario-name ${scenario} --experiment-name ${exp} \
     --seed 1 --n-training-threads 1 --n-rollout-threads 32 --cuda \
     --log-interval 1 --save-interval 1 \

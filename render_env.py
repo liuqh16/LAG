@@ -13,16 +13,15 @@ def _t2n(x):
 
 num_agents = 1
 parallel_num = 1
-experiment_name = 'new_v2'
-run_dir = "/home/lqh/jyh/CloseAirCombat/scripts/results/SingleCombat/1v1/Missile/vsBaseline/ppo/new_v2/wandb/latest-run/files"
+experiment_name = 'dodge_missile_model'
+run_dir = "/home/lqh/jyh/CloseAirCombat/envs/JSBSim/model/dodge_missile_model.pt"
 
 
-envs = DummyVecEnv([lambda: SingleControlEnv("1/heading")])
+envs = DummyVecEnv([lambda: SingleCombatEnv("1v1/DodgeMissile/vsBaseline")])
 obss = envs.reset()
-policy = Actor()
-policy.load_state_dict(torch.load(run_dir+"/actor.pt"))
+policy = Actor(input_dim=21, use_mlp_actlayer=True)
+policy.load_state_dict(torch.load(run_dir))
 policy.eval()
-actions = np.array([[envs.action_space.sample() for _ in range(envs.num_agents)] for _ in range(parallel_num)])
 
 
 render_episode_rewards = 0

@@ -200,6 +200,8 @@ class JSBSimRunner(Runner):
         # [Selfplay] Choose opponent policy for evaluation
         if self.use_selfplay:
             eval_choose_opponents = [self.selfplay_algo.choose(self.policy_pool) for _ in range(self.all_args.n_choose_opponents)]
+            assert self.eval_episodes >= self.all_args.n_choose_opponents, \
+            f"Number of evaluation episodes:{self.eval_episodes} should be greater than number of opponents:{self.all_args.n_choose_opponents}"
             eval_each_episodes = self.eval_episodes // self.all_args.n_choose_opponents
             eval_cur_opponent_idx = 0
             logging.info(f" Choose opponents {eval_choose_opponents} for evaluation")
@@ -213,7 +215,7 @@ class JSBSimRunner(Runner):
                 self.eval_opponent_policy.actor.load_state_dict(torch.load(str(self.save_dir) + f'/actor_{policy_idx}.pt'))
                 self.eval_opponent_policy.prep_rollout()
                 eval_cur_opponent_idx += 1
-                logging.info(f" Load opponent {policy_idx} for evaluation ({total_episodes}/{eval_each_episodes})")
+                logging.info(f" Load opponent {policy_idx} for evaluation ({total_episodes+1}/{self.eval_episodes})")
 
                 # reset obs/rnn/mask
                 eval_obs = self.eval_envs.reset()

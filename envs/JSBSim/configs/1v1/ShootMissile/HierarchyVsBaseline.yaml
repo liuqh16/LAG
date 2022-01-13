@@ -26,14 +26,14 @@ aircraft_configs: {
       ic_psi_true_deg: 0,
       ic_u_fps: 800.0,
     },
-    missile: 1
+    missile: 2
   },
   B0100: {
     color: Blue,
     model: f16,
     init_state: {
       ic_h_sl_ft: 20000,
-      ic_lat_geod_deg: 60.07,
+      ic_lat_geod_deg: 60.2,
       ic_long_gc_deg: 120.0,
       ic_psi_true_deg: 180.0,
       ic_u_fps: 800.0,
@@ -41,6 +41,11 @@ aircraft_configs: {
     missile: 0,
   }
 }
+
+max_attack_angle: 45        # unit: degree
+max_attack_distance: 14000  # unit: m
+min_attack_interval: 125     # unit: step
+
 # (lontitude, latitude, altitude)
 battle_field_center: [120.0, 60.0, 0.0]
 

@@ -99,14 +99,14 @@ class Runner(object):
 
     def save(self):
         policy_actor = self.policy.actor
-        torch.save(policy_actor.state_dict(), str(self.save_dir) + "/actor.pt")
+        torch.save(policy_actor.state_dict(), str(self.save_dir) + "/actor_latest.pt")
         policy_critic = self.policy.critic
-        torch.save(policy_critic.state_dict(), str(self.save_dir) + "/critic.pt")
+        torch.save(policy_critic.state_dict(), str(self.save_dir) + "/critic_latest.pt")
 
     def restore(self):
-        policy_actor_state_dict = torch.load(str(self.model_dir) + '/actor.pt')
+        policy_actor_state_dict = torch.load(str(self.model_dir) + '/actor_latest.pt')
         self.policy.actor.load_state_dict(policy_actor_state_dict)
-        policy_critic_state_dict = torch.load(str(self.model_dir) + '/critic.pt')
+        policy_critic_state_dict = torch.load(str(self.model_dir) + '/critic_latest.pt')
         self.policy.critic.load_state_dict(policy_critic_state_dict)
 
     def log_info(self, infos, total_num_steps):

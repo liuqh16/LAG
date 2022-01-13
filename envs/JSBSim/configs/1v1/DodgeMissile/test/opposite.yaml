@@ -37,7 +37,7 @@ aircraft_configs: {
       ic_psi_true_deg: 180.0,
       ic_u_fps: 800.0,
     },
-    missile: 1,
+    missile: 0,
   }
 }
 

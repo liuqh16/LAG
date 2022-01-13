@@ -25,7 +25,7 @@ def make_render_env(all_args):
             else:
                 logging.error("Can not support the " + all_args.env_name + "environment.")
                 raise NotImplementedError
-            # env.seed(all_args.seed + rank * 1000)
+            env.seed(all_args.seed + rank * 1000)
             return env
         return init_env
     return DummyVecEnv([get_env_fn(0)])
@@ -101,4 +101,5 @@ def main(args):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG, format="%(message)s")
     main(sys.argv[1:])

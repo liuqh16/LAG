@@ -40,6 +40,10 @@ aircraft_configs: {
   }
 }
 
+max_attack_angle: 45        # unit: degree
+max_attack_distance: 14000  # unit: m
+min_attack_interval: 125     # unit: step
+
 # reward config
 PostureReward_scale: 15.0
 PostureReward_potential: true

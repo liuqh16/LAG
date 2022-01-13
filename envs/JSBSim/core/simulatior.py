@@ -28,7 +28,7 @@ class BaseSimulator(ABC):
         self.model = ""
         self._geodetic = np.zeros(3)
         self._position = np.zeros(3)
-        self._poseture = np.zeros(3)
+        self._posture = np.zeros(3)
         self._velocity = np.zeros(3)
         logging.debug(f"{self.__class__.__name__}:{self.__uid} is created!")
 
@@ -54,7 +54,7 @@ class BaseSimulator(ABC):
 
     def get_rpy(self):
         """(roll, pitch, yaw), unit: rad"""
-        return self._poseture
+        return self._posture
 
     def get_velocity(self):
         """(v_north, v_east, v_up), unit: m/s"""
@@ -63,7 +63,7 @@ class BaseSimulator(ABC):
     def reload(self):
         self._geodetic = np.zeros(3)
         self._position = np.zeros(3)
-        self._poseture = np.zeros(3)
+        self._posture = np.zeros(3)
         self._velocity = np.zeros(3)
 
     @abstractmethod
@@ -239,8 +239,8 @@ class AircraftSimulator(BaseSimulator):
             Catalog.position_h_sl_m
         ])
         self._position[:] = LLA2NEU(*self._geodetic, self.lon0, self.lat0, self.alt0)
-        # update poseture
-        self._poseture[:] = self.get_property_values([
+        # update posture
+        self._posture[:] = self.get_property_values([
             Catalog.attitude_roll_rad,
             Catalog.attitude_pitch_rad,
             Catalog.attitude_heading_true_rad,
@@ -424,8 +424,8 @@ class MissileSimulator(BaseSimulator):
         self._geodetic[:] = parent.get_geodetic()
         self._position[:] = parent.get_position()
         self._velocity[:] = parent.get_velocity()
-        self._poseture[:] = parent.get_rpy()
-        self._poseture[0] = 0  # missile's roll remains zero
+        self._posture[:] = parent.get_rpy()
+        self._posture[0] = 0  # missile's roll remains zero
         self.lon0, self.lat0, self.alt0 = parent.lon0, parent.lat0, parent.alt0
         # init status
         self._t = 0
@@ -522,7 +522,7 @@ class MissileSimulator(BaseSimulator):
             v * np.cos(theta) * np.sin(phi),
             v * np.sin(theta)
         ])
-        self._poseture[:] = np.array([0, theta, phi])
+        self._posture[:] = np.array([0, theta, phi])
         # update mass
         if self._t < self._t_thrust:
             self._m = self._m - self.dt * self._dm

@@ -103,8 +103,8 @@ class ManeuverAgent(BaselineAgent):
             self.step += 1
         else:
             delta_heading = 0
-            delta_altitude = (6096 - observation[0]*5000) / 1000
-            delta_velocity = (243 - observation[5]*340) / 340
+            delta_altitude = 0
+            delta_velocity = 0
 
         return np.array([delta_altitude, delta_heading, delta_velocity])
 
