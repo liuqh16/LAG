@@ -1,4 +1,5 @@
 import argparse
+from tokenize import group
 
 
 def get_config():
@@ -18,6 +19,7 @@ def get_config():
     parser = _get_save_config(parser)
     parser = _get_log_config(parser)
     parser = _get_eval_config(parser)
+    parser = _get_render_config(parser)
     return parser
 
 
@@ -282,6 +284,16 @@ def _get_eval_config(parser: argparse.ArgumentParser):
                        help="time duration between contiunous twice evaluation progress. (default 25)")
     group.add_argument("--eval-episodes", type=int, default=32,
                        help="number of episodes of a single evaluation. (default 32)")
+    return parser
+
+def _get_render_config(parser: argparse.ArgumentParser):
+    """
+    Render parameters:
+        --render-opponent-index <int>
+            the index of opponent policy in the opponent pool. by default 0
+    """
+    group = parser.add_argument_group("Render parameters")
+    group.add_argument("--render-opponent-index", type=int, default=0, help="the index of opponent policy in the opponent pool. by default 0")
     return parser
 
 

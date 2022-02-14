@@ -280,12 +280,25 @@ class JSBSimRunner(Runner):
 
     @torch.no_grad()
     def render(self):
-        assert self.n_render_rollout_threads == 1, 'JSBSim Env only support n_render_rollout_threads = 1'
+        logging.info("\nStart render ...")
+        self.render_opponent_index = self.all_args.render_opponent_index
         render_episode_rewards = 0
         render_obs = self.envs.reset()
         render_masks = np.ones((1, *self.buffer.masks.shape[2:]), dtype=np.float32)
         render_rnn_states = np.zeros((1, *self.buffer.rnn_states_actor.shape[2:]), dtype=np.float32)
         self.envs.render(mode='txt', filepath=f'{self.run_dir}/{self.experiment_name}.txt.acmi')
+        if self.use_selfplay:
+            policy_idx = self.render_opponent_index
+            self.eval_opponent_policy.actor.load_state_dict(torch.load(str(self.model_dir) + f'/actor_{policy_idx}.pt'))
+            self.eval_opponent_policy.prep_rollout()
+            # reset obs/rnn/mask
+            render_obs = self.envs.reset()
+            render_masks = np.ones_like(render_masks, dtype=np.float32)
+            render_rnn_states = np.zeros_like(render_rnn_states, dtype=np.float32)
+            render_opponent_obs = render_obs[:, self.num_agents // 2:, ...]
+            render_obs = render_obs[:, :self.num_agents // 2, ...]
+            render_opponent_masks = np.ones_like(render_masks, dtype=np.float32)
+            render_opponent_rnn_states = np.zeros_like(render_rnn_states, dtype=np.float32)
         while True:
             self.policy.prep_rollout()
             render_actions, render_rnn_states = self.policy.act(np.concatenate(render_obs),
@@ -294,13 +307,28 @@ class JSBSimRunner(Runner):
                                                                 deterministic=True)
             render_actions = np.expand_dims(_t2n(render_actions), axis=0)
             render_rnn_states = np.expand_dims(_t2n(render_rnn_states), axis=0)
-
+            
+            # [Selfplay] get actions of opponent policy
+            if self.use_selfplay:
+                render_opponent_actions, render_opponent_rnn_states \
+                    = self.eval_opponent_policy.act(np.concatenate(render_opponent_obs),
+                                                    np.concatenate(render_opponent_rnn_states),
+                                                    np.concatenate(render_opponent_masks),
+                                                    deterministic=True)
+                render_opponent_actions = np.expand_dims(_t2n(render_opponent_actions), axis=0)
+                render_opponent_rnn_states = np.expand_dims(_t2n(render_opponent_rnn_states), axis=0)
+                render_actions = np.concatenate((render_actions, render_opponent_actions), axis=1)
             # Obser reward and next obs
             render_obs, render_rewards, render_dones, render_infos = self.envs.step(render_actions)
+            if self.use_selfplay:
+                render_rewards = render_rewards[:, :self.num_agents // 2, ...]
             render_episode_rewards += render_rewards
             self.envs.render(mode='txt', filepath=f'{self.run_dir}/{self.experiment_name}.txt.acmi')
             if render_dones.any():
                 break
+            if self.use_selfplay:
+                render_opponent_obs = render_obs[:, self.num_agents // 2:, ...]
+                render_obs = render_obs[:, :self.num_agents // 2, ...]
 
         render_infos = {}
         render_infos['render_episode_reward'] = render_episode_rewards
