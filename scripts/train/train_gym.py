@@ -14,6 +14,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath
 from config import get_config
 from runner.jsbsim_runner import JSBSimRunner as Runner
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
+from envs import gym_hybrid
 
 
 class GymEnv:
@@ -41,15 +42,45 @@ class GymEnv:
     def close(self):
         pass
 
+class GymHybridEnv:
+    def __init__(self, env) -> None:
+        self.env = env
+        self.action_space = self.env.action_space
+        self.discrete_dims = self.action_space[0].shape[0]
+        self.continuous_dims = self.action_space[1].shape[0]
+        self.action_shape = (self.discrete_dims+self.continuous_dims,)
+        self.observation_space = self.env.observation_space
+    
+    def reset(self):
+        observation = self.env.reset()
+        return np.array(observation).reshape((1, -1))
+
+    def step(self, action):
+        action = np.array(action).reshape(self.action_shape)
+        discrete_a, continuous_a = action[:self.discrete_dims].astype(np.int32), action[self.discrete_dims:]
+        action = (discrete_a, continuous_a)
+        observation, reward, done, info = self.env.step(action)
+        observation = np.array(observation).reshape((1, -1))
+        done = np.array(done).reshape((1,-1))
+        reward = np.array(reward).reshape((1, -1))
+        return observation, reward, done, info
+
+    def render(self, mode="human"):
+        self.env.render(mode)
+
+    def close(self):
+        pass
 
 def make_train_env(all_args):
     def get_env_fn(rank):
         def init_env():
             env = gym.make(all_args.scenario_name)
+            if 'Moving' in  all_args.scenario_name:
+                return GymHybridEnv(env)
             # env.seed(all_args.seed + rank * 1000)
             return GymEnv(env)
         return init_env
-    if all_args.n_rollout_threads == 1:
+    if all_args.n_rollout_threads == 1: 
         return DummyVecEnv([get_env_fn(0)])
     else:
         return SubprocVecEnv([get_env_fn(i) for i in range(all_args.n_rollout_threads)])

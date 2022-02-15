@@ -35,10 +35,22 @@ class ACTLayer(nn.Module):
             for action_dim in action_dims:
                 action_outs.append(Categorical(input_dim, action_dim, gain))
             self.action_outs = nn.ModuleList(action_outs)
-        else:
-            raise NotImplementedError(f"Unsupported action space type: {type(act_space)}!")
-            # TODO: discrete + continous
+        elif isinstance(act_space, gym.spaces.Tuple) and  \
+              isinstance(act_space[0], gym.spaces.MultiDiscrete) and \
+                  isinstance(act_space[1], gym.spaces.Box):
+            # multidiscrete + continous
             self._mixed_action = True
+            discrete_dims = act_space[0].nvec
+            self._discrete_dim = act_space[0].shape[0]
+            continous_dim = act_space[1].shape[0]
+            self._continuous_dim = continous_dim
+            action_outs = []
+            for discrete_dim in discrete_dims:
+                action_outs.append(Categorical(input_dim, discrete_dim, gain))
+            action_outs.append(DiagGaussian(input_dim, continous_dim, gain))
+            self.action_outs = nn.ModuleList(action_outs)
+        else: 
+            raise NotImplementedError(f"Unsupported action space type: {type(act_space)}!")
 
     def forward(self, x, deterministic=False):
         """
@@ -55,7 +67,7 @@ class ACTLayer(nn.Module):
         if self._mlp_actlayer:
             x = self.mlp(x)
 
-        if self._multidiscrete_action:
+        if self._multidiscrete_action or self._mixed_action:
             actions = []
             action_log_probs = []
             for action_out in self.action_outs:
@@ -89,7 +101,33 @@ class ACTLayer(nn.Module):
         if self._mlp_actlayer:
             x = self.mlp(x)
 
-        if self._multidiscrete_action:
+        if self._mixed_action:
+            dis_action, con_action = action.split((self._discrete_dim, self._continuous_dim), dim=-1)
+            action_log_probs = []
+            dist_entropy = []
+            # multi-discrete action
+            dis_action = dis_action.long()
+            dis_action = torch.transpose(dis_action, 0, 1)
+            for action_out, act in zip(self.action_outs[:-1], dis_action):
+                action_dist = action_out(x)
+                action_log_probs.append(action_dist.log_probs(act.unsqueeze(-1)))
+                if active_masks is not None:
+                    dist_entropy.append((action_dist.entropy() * active_masks) / active_masks.sum())
+                else:
+                    dist_entropy.append(action_dist.entropy() / action_log_probs[-1].size(0))
+
+            # continuous action
+            con_action_dist = self.action_outs[-1](x)
+            action_log_probs.append(con_action_dist.log_probs(con_action))
+            if active_masks is not None:
+                dist_entropy.append((con_action_dist.entropy() * active_masks) / active_masks.sum())
+            else:
+                dist_entropy.append(con_action_dist.entropy() / action_log_probs[-1].size(0))
+
+            action_log_probs = torch.cat(action_log_probs, dim=-1).sum(dim=-1, keepdim=True)
+            dist_entropy = torch.cat(dist_entropy, dim=-1).sum(dim=-1, keepdim=True)
+
+        elif self._multidiscrete_action:
             action = torch.transpose(action, 0, 1)
             action_log_probs = []
             dist_entropy = []
@@ -124,7 +162,7 @@ class ACTLayer(nn.Module):
         """
         if self._mlp_actlayer:
             x = self.mlp(x)
-        if self._multidiscrete_action:
+        if self._multidiscrete_action or self._mixed_action:
             action_probs = []
             for action_out in self.action_outs:
                 action_dist = action_out(x)
@@ -140,6 +178,8 @@ class ACTLayer(nn.Module):
 
     @property
     def output_size(self) -> int:
+        if self._mixed_action:
+            return self.action_outs[-1].output_size + len(self.action_outs) - 1
         if self._multidiscrete_action:
             return len(self.action_outs)
         else:
