@@ -342,6 +342,7 @@ class ShareDummyVecEnv(DummyVecEnv, ShareVecEnv):
         env = self.envs[0]
         ShareVecEnv.__init__(self, len(self.envs), env.observation_space, env.share_observation_space, env.action_space)
         self.actions = None
+        self.num_agents = getattr(self.envs[0], "num_agents", 1)
 
     def step_wait(self):
         results = [env.step(a) for (a, env) in zip(self.actions, self.envs)]
@@ -402,6 +403,8 @@ def shareworker(remote: Connection, parent_remote: Connection, env_fn_wrappers):
                 break
             elif cmd == 'get_spaces':
                 remote.send(CloudpickleWrapper((envs[0].observation_space, envs[0].share_observation_space, envs[0].action_space)))
+            elif cmd == 'get_num_agents':
+                remote.send(CloudpickleWrapper((getattr(envs[0], "num_agents", 1))))
             else:
                 raise NotImplementedError
     except KeyboardInterrupt:
@@ -433,6 +436,8 @@ class ShareSubprocVecEnv(SubprocVecEnv, ShareVecEnv):
 
         self.remotes[0].send(('get_spaces', None))
         observation_space, share_observation_space, action_space = self.remotes[0].recv().x
+        self.remotes[0].send(('get_num_agents', None))
+        self.num_agents = self.remotes[0].recv().x
         ShareVecEnv.__init__(self, nenvs, observation_space, share_observation_space, action_space)
 
     def step_wait(self):

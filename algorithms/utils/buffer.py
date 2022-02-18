@@ -269,8 +269,9 @@ class ReplayBuffer(Buffer):
 
 class SharedReplayBuffer(ReplayBuffer):
 
-    def __init__(self, args, obs_space, share_obs_space, act_space):
+    def __init__(self, args, num_agents, obs_space, share_obs_space, act_space):
         # env config
+        self.num_agents = num_agents
         self.n_rollout_threads = args.n_rollout_threads
         # buffer config
         self.gamma = args.gamma
@@ -287,19 +288,20 @@ class SharedReplayBuffer(ReplayBuffer):
         act_shape = get_shape_from_space(act_space)
 
         # (o_0, s_0, a_0, r_0, d_0, ..., o_T, s_T)
-        self.obs = np.zeros((self.buffer_size + 1, self.n_rollout_threads, *obs_shape), dtype=np.float32)
-        self.share_obs = np.zeros((self.buffer_size + 1, self.n_rollout_threads, *share_obs_shape), dtype=np.float32)
-        self.actions = np.zeros((self.buffer_size, self.n_rollout_threads, *act_shape), dtype=np.float32)
-        self.rewards = np.zeros((self.buffer_size, self.n_rollout_threads, 1), dtype=np.float32)
+        self.obs = np.zeros((self.buffer_size + 1, self.n_rollout_threads, self.num_agents, *obs_shape), dtype=np.float32)
+        self.share_obs = np.zeros((self.buffer_size + 1, self.n_rollout_threads, self.num_agents, *share_obs_shape), dtype=np.float32)
+        self.actions = np.zeros((self.buffer_size, self.n_rollout_threads, self.num_agents, *act_shape), dtype=np.float32)
+        self.rewards = np.zeros((self.buffer_size, self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
         # NOTE: masks[t] = 1 - dones[t-1], which represents whether obs[t] is a terminal state .... same for all agents
-        self.masks = np.ones((self.buffer_size + 1, self.n_rollout_threads, 1), dtype=np.float32)
+        self.masks = np.ones((self.buffer_size + 1, self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
+        self.bad_masks = np.ones_like(self.masks)
         # NOTE: active_masks[t, :, i] represents whether agent[i] is alive in obs[t] .... differ in different agents
         self.active_masks = np.ones_like(self.masks)
         # pi(a)
-        self.action_log_probs = np.zeros((self.buffer_size, self.n_rollout_threads, *act_shape), dtype=np.float32)
+        self.action_log_probs = np.zeros((self.buffer_size, self.n_rollout_threads, self.num_agents, *act_shape), dtype=np.float32)
         # V(o), R(o) while advantage = returns - value_preds
-        self.value_preds = np.zeros((self.buffer_size + 1, self.n_rollout_threads, 1), dtype=np.float32)
-        self.returns = np.zeros((self.buffer_size + 1, self.n_rollout_threads, 1), dtype=np.float32)
+        self.value_preds = np.zeros((self.buffer_size + 1, self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
+        self.returns = np.zeros((self.buffer_size + 1, self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
         # rnn
         self.rnn_states_actor = np.zeros((self.buffer_size + 1, self.n_rollout_threads, self.num_agents,
                                           self.recurrent_hidden_layers, self.recurrent_hidden_size), dtype=np.float32)
@@ -313,11 +315,11 @@ class SharedReplayBuffer(ReplayBuffer):
                actions: np.ndarray,
                rewards: np.ndarray,
                masks: np.ndarray,
-               bad_masks: np.ndarray,
                action_log_probs: np.ndarray,
                value_preds: np.ndarray,
                rnn_states_actor: np.ndarray,
                rnn_states_critic: np.ndarray,
+               bad_masks: Union[np.ndarray, None] = None,
                active_masks: Union[np.ndarray, None] = None,
                available_actions: Union[np.ndarray, None] = None):
         """Insert numpy data.
@@ -338,10 +340,11 @@ class SharedReplayBuffer(ReplayBuffer):
             self.active_masks[self.step + 1] = active_masks.copy()
         if available_actions is not None:
             pass
-        return super().insert(obs, actions, rewards, masks, bad_masks, action_log_probs, value_preds, rnn_states_actor, rnn_states_critic)
+        return super().insert(obs, actions, rewards, masks, action_log_probs, value_preds, rnn_states_actor, rnn_states_critic)
 
     def after_update(self):
         self.active_masks[0] = self.active_masks[-1].copy()
+        self.share_obs[0] = self.share_obs[-1].copy()
         return super().after_update()
 
     def recurrent_generator(self, advantages: np.ndarray, num_mini_batch: int, data_chunk_length: int):
