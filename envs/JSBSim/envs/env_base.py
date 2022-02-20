@@ -44,7 +44,7 @@ class BaseEnv(gym.Env):
 
     @property
     def agents(self) -> Dict[str, AircraftSimulator]:
-        return self.__jsbsims
+        return self._jsbsims
 
     @property
     def time_interval(self) -> int:
@@ -59,9 +59,9 @@ class BaseEnv(gym.Env):
         self.task = BaseTask(self.config)
 
     def load_simulator(self):
-        self.__jsbsims = {}     # type: Dict[str, AircraftSimulator]
+        self._jsbsims = {}     # type: Dict[str, AircraftSimulator]
         for uid, config in self.config.aircraft_configs.items():
-            self.__jsbsims[uid] = AircraftSimulator(
+            self._jsbsims[uid] = AircraftSimulator(
                 uid=uid,
                 color=config.get("color", "Red"),
                 model=config.get("model", "f16"),
@@ -70,13 +70,13 @@ class BaseEnv(gym.Env):
                 sim_freq=self.sim_freq,
                 num_missiles=config.get("missile", 0))
         # Different teams have different uid[0]
-        _default_team_uid = list(self.__jsbsims.keys())[0][0]
-        self.ego_ids = [uid for uid in self.__jsbsims.keys() if uid[0] == _default_team_uid]
-        self.enm_ids = [uid for uid in self.__jsbsims.keys() if uid[0] != _default_team_uid]
+        _default_team_uid = list(self._jsbsims.keys())[0][0]
+        self.ego_ids = [uid for uid in self._jsbsims.keys() if uid[0] == _default_team_uid]
+        self.enm_ids = [uid for uid in self._jsbsims.keys() if uid[0] != _default_team_uid]
 
         # Link jsbsims
-        for key, sim in self.__jsbsims.items():
-            for k, s in self.__jsbsims.items():
+        for key, sim in self._jsbsims.items():
+            for k, s in self._jsbsims.items():
                 if k == key:
                     pass
                 elif k[0] == key[0]:
@@ -97,7 +97,7 @@ class BaseEnv(gym.Env):
         """
         # reset sim
         self.current_step = 0
-        for sim in self.__jsbsims.values():
+        for sim in self._jsbsims.values():
             sim.reload()
         self._tempsims.clear()
         # reset task
@@ -130,7 +130,7 @@ class BaseEnv(gym.Env):
             self.agents[agent_id].set_property_values(self.task.action_var, a_action)
         # run simulation
         for _ in range(self.agent_interaction_steps):
-            for sim in self.__jsbsims.values():
+            for sim in self._jsbsims.values():
                 sim.run()
             for sim in self._tempsims.values():
                 sim.run()
@@ -172,11 +172,11 @@ class BaseEnv(gym.Env):
         NOTE: Environments automatically close() when garbage collected or when the
         program exits.
         """
-        for sim in self.__jsbsims.values():
+        for sim in self._jsbsims.values():
             sim.close()
         for sim in self._tempsims.values():
             sim.close()
-        self.__jsbsims.clear()
+        self._jsbsims.clear()
         self._tempsims.clear()
 
     def render(self, mode="txt", filepath='./JSBSimRecording.txt.acmi'):
@@ -208,7 +208,7 @@ class BaseEnv(gym.Env):
             with open(filepath, mode='a', encoding='utf-8-sig') as f:
                 timestamp = self.current_step * self.time_interval
                 f.write(f"#{timestamp:.2f}\n")
-                for sim in self.__jsbsims.values():
+                for sim in self._jsbsims.values():
                     log_msg = sim.log()
                     if log_msg is not None:
                         f.write(log_msg + "\n")

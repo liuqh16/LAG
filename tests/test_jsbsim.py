@@ -274,24 +274,28 @@ class TestJSBSimRunner:
         envs.close()
 
 
-@pytest.mark.skip()
 class TestMultipleCombatEnv:
 
-    def test_env(self):
+    @pytest.mark.parametrize("config", ["2v2/NoWeapon/Selfplay", "2v2/NoWeapon/HierarchySelfplay",
+                                        "2v2/ShootMissile/HierarchySelfplay"])
+    def test_env(self, config):
         # Env Settings test
-        env = MultipleCombatEnv("2v2/NoWeapon/Selfplay")
+        env = MultipleCombatEnv(config)
         assert env.num_agents == 4
         for agent in env.agents.values():
             assert len(agent.partners) == 1
             assert len(agent.enemies) == 2
-        assert isinstance(env.observation_space, dict) \
-            and isinstance(env.share_observation_space, dict) \
-            and isinstance(env.action_space, dict)
+
+        obs_shape = (env.num_agents, *env.observation_space.shape)
+        share_obs_shape = (env.num_agents, *env.share_observation_space.shape)
+        reward_shape = (env.num_agents, 1)
+        done_shape = (env.num_agents, 1)
 
         # DataType test
         env.seed(0)
         env.action_space.seed(0)
         obs, share_obs = env.reset()
+        assert obs.shape == obs_shape and share_obs.shape == share_obs_shape
 
         obs_buf = [obs]
         share_buf = [share_obs]
@@ -299,35 +303,42 @@ class TestMultipleCombatEnv:
         rew_buf = []
         done_buff = []
         while True:
-            actions = {}
+            actions = [env.action_space.sample() for _ in range(env.num_agents)]
             obs, share_obs, rewards, dones, info = env.step(actions)
+            assert obs.shape == obs_shape and rewards.shape == reward_shape and dones.shape == done_shape and share_obs_shape
             # save previous data
             obs_buf.append(obs)
             share_buf.append(share_obs)
             act_buf.append(actions)
             rew_buf.append(rewards)
             done_buff.append(dones)
-            if np.all(list(dones.values())):
+            if np.any(dones[0]):
                 assert env.current_step <= env.max_steps
                 break
 
         # Repetition test (same seed => same data)
         env.seed(0)
         obs, share_obs = env.reset()
+        t = 0
+        assert np.linalg.norm(obs - obs_buf[t]) < 1e-8 \
+            and np.linalg.norm(share_obs - share_buf[t]) < 1e-8
+        while t < len(done_buff):
+            obs, share_obs, rewards, dones, info = env.step(act_buf[t])
+            assert np.linalg.norm(obs - obs_buf[t + 1]) < 1e-8 \
+                and np.linalg.norm(share_obs - share_buf[t+1]) < 1e-8 \
+                and np.all(rewards == rew_buf[t]) and np.all(dones == done_buff[t])
+            t += 1
 
     def test_agent_die(self):
-        # if no weapon, once all enemies die, env terminate!
         env = MultipleCombatEnv("2v2/NoWeapon/Selfplay")
-        partner_id = env.agents[env.agents[0]].partners[0].uid
-        enemy0_id = env.agents[env.agents[0]].enemies[0].uid
-        enemy1_id = env.agents[env.agents[0]].enemies[1].uid
+        uid = list(env.agents.keys())[0]
+        partner_id = env.agents[uid].partners[0].uid
+        enemy0_id = env.agents[uid].enemies[0].uid
+        enemy1_id = env.agents[uid].enemies[1].uid
         env.seed(0)
         env.reset()
         while True:
-            actions = {}
-            for agent_id in env.agents:
-                actions[agent_id] = np.array([20, 18.6, 20, 0])
-
+            actions = [np.array([20, 18.6, 20, 0]) for _ in range(env.num_agents)]
             if env.current_step == 20:
                 env.agents[partner_id].crash()
             if env.current_step == 40:
@@ -336,7 +347,8 @@ class TestMultipleCombatEnv:
                 env.agents[enemy1_id].crash()
 
             obs, share_obs, rewards, dones, info = env.step(actions)
-
+            rewards = env._unpack(rewards)
+            dones = env._unpack(dones)
             if env.current_step > 20:
                 assert dones[partner_id] == True and rewards[partner_id] == 0.0
                 if env.current_step > 40:
@@ -349,19 +361,18 @@ class TestMultipleCombatEnv:
         env.seed(0)
         env.reset()
         while True:
-            actions = {}
-            for agent_id in env.agents:
-                actions[agent_id] = np.array([20, 18.6, 20, 0])
+            actions = [np.array([20, 18.6, 20, 0]) for _ in range(env.num_agents)]
 
             if env.current_step == 20:
                 env.agents[enemy0_id].crash()
             if env.current_step == 40:
                 env.agents[enemy1_id].crash()
                 from envs.JSBSim.core.simulatior import MissileSimulator
-                env.add_temp_simulator(MissileSimulator.create(env.agents[enemy1_id], env.agents[env.agents[0]], uid="C0000"))
+                env.add_temp_simulator(MissileSimulator.create(env.agents[enemy1_id], env.agents[uid], uid="C0000"))
 
             obs, share_obs, rewards, dones, info = env.step(actions)
-
+            rewards = env._unpack(rewards)
+            dones = env._unpack(dones)
             if env.current_step > 20:
                 assert dones[enemy0_id] == True and rewards[enemy0_id] == 0.0
                 if env.current_step > 40:
@@ -371,29 +382,24 @@ class TestMultipleCombatEnv:
                 break
 
     @pytest.mark.parametrize("vecenv, config", list(product(
-        [ShareDummyVecEnv, ShareSubprocVecEnv], ["2v2/NoWeapon/Selfplay"])))
+        [ShareDummyVecEnv, ShareSubprocVecEnv], ["2v2/NoWeapon/Selfplay", "2v2/NoWeapon/HierarchySelfplay",
+                                        "2v2/ShootMissile/HierarchySelfplay"])))
     def test_vec_env(self, vecenv, config):
         parallel_num = 4
         envs = vecenv([lambda: MultipleCombatEnv(config) for _ in range(parallel_num)])
-        obss, share_obss = envs.reset()
-        assert obss.shape[0] == parallel_num and \
-            share_obss.shape[0] == parallel_num
+        assert envs.num_agents == 4
+        obs_shape = (parallel_num, envs.num_agents, *envs.observation_space.shape)
+        share_obs_shape = (parallel_num, envs.num_agents, *envs.share_observation_space.shape)
+        reward_shape = (parallel_num, envs.num_agents, 1)
+        done_shape = (parallel_num, envs.num_agents, 1)
 
-        actions = [dict([(agent_id, envs.action_space[agent_id].sample()) for agent_id in envs.agents]) for _ in range(parallel_num)]
+        # DataType test
+        obs, share_obs = envs.reset()
+        assert obs.shape == obs_shape and share_obs.shape == share_obs_shape
         while True:
-            obss, share_obss, rewards, dones, infos = envs.step(actions)
-            # check parallel env's data type
-            assert isinstance(obss, np.ndarray) and isinstance(obss[0], dict) and obss.shape[0] == parallel_num \
-                and isinstance(share_obss, np.ndarray) and isinstance(share_obss[0], dict) and share_obss.shape[0] == parallel_num \
-                and isinstance(rewards, np.ndarray) and isinstance(rewards[0], dict) and rewards.shape[0] == parallel_num \
-                and isinstance(dones, np.ndarray) and isinstance(dones[0], dict) and dones.shape[0] == parallel_num \
-                and isinstance(infos, np.ndarray) and isinstance(infos[0], dict) and infos.shape[0] == parallel_num
-            for i in range(parallel_num):
-                for agent_id in envs.agents:
-                    assert obss[i][agent_id].shape == envs.observation_space[agent_id].shape \
-                        and isinstance(rewards[i][agent_id], float) \
-                        and isinstance(dones[i][agent_id], bool)
-            # terminate if any of the parallel envs has been done
-            if np.any(list(map(lambda x: np.all(list(x.values())), dones))):
+            actions = np.array([[envs.action_space.sample() for _ in range(envs.num_agents)] for _ in range(parallel_num)])
+            obs, share_obs, rewards, dones, info = envs.step(actions)
+            assert obs.shape == obs_shape and rewards.shape == reward_shape and dones.shape == done_shape and share_obs_shape
+            if np.any(dones[0]):
                 break
         envs.close()

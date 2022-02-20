@@ -12,7 +12,8 @@ from pathlib import Path
 import setproctitle
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 from config import get_config
-from runner.jsbsim_runner import JSBSimRunner as Runner
+from runner.jsbsim_runner import JSBSimRunner
+from runner.share_jsbsim_runner import ShareJSBSimRunner
 from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv, MultipleCombatEnv
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv, ShareSubprocVecEnv, ShareDummyVecEnv
 
@@ -147,7 +148,10 @@ def main(args):
     }
 
     # run experiments
-    runner = Runner(config)
+    if all_args.env_name == "MultipleCombat":
+        runner = ShareJSBSimRunner(config)
+    else:
+        runner = JSBSimRunner(config)
     try:
         runner.run()
     except BaseException:

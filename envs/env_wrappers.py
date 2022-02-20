@@ -346,10 +346,13 @@ class ShareDummyVecEnv(DummyVecEnv, ShareVecEnv):
 
     def step_wait(self):
         results = [env.step(a) for (a, env) in zip(self.actions, self.envs)]
-        obs, share_obs, rews, dones, infos = map(np.array, zip(*results))
+        obs, share_obs, rews, dones, infos = map(list, zip(*results))
         for (i, done) in enumerate(dones):
             if 'bool' in done.__class__.__name__:
                 if done:
+                    obs[i], share_obs[i] = self.envs[i].reset()
+            elif isinstance(done, (list, tuple, np.ndarray)):
+                if np.all(done):
                     obs[i], share_obs[i] = self.envs[i].reset()
             elif isinstance(done, dict):
                 if np.all(list(done.values())):
@@ -357,7 +360,7 @@ class ShareDummyVecEnv(DummyVecEnv, ShareVecEnv):
             else:
                 raise NotImplementedError("Unexpected type of done!")
         self.actions = None
-        return obs, share_obs, rews, dones, infos
+        return self._flatten(obs), self._flatten(share_obs), self._flatten(rews), self._flatten(dones), np.array(infos)
 
     def reset(self):
         results = [env.reset() for env in self.envs]
@@ -436,17 +439,18 @@ class ShareSubprocVecEnv(SubprocVecEnv, ShareVecEnv):
 
         self.remotes[0].send(('get_spaces', None))
         observation_space, share_observation_space, action_space = self.remotes[0].recv().x
+        ShareVecEnv.__init__(self, nenvs, observation_space, share_observation_space, action_space)
+
         self.remotes[0].send(('get_num_agents', None))
         self.num_agents = self.remotes[0].recv().x
-        ShareVecEnv.__init__(self, nenvs, observation_space, share_observation_space, action_space)
 
     def step_wait(self):
         self._assert_not_closed()
         results = [remote.recv() for remote in self.remotes]
-        results = self._flatten_series(results)
+        results = self._flatten_series(results) # [[tuple] * in_series] * nremotes => [tuple] * nenvs
         self.waiting = False
-        obss, share_obss, rewards, dones, infos = map(np.array, zip(*results))
-        return obss, share_obss, rewards, dones, infos
+        obs, share_obs, rewards, dones, infos = zip(*results) 
+        return self._flatten(obs), self._flatten(share_obs), self._flatten(rewards), self._flatten(dones), np.array(infos)
 
     def reset(self):
         self._assert_not_closed()
@@ -454,5 +458,5 @@ class ShareSubprocVecEnv(SubprocVecEnv, ShareVecEnv):
             remote.send(('reset', None))
         results = [remote.recv() for remote in self.remotes]
         results = self._flatten_series(results)
-        obss, share_obss = map(np.array, zip(*results))
-        return obss, share_obss
+        obs, share_obs = zip(*results)
+        return self._flatten(obs), self._flatten(share_obs)

@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Tuple, Dict, Any
 from .env_base import BaseEnv
-from ..tasks.multiplecombat_task import MultipleCombatTask
+from ..tasks.multiplecombat_task import HierarchicalMultipleCombatShootTask, HierarchicalMultipleCombatTask, MultipleCombatTask
 
 
 class MultipleCombatEnv(BaseEnv):
@@ -21,6 +21,10 @@ class MultipleCombatEnv(BaseEnv):
         taskname = getattr(self.config, 'task', None)
         if taskname == 'multiplecombat':
             self.task = MultipleCombatTask(self.config)
+        elif taskname == 'hierarchical_multiplecombat':
+            self.task = HierarchicalMultipleCombatTask(self.config)
+        elif taskname == 'hierarchical_multiplecombat_shoot':
+            self.task = HierarchicalMultipleCombatShootTask(self.config)
         else:
             raise NotImplementedError(f"Unknown taskname: {taskname}")
 
@@ -34,7 +38,9 @@ class MultipleCombatEnv(BaseEnv):
         self.current_step = 0
         self.reset_simulators()
         self.task.reset(self)
-        return self.get_obs(), self.get_state()
+        obs = self.get_obs()
+        share_obs = self.get_state()
+        return self._pack(obs), self._pack(share_obs)
 
     def reset_simulators(self):
         # Assign new initial condition here!
@@ -42,8 +48,7 @@ class MultipleCombatEnv(BaseEnv):
             sim.reload()
         self._tempsims.clear()
 
-    def step(self, action: Dict[str, Any]) -> \
-            Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Dict[str, float], Dict[str, bool], dict]:
+    def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
         """Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`
         to reset this environment's observation. Accepts an action and
@@ -64,6 +69,7 @@ class MultipleCombatEnv(BaseEnv):
         info = {"current_step": self.current_step}
 
         # apply actions
+        action = self._unpack(action)
         for agent_id in self.agents.keys():
             a_action = self.task.normalize_action(self, agent_id, action[agent_id])
             self.agents[agent_id].set_property_values(self.task.action_var, a_action)
@@ -74,16 +80,17 @@ class MultipleCombatEnv(BaseEnv):
             for sim in self._tempsims.values():
                 sim.run()
         self.task.step(self)
-
         obs = self.get_obs()
         share_obs = self.get_state()
 
-        rewards = {}    # type: Dict[str, float]
+        rewards = {}
         for agent_id in self.agents.keys():
-            rewards[agent_id], info = self.task.get_reward(self, agent_id, info)
+            reward, info = self.task.get_reward(self, agent_id, info)
+            rewards[agent_id] = [reward]
 
-        dones = {}      # type: Dict[str, bool]
+        dones = {}
         for agent_id in self.agents.keys():
-            dones[agent_id], info = self.task.get_termination(self, agent_id, info)
+            done, info = self.task.get_termination(self, agent_id, info)
+            dones[agent_id] = [done]
 
-        return obs, share_obs, rewards, dones, info
+        return self._pack(obs), self._pack(share_obs), self._pack(rewards), self._pack(dones), info

@@ -100,7 +100,7 @@ class SingleCombatDodgeMissileTask(SingleCombatTask):
     def reset(self, env):
         """Reset fighter blood & missile status
         """
-        self._last_shoot_time = {agent_id: 0 for agent_id in env.agents.keys()}
+        self._last_shoot_time = {agent_id: -self.min_attack_interval for agent_id in env.agents.keys()}
         self.remaining_missiles = {agent_id: agent.num_missiles for agent_id, agent in env.agents.items()}
         self.lock_duration = {agent_id: deque(maxlen=int(1 / env.time_interval)) for agent_id in env.agents.keys()}
         return super().reset(env)
@@ -193,7 +193,7 @@ class HierarchicalSingleCombatShootTask(HierarchicalSingleCombatTask, SingleComb
 
     def reset(self, env):
         self._shoot_action = {agent_id: False for agent_id in env.agents.keys()}
-        self._last_shoot_time = {agent_id: 0 for agent_id in env.agents.keys()}
+        self._last_shoot_time = {agent_id: -self.min_attack_interval for agent_id in env.agents.keys()}
         self._remaining_missiles = {agent_id: agent.num_missiles for agent_id, agent in env.agents.items()}
         return HierarchicalSingleCombatTask.reset(self, env)
 
