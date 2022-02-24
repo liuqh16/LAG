@@ -400,6 +400,5 @@ class TestMultipleCombatEnv:
             actions = np.array([[envs.action_space.sample() for _ in range(envs.num_agents)] for _ in range(parallel_num)])
             obs, share_obs, rewards, dones, info = envs.step(actions)
             assert obs.shape == obs_shape and rewards.shape == reward_shape and dones.shape == done_shape and share_obs_shape
-            if np.any(dones[0]):
-                break
+            break
         envs.close()
