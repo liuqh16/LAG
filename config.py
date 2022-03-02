@@ -136,6 +136,8 @@ def _get_network_config(parser: argparse.ArgumentParser):
                        help="Whether to apply LayerNorm to the feature extraction inputs")
     group.add_argument("--gain", type=float, default=0.01,
                        help="The gain # of last action layer")
+    group.add_argument("--use-prior", action='store_true', default=False,
+                       help="Whether to use prior hunman info to update network, use only on missile shoot task")
     return parser
 
 

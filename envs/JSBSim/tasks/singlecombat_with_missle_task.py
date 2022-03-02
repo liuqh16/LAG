@@ -5,7 +5,7 @@ from collections import deque
 from .singlecombat_task import SingleCombatTask, HierarchicalSingleCombatTask
 from ..reward_functions import AltitudeReward, PostureReward, MissilePostureReward, EventDrivenReward
 from ..core.simulatior import MissileSimulator
-from ..utils.utils import LLA2NEU, get2d_AO_TA_R
+from ..utils.utils import LLA2NEU, get_AO_TA_R
 
 
 class SingleCombatDodgeMissileTask(SingleCombatTask):
@@ -77,7 +77,7 @@ class SingleCombatDodgeMissileTask(SingleCombatTask):
         norm_obs[7] = ego_obs_list[11] / 340
         norm_obs[8] = ego_obs_list[12] / 340
         # (2) relative enm info
-        ego_AO, ego_TA, R, side_flag = get2d_AO_TA_R(ego_feature, enm_feature, return_side=True)
+        ego_AO, ego_TA, R, side_flag = get_AO_TA_R(ego_feature, enm_feature, return_side=True)
         norm_obs[9] = (enm_obs_list[9] - ego_obs_list[9]) / 340
         norm_obs[10] = (enm_obs_list[2] - ego_obs_list[2]) / 1000
         norm_obs[11] = ego_AO
@@ -88,7 +88,7 @@ class SingleCombatDodgeMissileTask(SingleCombatTask):
         missile_sim = env.agents[agent_id].check_missile_warning()
         if missile_sim is not None:
             missile_feature = np.concatenate((missile_sim.get_position(), missile_sim.get_velocity()))
-            ego_AO, ego_TA, R, side_flag = get2d_AO_TA_R(ego_feature, missile_feature, return_side=True)
+            ego_AO, ego_TA, R, side_flag = get_AO_TA_R(ego_feature, missile_feature, return_side=True)
             norm_obs[15] = (np.linalg.norm(missile_sim.get_velocity()) - ego_obs_list[9]) / 340
             norm_obs[16] = (missile_feature[2] - ego_obs_list[2]) / 1000
             norm_obs[17] = ego_AO
@@ -100,7 +100,7 @@ class SingleCombatDodgeMissileTask(SingleCombatTask):
     def reset(self, env):
         """Reset fighter blood & missile status
         """
-        self._last_shoot_time = {agent_id: 0 for agent_id in env.agents.keys()}
+        self._last_shoot_time = {agent_id: -self.min_attack_interval for agent_id in env.agents.keys()}
         self.remaining_missiles = {agent_id: agent.num_missiles for agent_id, agent in env.agents.items()}
         self.lock_duration = {agent_id: deque(maxlen=int(1 / env.time_interval)) for agent_id in env.agents.keys()}
         return super().reset(env)
@@ -167,7 +167,8 @@ class HierarchicalSingleCombatShootTask(HierarchicalSingleCombatTask, SingleComb
         self.reward_functions = [
             PostureReward(self.config),
             AltitudeReward(self.config),
-            EventDrivenReward(self.config)
+            EventDrivenReward(self.config),
+            MissilePostureReward(self.config)
         ]
 
     def load_observation_space(self):
@@ -175,7 +176,7 @@ class HierarchicalSingleCombatShootTask(HierarchicalSingleCombatTask, SingleComb
 
     def load_action_space(self):
         # altitude control + heading control + velocity control + shoot control
-        self.action_space = spaces.Tuple([spaces.MultiDiscrete([3, 5, 3]), spaces.Box(low=np.array([0,0]), high=np.array([100,100]))])
+        self.action_space = spaces.Tuple([spaces.MultiDiscrete([3, 5, 3]), spaces.Discrete(2)])
 
     def get_obs(self, env, agent_id):
         return SingleCombatDodgeMissileTask.get_obs(self, env, agent_id)
@@ -188,45 +189,20 @@ class HierarchicalSingleCombatShootTask(HierarchicalSingleCombatTask, SingleComb
             return action
         else:
             # [beta distrition control shoot]
-            self._alpha[agent_id] = np.clip(action[3], 0, 100)
-            self._beta[agent_id] = np.clip(action[4], 0, 100)
+            self._shoot_action[agent_id] = action[3]
             return HierarchicalSingleCombatTask.normalize_action(self, env, agent_id, action[:3].astype(np.int32))
 
     def reset(self, env):
-        self._alpha = {agent_id: 0 for agent_id in env.agents.keys()}
-        self._beta = {agent_id: 0  for agent_id in env.agents.keys()}
-        self._last_shoot_time = {agent_id: 0 for agent_id in env.agents.keys()}
+        self._shoot_action = {agent_id: 0 for agent_id in env.agents.keys()}
+        self._last_shoot_time = {agent_id: -self.min_attack_interval for agent_id in env.agents.keys()}
         self._remaining_missiles = {agent_id: agent.num_missiles for agent_id, agent in env.agents.items()}
         return HierarchicalSingleCombatTask.reset(self, env)
 
     def step(self, env):
         for agent_id, agent in env.agents.items():
             # [RL-based missile launch with limited condition]
-            target = agent.enemies[0].get_position() - agent.get_position()
-            heading = agent.get_velocity()
-            distance = np.linalg.norm(target)
-            attack_angle = np.rad2deg(np.arccos(np.clip(np.sum(target * heading) / (distance * np.linalg.norm(heading) + 1e-8), -1, 1)))
             shoot_interval = env.current_step - self._last_shoot_time[agent_id]
-
-            # [beta distribution control shoot]
-            alpha0, beta0 = 10, 10
-            if distance <= 8000:
-                alpha0 = 10
-            elif distance <= 12000:
-                alpha0 = 6
-            else:
-                alpha0 = 3
-            if attack_angle <= 22.5:
-                beta0 = 3
-            elif attack_angle <= 45:
-                beta0 = 6
-            else:
-                beta0 = 10
-            # probablity of shoot
-            shoot_p = env.np_random.beta(alpha0 + self._alpha[agent_id], beta0 + self._beta[agent_id])
-
-            shoot_interval = env.current_step - self._last_shoot_time[agent_id]
-            shoot_flag = agent.is_alive and shoot_p > 0.5 and self._remaining_missiles[agent_id] > 0 \
+            shoot_flag = agent.is_alive and self._shoot_action[agent_id] and self._remaining_missiles[agent_id] > 0 \
                 and shoot_interval >= self.min_attack_interval
 
             if shoot_flag:

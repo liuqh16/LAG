@@ -20,8 +20,8 @@ def get_shape_from_space(space):
         return space.shape
     elif isinstance(space,gym.spaces.Tuple) and \
            isinstance(space[0], gym.spaces.MultiDiscrete) and \
-               isinstance(space[1], gym.spaces.Box):
-        return (space[0].shape[0] + space[1].shape[0],)
+               isinstance(space[1], gym.spaces.Discrete):
+        return (space[0].shape[0] + 1,)
     else:
         raise NotImplementedError(f"Unsupported action space type: {type(space)}!")
 

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import gym.spaces
 from .mlp import MLPLayer
-from .distributions import Categorical, DiagGaussian, Bernoulli
+from .distributions import BetaShootBernoulli, Categorical, DiagGaussian, Bernoulli
 
 
 class ACTLayer(nn.Module):
@@ -12,6 +12,7 @@ class ACTLayer(nn.Module):
         self._continuous_action = False
         self._multidiscrete_action = False
         self._mixed_action = False
+        self._shoot_action = False
 
         if len(hidden_size) > 0:
             self._mlp_actlayer = True
@@ -37,22 +38,22 @@ class ACTLayer(nn.Module):
             self.action_outs = nn.ModuleList(action_outs)
         elif isinstance(act_space, gym.spaces.Tuple) and  \
               isinstance(act_space[0], gym.spaces.MultiDiscrete) and \
-                  isinstance(act_space[1], gym.spaces.Box):
-            # multidiscrete + continous
-            self._mixed_action = True
+                  isinstance(act_space[1], gym.spaces.Discrete):
+            # NOTE: only for shoot missile
+            self._shoot_action = True
             discrete_dims = act_space[0].nvec
             self._discrete_dim = act_space[0].shape[0]
-            continous_dim = act_space[1].shape[0]
-            self._continuous_dim = continous_dim
+            self._control_shoot_dim = 2
+            self._shoot_dim = 1
             action_outs = []
             for discrete_dim in discrete_dims:
                 action_outs.append(Categorical(input_dim, discrete_dim, gain))
-            action_outs.append(DiagGaussian(input_dim, continous_dim, gain))
+            action_outs.append(BetaShootBernoulli(input_dim, self._control_shoot_dim, gain))
             self.action_outs = nn.ModuleList(action_outs)
         else: 
             raise NotImplementedError(f"Unsupported action space type: {type(act_space)}!")
 
-    def forward(self, x, deterministic=False):
+    def forward(self, x, deterministic=False, **kwargs):
         """
         Compute actions and action logprobs from given input.
 
@@ -67,7 +68,7 @@ class ACTLayer(nn.Module):
         if self._mlp_actlayer:
             x = self.mlp(x)
 
-        if self._multidiscrete_action or self._mixed_action:
+        if self._multidiscrete_action:
             actions = []
             action_log_probs = []
             for action_out in self.action_outs:
@@ -78,6 +79,22 @@ class ACTLayer(nn.Module):
                 action_log_probs.append(action_log_prob)
             actions = torch.cat(actions, dim=-1)
             action_log_probs = torch.cat(action_log_probs, dim=-1).sum(dim=-1, keepdim=True)
+        
+        elif self._shoot_action:
+            actions = []
+            action_log_probs = []
+            for action_out in self.action_outs[:-1]:
+                action_dist = action_out(x)
+                action = action_dist.mode() if deterministic else action_dist.sample()
+                action_log_prob = action_dist.log_probs(action)
+                actions.append(action)
+                action_log_probs.append(action_log_prob)
+            shoot_action_dist = self.action_outs[-1](x, **kwargs)
+            shoot_action = action_dist.mode() if deterministic else shoot_action_dist.sample()
+            actions.append(shoot_action)
+            actions = torch.cat(actions, dim=-1)
+            action_log_probs = torch.cat(action_log_probs, dim=-1).sum(dim=-1, keepdim=True)
+
 
         else:
             action_dists = self.action_out(x)
@@ -85,7 +102,7 @@ class ACTLayer(nn.Module):
             action_log_probs = action_dists.log_probs(actions)
         return actions, action_log_probs
 
-    def evaluate_actions(self, x, action, active_masks=None):
+    def evaluate_actions(self, x, action, active_masks=None, **kwargs):
         """
         Compute log probability and entropy of given actions.
 
@@ -101,32 +118,6 @@ class ACTLayer(nn.Module):
         if self._mlp_actlayer:
             x = self.mlp(x)
 
-        if self._mixed_action:
-            dis_action, con_action = action.split((self._discrete_dim, self._continuous_dim), dim=-1)
-            action_log_probs = []
-            dist_entropy = []
-            # multi-discrete action
-            dis_action = dis_action.long()
-            dis_action = torch.transpose(dis_action, 0, 1)
-            for action_out, act in zip(self.action_outs[:-1], dis_action):
-                action_dist = action_out(x)
-                action_log_probs.append(action_dist.log_probs(act.unsqueeze(-1)))
-                if active_masks is not None:
-                    dist_entropy.append((action_dist.entropy() * active_masks) / active_masks.sum())
-                else:
-                    dist_entropy.append(action_dist.entropy() / action_log_probs[-1].size(0))
-
-            # continuous action
-            con_action_dist = self.action_outs[-1](x)
-            action_log_probs.append(con_action_dist.log_probs(con_action))
-            if active_masks is not None:
-                dist_entropy.append((con_action_dist.entropy() * active_masks) / active_masks.sum())
-            else:
-                dist_entropy.append(con_action_dist.entropy() / action_log_probs[-1].size(0))
-
-            action_log_probs = torch.cat(action_log_probs, dim=-1).sum(dim=-1, keepdim=True)
-            dist_entropy = torch.cat(dist_entropy, dim=-1).sum(dim=-1, keepdim=True)
-
         elif self._multidiscrete_action:
             action = torch.transpose(action, 0, 1)
             action_log_probs = []
@@ -138,6 +129,31 @@ class ACTLayer(nn.Module):
                     dist_entropy.append((action_dist.entropy() * active_masks) / active_masks.sum())
                 else:
                     dist_entropy.append(action_dist.entropy() / action_log_probs[-1].size(0))
+            action_log_probs = torch.cat(action_log_probs, dim=-1).sum(dim=-1, keepdim=True)
+            dist_entropy = torch.cat(dist_entropy, dim=-1).sum(dim=-1, keepdim=True)
+
+        if self._shoot_action:
+            dis_action, shoot_action = action.split((self._discrete_dim, self._shoot_dim), dim=-1)
+            action_log_probs = []
+            dist_entropy = []
+            # multi-discrete action
+            dis_action = torch.transpose(dis_action, 0, 1)
+            for action_out, act in zip(self.action_outs[:-1], dis_action):
+                action_dist = action_out(x)
+                action_log_probs.append(action_dist.log_probs(act.unsqueeze(-1)))
+                if active_masks is not None:
+                    dist_entropy.append((action_dist.entropy() * active_masks) / active_masks.sum())
+                else:
+                    dist_entropy.append(action_dist.entropy() / action_log_probs[-1].size(0))
+
+            # shoot action
+            shoot_action_dist = self.action_outs[-1](x, **kwargs)
+            action_log_probs.append(shoot_action_dist.log_probs(shoot_action))
+            if active_masks is not None:
+                dist_entropy.append((shoot_action_dist.entropy() * active_masks) / active_masks.sum())
+            else:
+                dist_entropy.append(shoot_action_dist.entropy() / action_log_probs[-1].size(0))
+
             action_log_probs = torch.cat(action_log_probs, dim=-1).sum(dim=-1, keepdim=True)
             dist_entropy = torch.cat(dist_entropy, dim=-1).sum(dim=-1, keepdim=True)
 
@@ -162,14 +178,14 @@ class ACTLayer(nn.Module):
         """
         if self._mlp_actlayer:
             x = self.mlp(x)
-        if self._multidiscrete_action or self._mixed_action:
+        if self._multidiscrete_action:
             action_probs = []
             for action_out in self.action_outs:
                 action_dist = action_out(x)
                 action_prob = action_dist.probs
                 action_probs.append(action_prob)
             action_probs = torch.cat(action_probs, dim=-1)
-        elif self._continuous_action:
+        elif self._continuous_action or self._shoot_action:
             raise ValueError("Normal distribution has no `probs` attribute!")
         else:
             action_dists = self.action_out(x)
@@ -178,9 +194,7 @@ class ACTLayer(nn.Module):
 
     @property
     def output_size(self) -> int:
-        if self._mixed_action:
-            return self.action_outs[-1].output_size + len(self.action_outs) - 1
-        if self._multidiscrete_action:
+        if self._multidiscrete_action or self._shoot_action:
             return len(self.action_outs)
         else:
             return self.action_out.output_size

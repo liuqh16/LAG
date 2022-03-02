@@ -95,6 +95,30 @@ class DiagGaussian(nn.Module):
     def output_size(self) -> int:
         return self._num_outputs
 
+class BetaShootBernoulli(nn.Module):
+    def __init__(self, num_inputs, num_outputs, gain=0.01):
+        super(BetaShootBernoulli, self).__init__()
+
+        def init_(m):
+            return init(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), gain)
+
+        self.net = init_(nn.Linear(num_inputs, num_outputs))
+        self.log_std = nn.Parameter(torch.zeros(num_outputs))
+        self._num_outputs = num_outputs
+
+    def forward(self, x, **kwargs):
+        x = self.net(x)
+        x = torch.clamp(x, 0, 100)
+        alpha = x[:, 0].unsqueeze(-1)
+        beta = x[:, 1].unsqueeze(-1)
+        alpha_0 = kwargs['alpha0']
+        beta_0 = kwargs['beta0']
+        p = (alpha + alpha_0) / (alpha + alpha_0 + beta + beta_0)
+        return FixedBernoulli(p)
+
+    @property
+    def output_size(self) -> int:
+        return self._num_outputs
 
 class Bernoulli(nn.Module):
     def __init__(self, num_inputs, num_outputs, gain=0.01):
