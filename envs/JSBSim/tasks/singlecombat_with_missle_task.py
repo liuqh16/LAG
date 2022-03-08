@@ -168,7 +168,6 @@ class HierarchicalSingleCombatShootTask(HierarchicalSingleCombatTask, SingleComb
             PostureReward(self.config),
             AltitudeReward(self.config),
             EventDrivenReward(self.config),
-            MissilePostureReward(self.config)
         ]
 
     def load_observation_space(self):
@@ -201,10 +200,7 @@ class HierarchicalSingleCombatShootTask(HierarchicalSingleCombatTask, SingleComb
     def step(self, env):
         for agent_id, agent in env.agents.items():
             # [RL-based missile launch with limited condition]
-            shoot_interval = env.current_step - self._last_shoot_time[agent_id]
-            shoot_flag = agent.is_alive and self._shoot_action[agent_id] and self._remaining_missiles[agent_id] > 0 \
-                and shoot_interval >= self.min_attack_interval
-
+            shoot_flag = agent.is_alive and self._shoot_action[agent_id] and self._remaining_missiles[agent_id] > 0
             if shoot_flag:
                 new_missile_uid = agent_id + str(self._remaining_missiles[agent_id])
                 env.add_temp_simulator(
