@@ -16,7 +16,7 @@ class JSBSimRunner(Runner):
         self.obs_space = self.envs.observation_space
         self.act_space = self.envs.action_space
         self.num_agents = self.envs.num_agents
-        self.use_selfplay = self.all_args.use_selfplay  # type: bool
+        self.use_selfplay = self.all_args.use_selfplay
 
         # policy & algorithm
         if self.algorithm_name == "ppo":
@@ -28,34 +28,7 @@ class JSBSimRunner(Runner):
         self.trainer = Trainer(self.all_args, device=self.device)
 
         # buffer
-        if self.num_agents > 1 and self.use_selfplay:
-            self.buffer = ReplayBuffer(self.all_args, self.num_agents // 2, self.obs_space, self.act_space)
-        else:
-            self.buffer = ReplayBuffer(self.all_args, self.num_agents, self.obs_space, self.act_space)
-
-        # [Selfplay] allocate memory for opponent policy/data in training
-        if self.use_selfplay:
-
-            from algorithms.utils.selfplay import get_algorithm
-            self.selfplay_algo = get_algorithm(self.all_args.selfplay_algorithm)
-
-            assert self.all_args.n_choose_opponents <= self.n_rollout_threads, \
-                "Number of different opponents({}) must less than or equal to number of training threads({})!" \
-                .format(self.all_args.n_choose_opponents, self.n_rollout_threads)
-            self.policy_pool = {'latest': self.all_args.init_elo}  # type: dict[str, float]
-            self.opponent_policy = [
-                Policy(self.all_args, self.obs_space, self.act_space, device=self.device)
-                for _ in range(self.all_args.n_choose_opponents)]
-            self.opponent_env_split = np.array_split(np.arange(self.n_rollout_threads), len(self.opponent_policy))
-            self.opponent_obs = np.zeros_like(self.buffer.obs[0])
-            self.opponent_rnn_states = np.zeros_like(self.buffer.rnn_states_actor[0])
-            self.opponent_masks = np.ones_like(self.buffer.masks[0])
-
-            if self.use_eval:
-                self.eval_opponent_policy = Policy(self.all_args, self.obs_space, self.act_space, device=self.device)
-
-            logging.info("\n Load selfplay opponents: Algo {}, num_opponents {}.\n"
-                         .format(self.all_args.selfplay_algorithm, self.all_args.n_choose_opponents))
+        self.buffer = ReplayBuffer(self.all_args, self.num_agents, self.obs_space, self.act_space)
 
         if self.model_dir is not None:
             self.restore()
@@ -95,10 +68,6 @@ class JSBSimRunner(Runner):
             # post process
             self.total_num_steps = (episode + 1) * self.buffer_size * self.n_rollout_threads
 
-            # save model
-            if (episode % self.save_interval == 0) or (episode == episodes - 1):
-                self.save(episode)
-
             # log information
             if episode % self.log_interval == 0:
                 end = time.time()
@@ -121,16 +90,17 @@ class JSBSimRunner(Runner):
                 self.log_info(train_infos, self.total_num_steps)
 
             # eval
-            if episode % self.eval_interval == 0 and self.use_eval:
+            if episode % self.eval_interval == 0 and episode != 0 and self.use_eval:
                 self.eval(self.total_num_steps)
+
+            # save model
+            if (episode % self.save_interval == 0) or (episode == episodes - 1):
+                self.save(episode)
+                
 
     def warmup(self):
         # reset env
         obs = self.envs.reset()
-        # [Selfplay] divide ego/opponent of initial obs
-        if self.use_selfplay:
-            self.opponent_obs = obs[:, self.num_agents // 2:, ...]
-            obs = obs[:, :self.num_agents // 2, ...]
         self.buffer.step = 0
         self.buffer.obs[0] = obs.copy()
 
@@ -148,20 +118,6 @@ class JSBSimRunner(Runner):
         action_log_probs = np.array(np.split(_t2n(action_log_probs), self.n_rollout_threads))
         rnn_states_actor = np.array(np.split(_t2n(rnn_states_actor), self.n_rollout_threads))
         rnn_states_critic = np.array(np.split(_t2n(rnn_states_critic), self.n_rollout_threads))
-
-        # [Selfplay] get actions of opponent policy
-        if self.use_selfplay:
-            opponent_actions = np.zeros_like(actions)
-            for policy_idx, policy in enumerate(self.opponent_policy):
-                env_idx = self.opponent_env_split[policy_idx]
-                opponent_action, opponent_rnn_states \
-                    = policy.act(np.concatenate(self.opponent_obs[env_idx]),
-                                 np.concatenate(self.opponent_rnn_states[env_idx]),
-                                 np.concatenate(self.opponent_masks[env_idx]))
-                opponent_actions[env_idx] = np.array(np.split(_t2n(opponent_action), len(env_idx)))
-                self.opponent_rnn_states[env_idx] = np.array(np.split(_t2n(opponent_rnn_states), len(env_idx)))
-            actions = np.concatenate((actions, opponent_actions), axis=1)
-
         return values, actions, action_log_probs, rnn_states_actor, rnn_states_critic
 
     def insert(self, data: List[np.ndarray]):
@@ -175,16 +131,6 @@ class JSBSimRunner(Runner):
         masks = np.ones((self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
         masks[dones_env == True] = np.zeros(((dones_env == True).sum(), self.num_agents, 1), dtype=np.float32)
 
-        # [Selfplay] divide ego/opponent of collecting data
-        if self.use_selfplay:
-            self.opponent_obs = obs[:, self.num_agents // 2:, ...]
-            self.opponent_masks = masks[:, self.num_agents // 2:, ...]
-
-            obs = obs[:, :self.num_agents // 2, ...]
-            actions = actions[:, :self.num_agents // 2, ...]
-            rewards = rewards[:, :self.num_agents // 2, ...]
-            masks = masks[:, :self.num_agents // 2, ...]
-
         self.buffer.insert(obs, actions, rewards, masks, action_log_probs, values, rnn_states_actor, rnn_states_critic)
 
     @torch.no_grad()
@@ -197,34 +143,7 @@ class JSBSimRunner(Runner):
         eval_masks = np.ones((self.n_eval_rollout_threads, *self.buffer.masks.shape[2:]), dtype=np.float32)
         eval_rnn_states = np.zeros((self.n_eval_rollout_threads, *self.buffer.rnn_states_actor.shape[2:]), dtype=np.float32)
 
-        # [Selfplay] Choose opponent policy for evaluation
-        if self.use_selfplay:
-            eval_choose_opponents = [self.selfplay_algo.choose(self.policy_pool) for _ in range(self.all_args.n_choose_opponents)]
-            assert self.eval_episodes >= self.all_args.n_choose_opponents, \
-            f"Number of evaluation episodes:{self.eval_episodes} should be greater than number of opponents:{self.all_args.n_choose_opponents}"
-            eval_each_episodes = self.eval_episodes // self.all_args.n_choose_opponents
-            eval_cur_opponent_idx = 0
-            logging.info(f" Choose opponents {eval_choose_opponents} for evaluation")
-            # TODO: use eval results to update elo
-
         while total_episodes < self.eval_episodes:
-
-            # [Selfplay] Load opponent policy
-            if self.use_selfplay and total_episodes >= eval_cur_opponent_idx * eval_each_episodes:
-                policy_idx = eval_choose_opponents[eval_cur_opponent_idx]
-                self.eval_opponent_policy.actor.load_state_dict(torch.load(str(self.save_dir) + f'/actor_{policy_idx}.pt'))
-                self.eval_opponent_policy.prep_rollout()
-                eval_cur_opponent_idx += 1
-                logging.info(f" Load opponent {policy_idx} for evaluation ({total_episodes+1}/{self.eval_episodes})")
-
-                # reset obs/rnn/mask
-                eval_obs = self.eval_envs.reset()
-                eval_masks = np.ones_like(eval_masks, dtype=np.float32)
-                eval_rnn_states = np.zeros_like(eval_rnn_states, dtype=np.float32)
-                eval_opponent_obs = eval_obs[:, self.num_agents // 2:, ...]
-                eval_obs = eval_obs[:, :self.num_agents // 2, ...]
-                eval_opponent_masks = np.ones_like(eval_masks, dtype=np.float32)
-                eval_opponent_rnn_states = np.zeros_like(eval_rnn_states, dtype=np.float32)
 
             self.policy.prep_rollout()
             eval_actions, eval_rnn_states = self.policy.act(np.concatenate(eval_obs),
@@ -233,22 +152,8 @@ class JSBSimRunner(Runner):
             eval_actions = np.array(np.split(_t2n(eval_actions), self.n_eval_rollout_threads))
             eval_rnn_states = np.array(np.split(_t2n(eval_rnn_states), self.n_eval_rollout_threads))
 
-            # [Selfplay] get actions of opponent policy
-            if self.use_selfplay:
-                eval_opponent_actions, eval_opponent_rnn_states \
-                    = self.eval_opponent_policy.act(np.concatenate(eval_opponent_obs),
-                                                    np.concatenate(eval_opponent_rnn_states),
-                                                    np.concatenate(eval_opponent_masks))
-                eval_opponent_rnn_states = np.array(np.split(_t2n(eval_opponent_rnn_states), self.n_eval_rollout_threads))
-                eval_opponent_actions = np.array(np.split(_t2n(eval_opponent_actions), self.n_eval_rollout_threads))
-                eval_actions = np.concatenate((eval_actions, eval_opponent_actions), axis=1)
-
             # Obser reward and next obs
             eval_obs, eval_rewards, eval_dones, eval_infos = self.eval_envs.step(eval_actions)
-
-            # [Selfplay] get ego reward
-            if self.use_selfplay:
-                eval_rewards = eval_rewards[:, :self.num_agents // 2, ...]
 
             eval_cumulative_rewards += eval_rewards
             eval_dones_env = np.all(eval_dones.squeeze(axis=-1), axis=-1)
@@ -259,23 +164,11 @@ class JSBSimRunner(Runner):
             eval_masks = np.ones_like(eval_masks, dtype=np.float32)
             eval_masks[eval_dones_env == True] = np.zeros(((eval_dones_env == True).sum(), *eval_masks.shape[1:]), dtype=np.float32)
             eval_rnn_states[eval_dones_env == True] = np.zeros(((eval_dones_env == True).sum(), *eval_rnn_states.shape[1:]), dtype=np.float32)
-            # [Selfplay] reset opponent mask/rnn_states
-            if self.use_selfplay:
-                eval_opponent_obs = eval_obs[:, self.num_agents // 2:, ...]
-                eval_obs = eval_obs[:, :self.num_agents // 2, ...]
-                eval_opponent_masks[eval_dones_env == True] = \
-                    np.zeros(((eval_dones_env == True).sum(), *eval_opponent_masks.shape[1:]), dtype=np.float32)
-                eval_opponent_rnn_states[eval_dones_env == True] = \
-                    np.zeros(((eval_dones_env == True).sum(), *eval_opponent_rnn_states.shape[1:]), dtype=np.float32)
 
         eval_infos = {}
         eval_infos['eval_average_episode_rewards'] = np.concatenate(eval_episode_rewards).mean(axis=1)  # shape: [num_agents, 1]
         logging.info(" eval average episode rewards: " + str(np.mean(eval_infos['eval_average_episode_rewards'])))
         self.log_info(eval_infos, total_num_steps)
-
-        # [Selfplay] Reset opponent
-        if self.use_selfplay:
-            self.reset_opponent()
         logging.info("...End evaluation")
 
     @torch.no_grad()
@@ -287,18 +180,6 @@ class JSBSimRunner(Runner):
         render_masks = np.ones((1, *self.buffer.masks.shape[2:]), dtype=np.float32)
         render_rnn_states = np.zeros((1, *self.buffer.rnn_states_actor.shape[2:]), dtype=np.float32)
         self.envs.render(mode='txt', filepath=f'{self.run_dir}/{self.experiment_name}.txt.acmi')
-        if self.use_selfplay:
-            policy_idx = self.render_opponent_index
-            self.eval_opponent_policy.actor.load_state_dict(torch.load(str(self.model_dir) + f'/actor_{policy_idx}.pt'))
-            self.eval_opponent_policy.prep_rollout()
-            # reset obs/rnn/mask
-            render_obs = self.envs.reset()
-            render_masks = np.ones_like(render_masks, dtype=np.float32)
-            render_rnn_states = np.zeros_like(render_rnn_states, dtype=np.float32)
-            render_opponent_obs = render_obs[:, self.num_agents // 2:, ...]
-            render_obs = render_obs[:, :self.num_agents // 2, ...]
-            render_opponent_masks = np.ones_like(render_masks, dtype=np.float32)
-            render_opponent_rnn_states = np.zeros_like(render_rnn_states, dtype=np.float32)
         while True:
             self.policy.prep_rollout()
             render_actions, render_rnn_states = self.policy.act(np.concatenate(render_obs),
@@ -308,28 +189,14 @@ class JSBSimRunner(Runner):
             render_actions = np.expand_dims(_t2n(render_actions), axis=0)
             render_rnn_states = np.expand_dims(_t2n(render_rnn_states), axis=0)
             
-            # [Selfplay] get actions of opponent policy
-            if self.use_selfplay:
-                render_opponent_actions, render_opponent_rnn_states \
-                    = self.eval_opponent_policy.act(np.concatenate(render_opponent_obs),
-                                                    np.concatenate(render_opponent_rnn_states),
-                                                    np.concatenate(render_opponent_masks),
-                                                    deterministic=True)
-                render_opponent_actions = np.expand_dims(_t2n(render_opponent_actions), axis=0)
-                render_opponent_rnn_states = np.expand_dims(_t2n(render_opponent_rnn_states), axis=0)
-                render_actions = np.concatenate((render_actions, render_opponent_actions), axis=1)
             # Obser reward and next obs
             render_obs, render_rewards, render_dones, render_infos = self.envs.step(render_actions)
             if self.use_selfplay:
                 render_rewards = render_rewards[:, :self.num_agents // 2, ...]
             render_episode_rewards += render_rewards
             self.envs.render(mode='txt', filepath=f'{self.run_dir}/{self.experiment_name}.txt.acmi')
-            if render_dones.any():
+            if render_dones.all():
                 break
-            if self.use_selfplay:
-                render_opponent_obs = render_obs[:, self.num_agents // 2:, ...]
-                render_obs = render_obs[:, :self.num_agents // 2, ...]
-
         render_infos = {}
         render_infos['render_episode_reward'] = render_episode_rewards
         logging.info("render episode reward of agent: " + str(render_infos['render_episode_reward']))
@@ -339,29 +206,3 @@ class JSBSimRunner(Runner):
         torch.save(policy_actor_state_dict, str(self.save_dir) + '/actor_latest.pt')
         policy_critic_state_dict = self.policy.critic.state_dict()
         torch.save(policy_critic_state_dict, str(self.save_dir) + '/critic_latest.pt')
-        # [Selfplay] save policy & performance
-        if self.use_selfplay:
-            torch.save(policy_actor_state_dict, str(self.save_dir) + f'/actor_{episode}.pt')
-            self.policy_pool[str(episode)] = self.all_args.init_elo
-
-    def reset_opponent(self):
-        choose_opponents = []
-        for policy in self.opponent_policy:
-            choose_idx = self.selfplay_algo.choose(self.policy_pool)
-            choose_opponents.append(choose_idx)
-            policy.actor.load_state_dict(torch.load(str(self.save_dir) + f'/actor_{choose_idx}.pt'))
-            policy.prep_rollout()
-        logging.info(f" Choose opponents {choose_opponents} for training")
-
-        # clear buffer
-        self.buffer.clear()
-        self.opponent_obs = np.zeros_like(self.opponent_obs)
-        self.opponent_rnn_states = np.zeros_like(self.opponent_rnn_states)
-        self.opponent_masks = np.ones_like(self.opponent_masks)
-
-        # reset env
-        obs = self.envs.reset()
-        if self.all_args.n_choose_opponents > 0:
-            self.opponent_obs = obs[:, self.num_agents // 2:, ...]
-            obs = obs[:, :self.num_agents // 2, ...]
-        self.buffer.obs[0] = obs.copy()

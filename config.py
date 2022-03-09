@@ -232,7 +232,7 @@ def _get_selfplay_config(parser: argparse.ArgumentParser):
     group = parser.add_argument_group("Selfplay parameters")
     group.add_argument("--use-selfplay", action='store_true', default=False,
                        help="By default false. If set, use selfplay algorithms.")
-    group.add_argument("--selfplay-algorithm", type=str, default='sp', choices=["sp", "fsp"],
+    group.add_argument("--selfplay-algorithm", type=str, default='sp', choices=["sp", "fsp", "pfsp"],
                        help="Specifiy the selfplay algorithm (default 'sp')")
     group.add_argument('--n-choose-opponents', type=int, default=1,
                        help="number of different opponents chosen for rollout. (default 1)")
