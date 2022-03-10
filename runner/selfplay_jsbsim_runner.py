@@ -229,6 +229,7 @@ class SelfplayJSBSimRunner(JSBSimRunner):
         eval_infos['eval_average_episode_rewards'] = eval_average_episode_rewards.mean()
         eval_infos['latest_elo'] = self.latest_elo
         logging.info(" eval average episode rewards: " + str(eval_infos['eval_average_episode_rewards']))
+        logging.info(" latest elo score: " + str(self.latest_elo))
         self.log_info(eval_infos, total_num_steps)
         logging.info("...End evaluation")
 

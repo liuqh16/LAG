@@ -12,9 +12,9 @@ import logging
 import setproctitle
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 from config import get_config
-from runner.jsbsim_runner import JSBSimRunner as Runner
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
 from envs import gym_hybrid
+from envs import slimevolley
 
 
 class GymEnv:
@@ -40,9 +40,13 @@ class GymEnv:
         self.env.render(mode)
 
     def close(self):
-        pass
+        self.env.close()
+    
+    def seed(self, seed=None):
+        return self.env.seed(seed)
+    
 
-class GymHybridEnv:
+class GymHybridEnv(GymEnv):
     def __init__(self, env) -> None:
         self.env = env
         self.action_space = self.env.action_space
@@ -71,19 +75,42 @@ class GymHybridEnv:
     def close(self):
         pass
 
+
 def make_train_env(all_args):
     def get_env_fn(rank):
         def init_env():
             env = gym.make(all_args.scenario_name)
             if 'Moving' in  all_args.scenario_name:
-                return GymHybridEnv(env)
-            # env.seed(all_args.seed + rank * 1000)
-            return GymEnv(env)
+                env = GymHybridEnv(env)
+            elif 'Volleyball' in all_args.scenario_name:
+                pass
+            else: 
+                env = GymEnv(env)
+            env.seed(all_args.seed + rank * 1000)
+            return env
         return init_env
     if all_args.n_rollout_threads == 1: 
         return DummyVecEnv([get_env_fn(0)])
     else:
         return SubprocVecEnv([get_env_fn(i) for i in range(all_args.n_rollout_threads)])
+
+def make_eval_env(all_args):
+    def get_env_fn(rank):
+        def init_env():
+            env = gym.make(all_args.scenario_name)
+            if 'Moving' in  all_args.scenario_name:
+                env = GymHybridEnv(env)
+            elif 'Volleyball' in all_args.scenario_name:
+                pass
+            else:
+                env = GymEnv(env)
+            env.seed(all_args.seed + rank * 1001)
+            return env
+        return init_env
+    if all_args.n_eval_rollout_threads == 1: 
+        return DummyVecEnv([get_env_fn(0)])
+    else:
+        return SubprocVecEnv([get_env_fn(i) for i in range(all_args.n_eval_rollout_threads)])
 
 
 def parse_args(args, parser):
@@ -155,18 +182,22 @@ def main(args):
 
     # env init
     envs = make_train_env(all_args)
-    num_agents = all_args.num_agents
+    eval_envs = make_eval_env(all_args) if all_args.use_eval else None
 
     config = {
         "all_args": all_args,
         "envs": envs,
-        "eval_envs": None,
+        "eval_envs": eval_envs,
         "device": device,
-        "num_agents": num_agents,
         "run_dir": run_dir
     }
 
     # run experiments
+
+    if all_args.use_selfplay:
+        from runner.selfplay_jsbsim_runner import SelfplayJSBSimRunner as Runner
+    else:
+        from runner.jsbsim_runner import JSBSimRunner as Runner
     runner = Runner(config)
     runner.run()
 
