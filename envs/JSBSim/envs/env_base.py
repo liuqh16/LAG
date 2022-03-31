@@ -148,6 +148,9 @@ class BaseEnv(gym.Env):
             reward, info = self.task.get_reward(self, agent_id, info)
             rewards[agent_id] = [reward]
 
+        available_actions = self.task.get_available_actions()
+        if available_actions is not None:
+            info["available_actions"] = available_actions
         return self._pack(obs), self._pack(rewards), self._pack(dones), info
 
     def get_obs(self):

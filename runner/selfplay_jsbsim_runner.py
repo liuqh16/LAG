@@ -77,7 +77,8 @@ class SelfplayJSBSimRunner(JSBSimRunner):
             = self.policy.get_actions(np.concatenate(self.buffer.obs[step]),
                                       np.concatenate(self.buffer.rnn_states_actor[step]),
                                       np.concatenate(self.buffer.rnn_states_critic[step]),
-                                      np.concatenate(self.buffer.masks[step]))
+                                      np.concatenate(self.buffer.masks[step]),
+                                      np.concatenate(self.buffer.available_actions[step]))
         # split parallel data [N*M, shape] => [N, M, shape]
         values = np.array(np.split(_t2n(values), self.n_rollout_threads))
         actions = np.array(np.split(_t2n(actions), self.n_rollout_threads))
@@ -100,7 +101,7 @@ class SelfplayJSBSimRunner(JSBSimRunner):
         return values, actions, action_log_probs, rnn_states_actor, rnn_states_critic
 
     def insert(self, data: List[np.ndarray]):
-        obs, actions, rewards, dones, action_log_probs, values, rnn_states_actor, rnn_states_critic = data
+        obs, actions, rewards, dones, action_log_probs, values, rnn_states_actor, rnn_states_critic, available_actions = data
 
         dones_env = np.all(dones.squeeze(axis=-1), axis=-1)
 
@@ -118,8 +119,9 @@ class SelfplayJSBSimRunner(JSBSimRunner):
         actions = actions[:, :self.num_agents // 2, ...]
         rewards = rewards[:, :self.num_agents // 2, ...]
         masks = masks[:, :self.num_agents // 2, ...]
+        available_actions = available_actions[:, :self.num_agents // 2, ...]
 
-        self.buffer.insert(obs, actions, rewards, masks, action_log_probs, values, rnn_states_actor, rnn_states_critic)
+        self.buffer.insert(obs, actions, rewards, masks, action_log_probs, values, rnn_states_actor, rnn_states_critic, available_actions=available_actions)
 
     @torch.no_grad()
     def eval(self, total_num_steps):
@@ -215,7 +217,7 @@ class SelfplayJSBSimRunner(JSBSimRunner):
         actual_score = np.zeros_like(expected_score)
         diff = opponent_average_episode_rewards - eval_average_episode_rewards
         actual_score[diff > 5] = 1 # win
-        actual_score[abs(diff) < 5] = 0.5 # tie
+        actual_score[abs(diff) < 50] = 0.5 # tie
         actual_score[diff < -5] = 0 # lose
 
         update_opponent_elo = opponent_elo + 32 * (actual_score - expected_score)
@@ -266,7 +268,6 @@ class SelfplayJSBSimRunner(JSBSimRunner):
             self.opponent_obs = obs[:, self.num_agents // 2:, ...]
             obs = obs[:, :self.num_agents // 2, ...]
         self.buffer.obs[0] = obs.copy()
-
 
     @torch.no_grad()
     def render(self):

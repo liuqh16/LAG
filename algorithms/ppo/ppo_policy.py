@@ -22,12 +22,12 @@ class PPOPolicy:
             {'params': self.critic.parameters()}
         ], lr=self.lr)
 
-    def get_actions(self, obs, rnn_states_actor, rnn_states_critic, masks):
+    def get_actions(self, obs, rnn_states_actor, rnn_states_critic, masks, available_actions=None):
         """
         Returns:
             values, actions, action_log_probs, rnn_states_actor, rnn_states_critic
         """
-        actions, action_log_probs, rnn_states_actor = self.actor(obs, rnn_states_actor, masks)
+        actions, action_log_probs, rnn_states_actor = self.actor(obs, rnn_states_actor, masks, available_actions)
         values, rnn_states_critic = self.critic(obs, rnn_states_critic, masks)
         return values, actions, action_log_probs, rnn_states_actor, rnn_states_critic
 
@@ -39,21 +39,21 @@ class PPOPolicy:
         values, _ = self.critic(obs, rnn_states_critic, masks)
         return values
 
-    def evaluate_actions(self, obs, rnn_states_actor, rnn_states_critic, action, masks, active_masks=None):
+    def evaluate_actions(self, obs, rnn_states_actor, rnn_states_critic, action, masks, available_actions=None, active_masks=None):
         """
         Returns:
             values, action_log_probs, dist_entropy
         """
-        action_log_probs, dist_entropy = self.actor.evaluate_actions(obs, rnn_states_actor, action, masks, active_masks)
+        action_log_probs, dist_entropy = self.actor.evaluate_actions(obs, rnn_states_actor, action, masks, available_actions, active_masks)
         values, _ = self.critic(obs, rnn_states_critic, masks)
         return values, action_log_probs, dist_entropy
 
-    def act(self, obs, rnn_states_actor, masks, deterministic=False):
+    def act(self, obs, rnn_states_actor, masks, available_actions=None, deterministic=False):
         """
         Returns:
             actions, rnn_states_actor
         """
-        actions, _, rnn_states_actor = self.actor(obs, rnn_states_actor, masks, deterministic)
+        actions, _, rnn_states_actor = self.actor(obs, rnn_states_actor, masks, available_actions, deterministic)
         return actions, rnn_states_actor
 
     def prep_training(self):

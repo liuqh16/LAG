@@ -114,8 +114,10 @@ class BetaShootBernoulli(nn.Module):
         beta = x[:, 1].unsqueeze(-1)
         alpha_0 = kwargs['alpha0']
         beta_0 = kwargs['beta0']
+        avail = kwargs['available_actions']
         # print(f"{alpha}, {beta}, {alpha_0}, {beta_0}")
         p = (alpha + alpha_0) / (alpha + alpha_0 + beta + beta_0)
+        p[avail == 0] = 1e-10
         return FixedBernoulli(p)
 
     @property

@@ -171,14 +171,23 @@ class HierarchicalSingleCombatShootTask(HierarchicalSingleCombatTask, SingleComb
         ]
 
     def load_observation_space(self):
-        return SingleCombatDodgeMissileTask.load_observation_space(self)
+        self.observation_space = spaces.Box(low=-10, high=10., shape=(23,))
 
     def load_action_space(self):
         # altitude control + heading control + velocity control + shoot control
         self.action_space = spaces.Tuple([spaces.MultiDiscrete([3, 5, 3]), spaces.Discrete(2)])
 
     def get_obs(self, env, agent_id):
-        return SingleCombatDodgeMissileTask.get_obs(self, env, agent_id)
+        """
+        obs:
+        [21]: the num of live missiles the agent launched
+        [22]: the num of remaining missiles
+        """
+        norm_obs = np.zeros(23)
+        norm_obs[:-2] = SingleCombatDodgeMissileTask.get_obs(self, env, agent_id)
+        norm_obs[-2] = np.count_nonzero([missile.is_alive for missile in env.agents[agent_id].launch_missiles])
+        norm_obs[-1] = self._remaining_missiles[agent_id]
+        return norm_obs
 
     def normalize_action(self, env, agent_id, action):
         """Convert high-level action into low-level action.
@@ -207,3 +216,10 @@ class HierarchicalSingleCombatShootTask(HierarchicalSingleCombatTask, SingleComb
                     MissileSimulator.create(parent=agent, target=agent.enemies[0], uid=new_missile_uid))
                 self._remaining_missiles[agent_id] -= 1
                 self._last_shoot_time[agent_id] = env.current_step
+
+    def get_available_actions(self):
+        available_actions = np.zeros((self.num_agents,1))
+        for (i, num) in enumerate(self._remaining_missiles.values()): 
+            if num > 0:
+                available_actions[i] =1
+        return available_actions

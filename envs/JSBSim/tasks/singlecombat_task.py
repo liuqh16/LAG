@@ -171,6 +171,8 @@ class SingleCombatTask(BaseTask):
         else:
             raise NotImplementedError
 
+    def get_available_actions(self):
+        return None
 
 class HierarchicalSingleCombatTask(SingleCombatTask):
 
