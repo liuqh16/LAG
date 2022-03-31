@@ -10,7 +10,6 @@ import setproctitle
 # Deal with import error
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 from config import get_config
-from runner.jsbsim_runner import JSBSimRunner as Runner
 from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv
 from envs.env_wrappers import DummyVecEnv
 
@@ -93,6 +92,10 @@ def main(args):
 
     # run experiments
 
+    if all_args.use_selfplay:
+        from runner.selfplay_jsbsim_runner import SelfplayJSBSimRunner as Runner
+    else:
+        from runner.jsbsim_runner import JSBSimRunner as Runner
     runner = Runner(config)
     runner.render()
 

@@ -271,15 +271,16 @@ class SelfplayJSBSimRunner(JSBSimRunner):
     @torch.no_grad()
     def render(self):
         policy_idx = self.all_args.render_opponent_index
+        dir_list = str(self.run_dir).split('/')
+        file_path = '/'.join(dir_list[:dir_list.index('results')+1])
         self.eval_opponent_policy.actor.load_state_dict(torch.load(str(self.model_dir) + f'/actor_{policy_idx}.pt'))
         self.eval_opponent_policy.prep_rollout()
         logging.info("\nStart render ...")
-
         render_episode_rewards = 0
         render_obs = self.envs.reset()
-        self.envs.render(mode='txt', filepath=f'{self.run_dir}/{self.experiment_name}.txt.acmi')
-        render_masks = np.ones_like(render_masks, dtype=np.float32)
-        render_rnn_states = np.zeros_like(render_rnn_states, dtype=np.float32)
+        self.envs.render(mode='txt', filepath=f'{file_path}/{self.experiment_name}.txt.acmi')
+        render_masks = np.ones((1, *self.buffer.masks.shape[2:]), dtype=np.float32)
+        render_rnn_states = np.zeros((1, *self.buffer.rnn_states_actor.shape[2:]), dtype=np.float32)
         render_opponent_obs = render_obs[:, self.num_agents // 2:, ...]
         render_obs = render_obs[:, :self.num_agents // 2, ...]
         render_opponent_masks = np.ones_like(render_masks, dtype=np.float32)
@@ -304,7 +305,7 @@ class SelfplayJSBSimRunner(JSBSimRunner):
             render_obs, render_rewards, render_dones, render_infos = self.envs.step(render_actions)
             render_rewards = render_rewards[:, :self.num_agents // 2, ...]
             render_episode_rewards += render_rewards
-            self.envs.render(mode='txt', filepath=f'{self.run_dir}/{self.experiment_name}.txt.acmi')
+            self.envs.render(mode='txt', filepath=f'{file_path}/{self.experiment_name}.txt.acmi')
             if render_dones.all():
                 break
             render_opponent_obs = render_obs[:, self.num_agents // 2:, ...]
