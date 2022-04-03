@@ -90,7 +90,7 @@ class ACTLayer(nn.Module):
                 actions.append(action)
                 action_log_probs.append(action_log_prob)
             shoot_action_dist = self.action_outs[-1](x, **kwargs)
-            shoot_action = action_dist.mode() if deterministic else shoot_action_dist.sample()
+            shoot_action = shoot_action_dist.mode() if deterministic else shoot_action_dist.sample()
             actions.append(shoot_action)
             actions = torch.cat(actions, dim=-1)
             action_log_probs = torch.cat(action_log_probs, dim=-1).sum(dim=-1, keepdim=True)
