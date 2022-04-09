@@ -216,10 +216,3 @@ class HierarchicalSingleCombatShootTask(HierarchicalSingleCombatTask, SingleComb
                     MissileSimulator.create(parent=agent, target=agent.enemies[0], uid=new_missile_uid))
                 self._remaining_missiles[agent_id] -= 1
                 self._last_shoot_time[agent_id] = env.current_step
-
-    def get_available_actions(self):
-        available_actions = np.zeros((self.num_agents,1))
-        for (i, num) in enumerate(self._remaining_missiles.values()): 
-            if num > 0:
-                available_actions[i] =1
-        return available_actions

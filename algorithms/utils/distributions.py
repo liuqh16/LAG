@@ -110,12 +110,12 @@ class BetaShootBernoulli(nn.Module):
         x = self.net(x)
         x = self.constraint(x) # contrain alpha, beta >=0
         x = 100 - self.constraint(100-x) # constrain alpha, beta <=100
-        alpha = x[:, 0].unsqueeze(-1)
-        beta = x[:, 1].unsqueeze(-1)
+        alpha = 1 + x[:, 0].unsqueeze(-1)
+        beta = 1 + x[:, 1].unsqueeze(-1)
         alpha_0 = kwargs['alpha0']
         beta_0 = kwargs['beta0']
         avail = kwargs['available_actions']
-        # print(f"{alpha}, {beta}, {alpha_0}, {beta_0}")
+        print(f"{alpha}, {beta}, {alpha_0}, {beta_0}, {avail}")
         p = (alpha + alpha_0) / (alpha + alpha_0 + beta + beta_0)
         p[avail == 0] = 1e-10
         return FixedBernoulli(p)

@@ -68,12 +68,6 @@ class ReplayBuffer(Buffer):
                                           self.recurrent_hidden_layers, self.recurrent_hidden_size), dtype=np.float32)
         self.rnn_states_critic = np.zeros_like(self.rnn_states_actor)
 
-        # available actions, used for missile launched control 
-        if len(act_space) == 2 and act_space[1].__class__.__name__ == 'Discrete':
-            self.available_actions = np.ones((self.buffer_size + 1, self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
-        else:
-            self.available_actions = None
-
         self.step = 0
 
     @property
@@ -91,7 +85,6 @@ class ReplayBuffer(Buffer):
                rnn_states_actor: np.ndarray,
                rnn_states_critic: np.ndarray,
                bad_masks: Union[np.ndarray, None] = None,
-               available_actions: Union[np.ndarray, None] = None,
                **kwargs):
         """Insert numpy data.
         Args:
@@ -114,8 +107,6 @@ class ReplayBuffer(Buffer):
         self.rnn_states_critic[self.step + 1] = rnn_states_critic.copy()
         if bad_masks is not None:
             self.bad_masks[self.step + 1] = bad_masks.copy()
-        if available_actions is not None:
-            self.available_actions[self.step + 1] = available_actions.copy()
 
         self.step = (self.step + 1) % self.buffer_size
 
@@ -126,8 +117,6 @@ class ReplayBuffer(Buffer):
         self.bad_masks[0] = self.bad_masks[-1].copy()
         self.rnn_states_actor[0] = self.rnn_states_actor[-1].copy()
         self.rnn_states_critic[0] = self.rnn_states_critic[-1].copy()
-        if self.available_actions is not None:
-            self.available_actions[0] = self.available_actions[-1].copy()
 
     def clear(self):
         self.step = 0
@@ -217,8 +206,6 @@ class ReplayBuffer(Buffer):
         value_preds = np.vstack([ReplayBuffer._cast(buf.value_preds[:-1]) for buf in buffer])
         rnn_states_actor = np.vstack([ReplayBuffer._cast(buf.rnn_states_actor[:-1]) for buf in buffer])
         rnn_states_critic = np.vstack([ReplayBuffer._cast(buf.rnn_states_critic[:-1]) for buf in buffer])
-        if buffer[0].available_actions is not None:
-            available_actions = np.vstack([ReplayBuffer._cast(buf.available_actions[:-1]) for buf in buffer])
 
         # Get mini-batch size and shuffle chunk data
         data_chunks = n_rollout_threads * buffer_size // data_chunk_length
@@ -236,7 +223,6 @@ class ReplayBuffer(Buffer):
             value_preds_batch = []
             rnn_states_actor_batch = []
             rnn_states_critic_batch = []
-            available_actions_batch = []
 
             for index in indices:
 
@@ -244,8 +230,6 @@ class ReplayBuffer(Buffer):
                 # size [T+1, N, Dim] => [T, N, Dim] => [N, T, Dim] => [N * T, Dim] => [L, Dim]
                 obs_batch.append(obs[ind:ind + data_chunk_length])
                 actions_batch.append(actions[ind:ind + data_chunk_length])
-                if buffer[0].available_actions is not None:
-                    available_actions_batch.append(available_actions[ind:ind+data_chunk_length])
                 masks_batch.append(masks[ind:ind + data_chunk_length])
                 old_action_log_probs_batch.append(old_action_log_probs[ind:ind + data_chunk_length])
                 advantages_batch.append(advantages[ind:ind + data_chunk_length])
@@ -260,8 +244,6 @@ class ReplayBuffer(Buffer):
             # These are all from_numpys of size (L, N, Dim)
             obs_batch = np.stack(obs_batch, axis=1)
             actions_batch = np.stack(actions_batch, axis=1)
-            if buffer[0].available_actions is not None:
-                available_actions_batch = np.stack(available_actions_batch)
             masks_batch = np.stack(masks_batch, axis=1)
             old_action_log_probs_batch = np.stack(old_action_log_probs_batch, axis=1)
             advantages_batch = np.stack(advantages_batch, axis=1)
@@ -275,10 +257,6 @@ class ReplayBuffer(Buffer):
             # Flatten the (L, N, ...) from_numpys to (L * N, ...)
             obs_batch = ReplayBuffer._flatten(L, N, obs_batch)
             actions_batch = ReplayBuffer._flatten(L, N, actions_batch)
-            if buffer[0].available_actions is not None:
-                available_actions_batch = ReplayBuffer._flatten(L, N, available_actions_batch)
-            else:
-                available_actions_batch = None
             masks_batch = ReplayBuffer._flatten(L, N, masks_batch)
             old_action_log_probs_batch = ReplayBuffer._flatten(L, N, old_action_log_probs_batch)
             advantages_batch = ReplayBuffer._flatten(L, N, advantages_batch)
@@ -286,7 +264,7 @@ class ReplayBuffer(Buffer):
             value_preds_batch = ReplayBuffer._flatten(L, N, value_preds_batch)
 
             yield obs_batch, actions_batch, masks_batch, old_action_log_probs_batch, advantages_batch, \
-                returns_batch, value_preds_batch, rnn_states_actor_batch, rnn_states_critic_batch, available_actions_batch
+                returns_batch, value_preds_batch, rnn_states_actor_batch, rnn_states_critic_batch
 
 
 class SharedReplayBuffer(ReplayBuffer):
@@ -340,8 +318,7 @@ class SharedReplayBuffer(ReplayBuffer):
                value_preds: np.ndarray,
                rnn_states_actor: np.ndarray,
                rnn_states_critic: np.ndarray,
-               active_masks: Union[np.ndarray, None] = None,
-               available_actions: Union[np.ndarray, None] = None):
+               active_masks: Union[np.ndarray, None] = None):
         """Insert numpy data.
         Args:
             obs:                o_{t+1}
@@ -358,8 +335,6 @@ class SharedReplayBuffer(ReplayBuffer):
         self.share_obs[self.step + 1] = share_obs.copy()
         if active_masks is not None:
             self.active_masks[self.step + 1] = active_masks.copy()
-        if available_actions is not None:
-            pass
         return super().insert(obs, actions, rewards, masks, bad_masks, action_log_probs, value_preds, rnn_states_actor, rnn_states_critic)
 
     def after_update(self):

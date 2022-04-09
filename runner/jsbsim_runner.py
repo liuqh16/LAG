@@ -55,12 +55,8 @@ class JSBSimRunner(Runner):
                 for info in infos:
                     if 'heading_turn_counts' in info:
                         heading_turns_list.append(info['heading_turn_counts'])
-                if 'available_actions' in infos[0]:
-                    available_actions = np.array([info['available_actions'] for info in infos], dtype=np.float32)
-                else:
-                    available_actions = None
 
-                data = obs, actions, rewards, dones, action_log_probs, values, rnn_states_actor, rnn_states_critic, available_actions
+                data = obs, actions, rewards, dones, action_log_probs, values, rnn_states_actor, rnn_states_critic
 
                 # insert data into buffer
                 self.insert(data)
@@ -115,8 +111,7 @@ class JSBSimRunner(Runner):
             = self.policy.get_actions(np.concatenate(self.buffer.obs[step]),
                                       np.concatenate(self.buffer.rnn_states_actor[step]),
                                       np.concatenate(self.buffer.rnn_states_critic[step]),
-                                      np.concatenate(self.buffer.masks[step]),
-                                      np.concatenate(self.buffer.available_actions[step]))
+                                      np.concatenate(self.buffer.masks[step]))
         # split parallel data [N*M, shape] => [N, M, shape]
         values = np.array(np.split(_t2n(values), self.n_rollout_threads))
         actions = np.array(np.split(_t2n(actions), self.n_rollout_threads))
@@ -126,7 +121,7 @@ class JSBSimRunner(Runner):
         return values, actions, action_log_probs, rnn_states_actor, rnn_states_critic
 
     def insert(self, data: List[np.ndarray]):
-        obs, actions, rewards, dones, action_log_probs, values, rnn_states_actor, rnn_states_critic, available_actions = data
+        obs, actions, rewards, dones, action_log_probs, values, rnn_states_actor, rnn_states_critic = data
 
         dones_env = np.all(dones.squeeze(axis=-1), axis=-1)
 
@@ -136,7 +131,7 @@ class JSBSimRunner(Runner):
         masks = np.ones((self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
         masks[dones_env == True] = np.zeros(((dones_env == True).sum(), self.num_agents, 1), dtype=np.float32)
 
-        self.buffer.insert(obs, actions, rewards, masks, action_log_probs, values, rnn_states_actor, rnn_states_critic, available_actions=available_actions)
+        self.buffer.insert(obs, actions, rewards, masks, action_log_probs, values, rnn_states_actor, rnn_states_critic)
 
     @torch.no_grad()
     def eval(self, total_num_steps):
