@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from .flatten import build_flattener
 
+from util_util import build_flattener
 
 class MLPLayer(nn.Module):
     def __init__(self, input_dim, hidden_size, activation_id):

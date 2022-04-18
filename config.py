@@ -58,6 +58,8 @@ def _get_prepare_config(parser: argparse.ArgumentParser):
                        help="specify the name of environment")
     group.add_argument("--algorithm-name", type=str, default='ppo', choices=["ppo", "mappo"],
                        help="Specifiy the algorithm (default ppo)")
+    group.add_argument("--scenario-name", type=str, default="1v1/ShootMissile/Selfplay",
+                       help="specifiy the scenario (task name)")
     group.add_argument("--experiment-name", type=str, default="check",
                        help="An identifier to distinguish different experiment.")
     group.add_argument("--seed", type=int, default=1,
@@ -284,7 +286,7 @@ def _get_eval_config(parser: argparse.ArgumentParser):
                        help="Number of parallel envs for evaluating rollout (default 1)")
     group.add_argument("--eval-interval", type=int, default=25,
                        help="time duration between contiunous twice evaluation progress. (default 25)")
-    group.add_argument("--eval-episodes", type=int, default=32,
+    group.add_argument("--eval-episodes", type=int, default=1,
                        help="number of episodes of a single evaluation. (default 32)")
     return parser
 

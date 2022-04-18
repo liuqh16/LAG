@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 import gym.spaces
-from .mlp import MLPLayer
-from .distributions import BetaShootBernoulli, Categorical, DiagGaussian, Bernoulli
+from util_mlp import MLPLayer
+from util_distributions import BetaShootBernoulli, Categorical, DiagGaussian, Bernoulli
 
 
 class ACTLayer(nn.Module):

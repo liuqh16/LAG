@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
 
-from ..utils.mlp import MLPBase, MLPLayer
-from ..utils.gru import GRULayer
-from ..utils.utils import check
+from util_mlp import MLPBase, MLPLayer
+from util_gru import GRULayer
+from util_act import ACTLayer
+from util_util import check
 
 
 class PPOCritic(nn.Module):
