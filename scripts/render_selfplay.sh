@@ -11,4 +11,4 @@ python render/render_jsbsim.py \
     --act-hidden-size "128 128" \
     --model-dir "/home/lqh/jyh/CloseAirCombat/scripts/results/SingleCombat/1v1/ShootMissile/HierarchySelfplay_nolimit/ppo/fsp/wandb/latest-run/files"\
     --seed ${seed} \
-    --use-selfplay --selfplay-algorithm "fsp" --use-eval --render-opponent-index "3124"
+    --use-selfplay --use-eval --render-opponent-index "3124" --render-index "latest"
