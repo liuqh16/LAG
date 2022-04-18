@@ -2,7 +2,7 @@
 env="SingleCombat"
 scenario="1v1/ShootMissile/HierarchySelfplay"
 algo="ppo"
-exp="beta_shoot_wp"
+exp="penalty_shoot"
 seed=1
 
 echo "env is ${env}, scenario is ${scenario}, algo is ${algo}, exp is ${exp}, seed is ${seed}"

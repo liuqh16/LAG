@@ -21,12 +21,14 @@ assert obss.shape == obs_shape
 def convert(sample):
     return np.concatenate((sample[0], np.expand_dims(sample[1], axis=0)))
 
+episode_reward = 0
 while True:
     actions = np.array([[convert(envs.action_space.sample()) for _ in range(envs.num_agents)] for _ in range(parallel_num)])
     obss, rewards, dones, infos = envs.step(actions)
-
+    episode_reward += rewards[:,0,:]
     envs.render(mode='txt', filepath='JSBSimRecording.txt.acmi')
     # terminate if any of the parallel envs has been done
-    if np.any(dones):
+    if np.all(dones):
+        print(episode_reward)
         break
 envs.close()
