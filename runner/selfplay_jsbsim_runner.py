@@ -214,14 +214,15 @@ class SelfplayJSBSimRunner(JSBSimRunner):
 
         actual_score = np.zeros_like(expected_score)
         diff = opponent_average_episode_rewards - eval_average_episode_rewards
-        actual_score[diff > 5] = 1 # win
+        actual_score[diff > 50] = 1 # win
         actual_score[abs(diff) < 50] = 0.5 # tie
-        actual_score[diff < -5] = 0 # lose
+        actual_score[diff < -50] = 0 # lose
 
-        update_opponent_elo = opponent_elo + 32 * (actual_score - expected_score)
+        elo_gain = 32 * (actual_score - expected_score)
+        update_opponent_elo = opponent_elo + elo_gain
         for i, key in enumerate(eval_choose_opponents):
             self.policy_pool[key] = update_opponent_elo[i]
-        ego_elo = ego_elo + 32 * ((1-actual_score) - (1-expected_score))
+        ego_elo = ego_elo - elo_gain
         self.latest_elo = ego_elo.mean()
 
         # Logging
