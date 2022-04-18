@@ -157,12 +157,9 @@ class HierarchicalSingleCombatDodgeMissileTask(HierarchicalSingleCombatTask, Sin
         return SingleCombatDodgeMissileTask.step(self, env)
 
 
-class HierarchicalSingleCombatShootTask(HierarchicalSingleCombatTask, SingleCombatDodgeMissileTask):
-    def __init__(self, config: str):
-        HierarchicalSingleCombatTask.__init__(self, config)
-        self.max_attack_angle = getattr(self.config, 'max_attack_angle', 180)
-        self.max_attack_distance = getattr(self.config, 'max_attack_distance', np.inf)
-        self.min_attack_interval = getattr(self.config, 'min_attack_interval', 125)
+class SingleCombatShootMissileTask(SingleCombatDodgeMissileTask):
+    def __init__(self, config):
+        super().__init__(config)
 
         self.reward_functions = [
             PostureReward(self.config),
@@ -171,41 +168,24 @@ class HierarchicalSingleCombatShootTask(HierarchicalSingleCombatTask, SingleComb
         ]
 
     def load_observation_space(self):
-        self.observation_space = spaces.Box(low=-10, high=10., shape=(23,))
+        self.observation_space = spaces.Box(low=-10, high=10., shape=(21,))
 
     def load_action_space(self):
-        # altitude control + heading control + velocity control + shoot control
-        self.action_space = spaces.Tuple([spaces.MultiDiscrete([3, 5, 3]), spaces.Discrete(2)])
-
+        # aileron, elevator, rudder, throttle, shoot control
+        self.action_space = spaces.Tuple([spaces.MultiDiscrete([41, 41, 41, 30]), spaces.Discrete(2)])
+    
     def get_obs(self, env, agent_id):
-        """
-        obs:
-        [21]: the num of live missiles the agent launched
-        [22]: the num of remaining missiles
-        """
-        norm_obs = np.zeros(23)
-        norm_obs[:-2] = SingleCombatDodgeMissileTask.get_obs(self, env, agent_id)
-        norm_obs[-2] = np.count_nonzero([missile.is_alive for missile in env.agents[agent_id].launch_missiles])
-        norm_obs[-1] = self._remaining_missiles[agent_id]
-        return norm_obs
-
+        return super().get_obs(env, agent_id)
+    
     def normalize_action(self, env, agent_id, action):
-        """Convert high-level action into low-level action.
-        """
-        if self.use_baseline and agent_id in env.enm_ids:
-            action = self.baseline_agent.get_action(env.agents[agent_id])
-            return action
-        else:
-            # [beta distrition control shoot]
-            self._shoot_action[agent_id] = action[3]
-            return HierarchicalSingleCombatTask.normalize_action(self, env, agent_id, action[:3].astype(np.int32))
-
+        self._shoot_action[agent_id] = action[-1]
+        return super().normalize_action(env, agent_id, action[:-1])
+    
     def reset(self, env):
         self._shoot_action = {agent_id: 0 for agent_id in env.agents.keys()}
-        self._last_shoot_time = {agent_id: -self.min_attack_interval for agent_id in env.agents.keys()}
         self._remaining_missiles = {agent_id: agent.num_missiles for agent_id, agent in env.agents.items()}
-        return HierarchicalSingleCombatTask.reset(self, env)
-
+        super().reset(env)
+    
     def step(self, env):
         for agent_id, agent in env.agents.items():
             # [RL-based missile launch with limited condition]
@@ -215,4 +195,36 @@ class HierarchicalSingleCombatShootTask(HierarchicalSingleCombatTask, SingleComb
                 env.add_temp_simulator(
                     MissileSimulator.create(parent=agent, target=agent.enemies[0], uid=new_missile_uid))
                 self._remaining_missiles[agent_id] -= 1
-                self._last_shoot_time[agent_id] = env.current_step
+
+
+class HierarchicalSingleCombatShootTask(HierarchicalSingleCombatTask, SingleCombatShootMissileTask):
+    def __init__(self, config: str):
+        HierarchicalSingleCombatTask.__init__(self, config)
+        self.reward_functions = [
+            PostureReward(self.config),
+            AltitudeReward(self.config),
+            EventDrivenReward(self.config)
+        ]
+
+    def load_observation_space(self):
+        return SingleCombatShootMissileTask.load_observation_space(self)
+
+    def load_action_space(self):
+        # altitude control + heading control + velocity control + shoot control
+        self.action_space = spaces.Tuple([spaces.MultiDiscrete([3, 5, 3]), spaces.Discrete(2)])
+
+    def get_obs(self, env, agent_id):
+        return SingleCombatShootMissileTask.get_obs(self, env, agent_id)
+
+    def normalize_action(self, env, agent_id, action):
+        """Convert high-level action into low-level action.
+        """
+        self._shoot_action[agent_id] = action[-1]
+        return HierarchicalSingleCombatTask.normalize_action(self, env, agent_id, action[:-1])
+
+    def reset(self, env):
+        self._inner_rnn_states = {agent_id: np.zeros((1, 1, 128)) for agent_id in env.agents.keys()}
+        SingleCombatShootMissileTask.reset(self, env)
+
+    def step(self, env):
+        SingleCombatShootMissileTask.step(self, env)

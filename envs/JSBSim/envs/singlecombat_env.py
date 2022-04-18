@@ -1,7 +1,7 @@
 import numpy as np
 from .env_base import BaseEnv
 from ..tasks import SingleCombatTask, SingleCombatDodgeMissileTask, HierarchicalSingleCombatDodgeMissileTask, \
-    HierarchicalSingleCombatShootTask
+    HierarchicalSingleCombatShootTask, SingleCombatShootMissileTask
 
 
 class SingleCombatEnv(BaseEnv):
@@ -20,6 +20,8 @@ class SingleCombatEnv(BaseEnv):
             self.task = SingleCombatTask(self.config)
         elif taskname == 'singlecombat_dodge_missile':
             self.task = SingleCombatDodgeMissileTask(self.config)
+        elif taskname == 'singlecombat_shoot':
+            self.task = SingleCombatShootMissileTask(self.config)
         elif taskname == 'hierarchical_singlecombat_dodge_missile':
             self.task = HierarchicalSingleCombatDodgeMissileTask(self.config)
         elif taskname == 'hierarchical_singlecombat_shoot':

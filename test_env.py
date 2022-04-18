@@ -6,7 +6,7 @@ import logging
 
 logging.basicConfig(level=logging.DEBUG)
 parallel_num = 1
-envs = DummyVecEnv([lambda: SingleCombatEnv("1v1/ShootMissile/HierarchyVsBaseline") for _ in range(parallel_num)])
+envs = DummyVecEnv([lambda: SingleCombatEnv("1v1/ShootMissile/HierarchySelfplay") for _ in range(parallel_num)])
 
 # DataType test
 obs_shape = (parallel_num, envs.num_agents, *envs.observation_space.shape)
