@@ -1,6 +1,7 @@
 # ignore files
 test.py
 results
+runs
 *.npy
 *.acmi
 
