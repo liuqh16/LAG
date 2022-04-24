@@ -27,6 +27,6 @@ class ShootPenaltyReward(BaseRewardFunction):
         """
         reward = 0
         if task.remaining_missiles[agent_id] == self.pre_remaining_missiles[agent_id] - 1:
-            reward -= 10
+            reward -= 4
         self.pre_remaining_missiles[agent_id] = task.remaining_missiles[agent_id]
         return self._process(reward, agent_id)
