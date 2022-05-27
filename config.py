@@ -293,7 +293,8 @@ def _get_render_config(parser: argparse.ArgumentParser):
             the index of opponent policy in the opponent pool. by default 0
     """
     group = parser.add_argument_group("Render parameters")
-    group.add_argument("--render-opponent-index", type=int, default=0, help="the index of opponent policy in the opponent pool. by default 0")
+    group.add_argument("--render-opponent-index", type=str, default="latest", help="the index of opponent policy in the opponent pool. by default 0")
+    group.add_argument("--render-index", type=str, default="latest", help="the index of ego policy in the opponent pool. by default 0")
     return parser
 
 
