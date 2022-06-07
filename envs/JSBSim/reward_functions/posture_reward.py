@@ -1,4 +1,5 @@
 import numpy as np
+from wandb import agent
 from .reward_function_base import BaseRewardFunction
 from ..utils.utils import get_AO_TA_R
 
@@ -33,15 +34,17 @@ class PostureReward(BaseRewardFunction):
         Returns:
             (float): reward
         """
+        new_reward = 0
         # feature: (north, east, down, vn, ve, vd)
         ego_feature = np.hstack([env.agents[agent_id].get_position(),
                                  env.agents[agent_id].get_velocity()])
-        enm_feature = np.hstack([env.agents[agent_id].enemies[0].get_position(),
-                                 env.agents[agent_id].enemies[0].get_velocity()])
-        AO, TA, R = get_AO_TA_R(ego_feature, enm_feature)
-        orientation_reward = self.orientation_fn(AO, TA)
-        range_reward = self.range_fn(R / 1000)
-        new_reward = orientation_reward * range_reward
+        for enm in env.agents[agent_id].enemies:
+            enm_feature = np.hstack([enm.get_position(),
+                                    enm.get_velocity()])
+            AO, TA, R = get_AO_TA_R(ego_feature, enm_feature)
+            orientation_reward = self.orientation_fn(AO, TA)
+            range_reward = self.range_fn(R / 1000)
+            new_reward += orientation_reward * range_reward
         return self._process(new_reward, agent_id, (orientation_reward, range_reward))
 
     def get_orientation_function(self, version):
