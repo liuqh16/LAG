@@ -10,6 +10,7 @@ def test_env():
     parallel_num = 1
     envs = DummyVecEnv([lambda: SingleCombatEnv("1v1/ShootMissile/HierarchySelfplay") for _ in range(parallel_num)])
 
+    envs.reset()
     # DataType test
     obs_shape = (parallel_num, envs.num_agents, *envs.observation_space.shape)
     # act_shape = (parallel_num, envs.num_agents, *envs.action_space.shape)
@@ -58,4 +59,4 @@ def test_multi_env():
 
     envs.close()
 
-test_env()
+test_multi_env()

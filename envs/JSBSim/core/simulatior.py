@@ -445,11 +445,11 @@ class MissileSimulator(BaseSimulator):
         action, distance = self._guidance()
         self._distance_increment.append(distance > self._distance_pre)
         self._distance_pre = distance
-        if distance < self._Rc:
+        if distance < self._Rc and self.target_aircraft.is_alive:
             self.__status = MissileSimulator.HIT
             self.target_aircraft.shotdown()
         elif (self._t > self._t_max) or (np.linalg.norm(self.get_velocity()) < self._v_min) \
-                or np.sum(self._distance_increment) >= self._distance_increment.maxlen:
+                or np.sum(self._distance_increment) >= self._distance_increment.maxlen or not self.target_aircraft.is_alive:
             self.__status = MissileSimulator.MISS
         else:
             self._state_trans(action)
