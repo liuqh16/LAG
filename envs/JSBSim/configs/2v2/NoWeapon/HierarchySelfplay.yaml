@@ -1,5 +1,5 @@
 # task config
-task: multiplecombat
+task: hierarchical_multiplecombat
 
 # simulation config
 sim_freq: 60
@@ -71,5 +71,3 @@ PostureReward_range_version: v3
 AltitudeReward_safe_altitude: 4.0
 AltitudeReward_danger_altitude: 3.5
 AltitudeReward_Kv: 0.2
-
-RelativeAltitudeReward_KH: 1.0

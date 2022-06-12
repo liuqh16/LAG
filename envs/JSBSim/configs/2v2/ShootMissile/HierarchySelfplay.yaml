@@ -1,5 +1,5 @@
 # task config
-task: multiplecombat
+task: hierarchical_multiplecombat_shoot
 
 # simulation config
 sim_freq: 60
@@ -24,6 +24,7 @@ aircraft_configs: {
       ic_psi_true_deg: 0.0,
       ic_u_fps: 800.0,
     },
+    missile: 2
   },
   A0200: {
     color: Red,
@@ -35,6 +36,7 @@ aircraft_configs: {
       ic_psi_true_deg: 0.0,
       ic_u_fps: 800.0,
     },
+    missile: 2
   },
   B0100: {
     color: Blue,
@@ -46,6 +48,7 @@ aircraft_configs: {
       ic_psi_true_deg: 180.0,
       ic_u_fps: 800.0,
     },
+    missile: 2
   },
   B0200: {
     color: Blue,
@@ -57,8 +60,13 @@ aircraft_configs: {
       ic_psi_true_deg: 180.0,
       ic_u_fps: 800.0,
     },
+    missile: 2
   }
 }
+max_attack_angle: 45        # unit: degree
+max_attack_distance: 14000  # unit: m
+min_attack_interval: 125     # unit: step
+
 # (lontitude, latitude, altitude)
 battle_field_center: [120.0, 60.0, 0.0]
 
@@ -71,5 +79,3 @@ PostureReward_range_version: v3
 AltitudeReward_safe_altitude: 4.0
 AltitudeReward_danger_altitude: 3.5
 AltitudeReward_Kv: 0.2
-
-RelativeAltitudeReward_KH: 1.0

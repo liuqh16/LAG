@@ -12,6 +12,8 @@ from pathlib import Path
 import setproctitle
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 from config import get_config
+from runner.jsbsim_runner import JSBSimRunner
+from runner.share_jsbsim_runner import ShareJSBSimRunner
 from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv, MultipleCombatEnv
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv, ShareSubprocVecEnv, ShareDummyVecEnv
 
@@ -110,7 +112,7 @@ def main(args):
     if all_args.use_wandb:
         run = wandb.init(config=all_args,
                          project=all_args.env_name,
-                         entity=all_args.wandb_name,
+                         entity="thu_jsbsim",
                          notes=socket.gethostname(),
                          name=f"{all_args.algorithm_name}_{all_args.experiment_name}_seed{all_args.seed}",
                          group=all_args.scenario_name,
@@ -146,11 +148,14 @@ def main(args):
     }
 
     # run experiments
-    if all_args.use_selfplay:
-        from runner.selfplay_jsbsim_runner import SelfplayJSBSimRunner as Runner
+    if all_args.env_name == "MultipleCombat":
+        runner = ShareJSBSimRunner(config)
     else:
-        from runner.jsbsim_runner import JSBSimRunner as Runner
-    runner = Runner(config)
+        if all_args.use_selfplay:
+            from runner.selfplay_jsbsim_runner import SelfplayJSBSimRunner as Runner
+        else:
+            from runner.jsbsim_runner import JSBSimRunner as Runner
+        runner = Runner(config)
     try:
         runner.run()
     except BaseException:
