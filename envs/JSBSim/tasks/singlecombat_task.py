@@ -7,7 +7,7 @@ from ..core.simulatior import AircraftSimulator
 from ..core.catalog import Catalog as c
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout, SafeReturn
 from ..reward_functions import AltitudeReward, PostureReward, EventDrivenReward
-from ..utils.utils import get2d_AO_TA_R, in_range_rad, LLA2NEU, get_root_dir
+from ..utils.utils import get_AO_TA_R, get2d_AO_TA_R, in_range_rad, LLA2NEU, get_root_dir
 from ..model.baseline_actor import BaselineActor
 
 
@@ -15,6 +15,7 @@ class SingleCombatTask(BaseTask):
     def __init__(self, config):
         super().__init__(config)
         self.use_baseline = getattr(self.config, 'use_baseline', False)
+        self.use_artllery = getattr(self.config, 'use_artillery', False)
         if self.use_baseline:
             self.baseline_agent = self.load_agent(self.config.baseline_type)
 
@@ -151,6 +152,32 @@ class SingleCombatTask(BaseTask):
         if self.use_baseline:
             self.baseline_agent.reset()
         return super().reset(env)
+
+    def step(self, env):
+        def _orientation_fn(AO):
+            if AO >= 0 and AO <= 1.0472:  # [0, pi/3]
+                return 1 - AO / 1.0472
+            elif AO >= -1.0472 and AO <= 0: # [-pi/3, 0]
+                return 1 + AO / 1.0472
+            return 0
+        def _distance_fn(R):
+            if R <=3: # [0, 3km]
+                return 1
+            elif R > 3 and R <= 10: # [3km, 10km]
+                return (10 - R) / 7.
+            else:
+                return 0
+        if self.use_artllery:
+            for agent_id in env.agents.keys():
+                ego_feature = np.hstack([env.agents[agent_id].get_position(),
+                                        env.agents[agent_id].get_velocity()])
+                for enm in env.agents[agent_id].enemies:
+                    if enm.is_alive:
+                        enm_feature = np.hstack([enm.get_position(),
+                                                enm.get_velocity()])
+                        AO, _, R = get_AO_TA_R(ego_feature, enm_feature)
+
+                        enm.bloods -= _orientation_fn(AO) * _distance_fn(R/1000)
 
     def get_reward(self, env, agent_id, info=...):
         if self._agent_die_flag.get(agent_id, False):

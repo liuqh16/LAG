@@ -116,6 +116,7 @@ class AircraftSimulator(BaseSimulator):
         self.model = model
         self.init_state = init_state
         self.lon0, self.lat0, self.alt0 = origin
+        self.bloods = 100
         self.__status = AircraftSimulator.ALIVE
         for key, value in kwargs.items():
             if key == 'num_missiles':
@@ -154,6 +155,7 @@ class AircraftSimulator(BaseSimulator):
         super().reload()
 
         # reset temp simulator links
+        self.bloods = 100
         self.__status = AircraftSimulator.ALIVE
         self.launch_missiles.clear()
         self.under_missiles.clear()
@@ -216,6 +218,8 @@ class AircraftSimulator(BaseSimulator):
             (bool): False if sim has met JSBSim termination criteria else True.
         """
         if self.is_alive:
+            if self.bloods <= 0:
+                self.shotdown()
             result = self.jsbsim_exec.run()
             if not result:
                 raise RuntimeError("JSBSim failed.")

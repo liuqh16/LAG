@@ -106,6 +106,7 @@ class SingleCombatDodgeMissileTask(SingleCombatTask):
         return super().reset(env)
 
     def step(self, env):
+        SingleCombatTask.step(self, env)
         for agent_id, agent in env.agents.items():
             # [Rule-based missile launch]
             target = agent.enemies[0].get_position() - agent.get_position()
@@ -188,6 +189,7 @@ class SingleCombatShootMissileTask(SingleCombatDodgeMissileTask):
         super().reset(env)
     
     def step(self, env):
+        SingleCombatTask.step(self, env)
         for agent_id, agent in env.agents.items():
             # [RL-based missile launch with limited condition]
             shoot_flag = agent.is_alive and self._shoot_action[agent_id] and self.remaining_missiles[agent_id] > 0
