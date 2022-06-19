@@ -2,7 +2,8 @@ import numpy as np
 from gym import spaces
 from typing import Tuple
 import torch
-from .task_base import BaseTask
+
+from ..tasks import SingleCombatTask
 from ..core.catalog import Catalog as c
 from ..core.simulatior import MissileSimulator
 from ..reward_functions import AltitudeReward, PostureReward, EventDrivenReward, MissilePostureReward
@@ -11,7 +12,7 @@ from ..utils.utils import get_AO_TA_R, LLA2NEU, get_root_dir
 from ..model.baseline_actor import BaselineActor
 
 
-class MultipleCombatTask(BaseTask):
+class MultipleCombatTask(SingleCombatTask):
     def __init__(self, config):
         super().__init__(config)
 
@@ -250,6 +251,7 @@ class HierarchicalMultipleCombatShootTask(HierarchicalMultipleCombatTask):
         return super().normalize_action(env, agent_id, action[:3])
 
     def step(self, env):
+        SingleCombatTask.step(self, env)
         for agent_id, agent in env.agents.items():
             # [RL-based missile launch with limited condition]
             # Determine whether can launch missile at the nearest enemy aircraft

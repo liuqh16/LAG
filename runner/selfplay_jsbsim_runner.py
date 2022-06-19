@@ -198,7 +198,6 @@ class SelfplayJSBSimRunner(JSBSimRunner):
             cumulative_rewards[dones_env == True] = 0
 
         # Compute average episode rewards
-
         episode_rewards = np.concatenate(episode_rewards) # shape (self.eval_episodes, self.num_agents, 1)
         episode_rewards = episode_rewards.squeeze(-1).mean(axis=-1) # shape: (self.eval_episodes,)
         eval_average_episode_rewards = np.array(np.split(episode_rewards, self.num_opponents)).mean(axis=-1) # shape (self.num_opponents,)
@@ -214,9 +213,9 @@ class SelfplayJSBSimRunner(JSBSimRunner):
 
         actual_score = np.zeros_like(expected_score)
         diff = opponent_average_episode_rewards - eval_average_episode_rewards
-        actual_score[diff > 50] = 1 # win
-        actual_score[abs(diff) < 50] = 0.5 # tie
-        actual_score[diff < -50] = 0 # lose
+        actual_score[diff > 100] = 1 # win
+        actual_score[abs(diff) < 100] = 0.5 # tie
+        actual_score[diff < -100] = 0 # lose
 
         elo_gain = 32 * (actual_score - expected_score)
         update_opponent_elo = opponent_elo + elo_gain

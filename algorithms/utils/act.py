@@ -95,7 +95,6 @@ class ACTLayer(nn.Module):
             actions = torch.cat(actions, dim=-1)
             action_log_probs = torch.cat(action_log_probs, dim=-1).sum(dim=-1, keepdim=True)
 
-
         else:
             action_dists = self.action_out(x)
             actions = action_dists.mode() if deterministic else action_dists.sample()
@@ -118,7 +117,7 @@ class ACTLayer(nn.Module):
         if self._mlp_actlayer:
             x = self.mlp(x)
 
-        elif self._multidiscrete_action:
+        if self._multidiscrete_action:
             action = torch.transpose(action, 0, 1)
             action_log_probs = []
             dist_entropy = []
@@ -132,7 +131,7 @@ class ACTLayer(nn.Module):
             action_log_probs = torch.cat(action_log_probs, dim=-1).sum(dim=-1, keepdim=True)
             dist_entropy = torch.cat(dist_entropy, dim=-1).sum(dim=-1, keepdim=True)
 
-        if self._shoot_action:
+        elif self._shoot_action:
             dis_action, shoot_action = action.split((self._discrete_dim, self._shoot_dim), dim=-1)
             action_log_probs = []
             dist_entropy = []

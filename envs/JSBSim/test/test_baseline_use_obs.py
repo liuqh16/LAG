@@ -110,20 +110,46 @@ class ManeuverAgent(BaselineAgent):
 
 
 def test_maneuver():
-    env = SingleCombatEnv(config_name='1v1/DodgeMissile/test/opposite')
+    env = SingleCombatEnv(config_name='1v1/DodgeMissile/Selfplay')
+    env.seed(0)
     obs = env.reset()
     env.render()
     agent0 = ManeuverAgent(agent_id=0, maneuver='n')
     agent1 = PursueAgent(agent_id=1)
     reward_list = []
+    step = 0
+    bloods_list = []
     while True:
         actions = [agent0.get_action(obs), agent1.get_action(obs)]
         obs, reward, done, info = env.step(actions)
         env.render()
+        bloods = [env.agents[agent_id].bloods for agent_id in env.agents.keys()]
+        print(f"step:{step}, bloods:{bloods}")
         reward_list.append(reward[0])
         if np.array(done).all():
             print(info)
             break
+        step += 1
+    
+    env.seed(0)
+    obs = env.reset()
+    env.render()
+    agent0 = ManeuverAgent(agent_id=0, maneuver='n')
+    agent1 = PursueAgent(agent_id=1)
+    reward_list = []
+    step = 0
+    bloods_list = []
+    while True:
+        actions = [agent0.get_action(obs), agent1.get_action(obs)]
+        obs, reward, done, info = env.step(actions)
+        env.render()
+        bloods = [env.agents[agent_id].bloods for agent_id in env.agents.keys()]
+        print(f"step:{step}, bloods:{bloods}")
+        reward_list.append(reward[0])
+        if np.array(done).all():
+            print(info)
+            break
+        step += 1
     # plt.plot(reward_list)
     # plt.savefig('rewards.png')
 
