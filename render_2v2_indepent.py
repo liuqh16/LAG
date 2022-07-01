@@ -4,6 +4,7 @@ from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv, MultipleCombatEn
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
 from envs.JSBSim.core.catalog import Catalog as c
 from algorithms.ppo.ppo_actor import PPOActor
+from gym import spaces
 import time
 import logging
 logging.basicConfig(level=logging.DEBUG)
@@ -49,7 +50,7 @@ env.seed(0)
 args = Args()
 
 ego_policy = PPOActor(args, env.observation_space, env.action_space, device=torch.device("cuda"))
-enm_policy = PPOActor(args, SingleCombatEnv("1v1/NoWeapon/HierarchySelfplay").observation_space, env.action_space, device=torch.device("cuda"))
+enm_policy = PPOActor(args, spaces.Box(low=-10, high=10., shape=(15,)), env.action_space, device=torch.device("cuda"))
 ego_policy.eval()
 enm_policy.eval()
 ego_policy.load_state_dict(torch.load(ego_run_dir + f"/actor_{ego_policy_index}.pt"))

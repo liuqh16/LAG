@@ -15,7 +15,7 @@ class SingleCombatTask(BaseTask):
     def __init__(self, config):
         super().__init__(config)
         self.use_baseline = getattr(self.config, 'use_baseline', False)
-        self.use_artllery = getattr(self.config, 'use_artillery', False)
+        self.use_artillery = getattr(self.config, 'use_artillery', False)
         if self.use_baseline:
             self.baseline_agent = self.load_agent(self.config.baseline_type)
 
@@ -155,19 +155,19 @@ class SingleCombatTask(BaseTask):
 
     def step(self, env):
         def _orientation_fn(AO):
-            if AO >= 0 and AO <= 1.0472:  # [0, pi/3]
-                return 1 - AO / 1.0472
-            elif AO >= -1.0472 and AO <= 0: # [-pi/3, 0]
-                return 1 + AO / 1.0472
+            if AO >= 0 and AO <= 0.5236:  # [0, pi/6]
+                return 1 - AO / 0.5236
+            elif AO >= -0.5236 and AO <= 0: # [-pi/6, 0]
+                return 1 + AO / 0.5236
             return 0
         def _distance_fn(R):
-            if R <=3: # [0, 3km]
+            if R <=1: # [0, 1km]
                 return 1
-            elif R > 3 and R <= 10: # [3km, 10km]
-                return (10 - R) / 7.
+            elif R > 1 and R <= 3: # [1km, 3km]
+                return (3 - R) / 2.
             else:
                 return 0
-        if self.use_artllery:
+        if self.use_artillery:
             for agent_id in env.agents.keys():
                 ego_feature = np.hstack([env.agents[agent_id].get_position(),
                                         env.agents[agent_id].get_velocity()])
@@ -176,8 +176,9 @@ class SingleCombatTask(BaseTask):
                         enm_feature = np.hstack([enm.get_position(),
                                                 enm.get_velocity()])
                         AO, _, R = get_AO_TA_R(ego_feature, enm_feature)
-
                         enm.bloods -= _orientation_fn(AO) * _distance_fn(R/1000)
+                        # if agent_id == 'A0100' and enm.uid == 'B0100':
+                        #     print(f"AO: {AO * 180 / np.pi}, {_orientation_fn(AO)}, dis:{R/1000}, {_distance_fn(R/1000)}")
 
     def get_reward(self, env, agent_id, info=...):
         if self._agent_die_flag.get(agent_id, False):
