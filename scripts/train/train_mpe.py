@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-from email.policy import default
-import imp
 import sys
 import os
 import gym

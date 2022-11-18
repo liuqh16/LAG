@@ -10,7 +10,6 @@ from abc import ABC, abstractmethod
 from typing import Literal
 from envs.JSBSim.core.catalog import Catalog as c
 from envs.JSBSim.utils.utils import in_range_rad, get_root_dir
-from envs.JSBSim.tasks import SingleCombatWithMissileTask
 from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv
 from envs.JSBSim.model.baseline_actor import BaselineActor
 
@@ -44,8 +43,8 @@ class BaselineAgent(ABC):
         raise NotImplementedError
 
     def get_observation(self, env, task, delta_value):
-        uid = list(env.jsbsims.keys())[self.agent_id]
-        obs = env.jsbsims[uid].get_property_values(self.state_var)
+        uid = list(env.agents.keys())[self.agent_id]
+        obs = env.agents[uid].get_property_values(self.state_var)
         norm_obs = np.zeros(12)
         norm_obs[0] = delta_value[0] / 1000          #  0. ego delta altitude  (unit: 1km)
         norm_obs[1] = in_range_rad(delta_value[1])   #  1. ego delta heading   (unit rad)
@@ -76,10 +75,10 @@ class PursueAgent(BaselineAgent):
 
     def set_delta_value(self, env, task):
         # NOTE: only adapt for 1v1
-        ego_uid, enm_uid = list(env.jsbsims.keys())[self.agent_id], list(env.jsbsims.keys())[(self.agent_id+1)%2] 
-        ego_x, ego_y, ego_z = env.jsbsims[ego_uid].get_position()
-        ego_vx, ego_vy, ego_vz = env.jsbsims[ego_uid].get_velocity()
-        enm_x, enm_y, enm_z = env.jsbsims[enm_uid].get_position()
+        ego_uid, enm_uid = list(env.agents.keys())[self.agent_id], list(env.agents.keys())[(self.agent_id+1)%2] 
+        ego_x, ego_y, ego_z = env.agents[ego_uid].get_position()
+        ego_vx, ego_vy, ego_vz = env.agents[ego_uid].get_velocity()
+        enm_x, enm_y, enm_z = env.agents[enm_uid].get_position()
         # delta altitude
         delta_altitude = enm_z - ego_z
         # delta heading
@@ -91,8 +90,8 @@ class PursueAgent(BaselineAgent):
         side_flag = np.sign(np.cross([ego_vx, ego_vy], [delta_x, delta_y]))
         delta_heading = ego_AO * side_flag
         # delta velocity
-        delta_velocity = env.jsbsims[enm_uid].get_property_value(c.velocities_u_mps) - \
-                         env.jsbsims[ego_uid].get_property_value(c.velocities_u_mps)
+        delta_velocity = env.agents[enm_uid].get_property_value(c.velocities_u_mps) - \
+                         env.agents[ego_uid].get_property_value(c.velocities_u_mps)
         return np.array([delta_altitude, delta_heading, delta_velocity])
 
 
@@ -109,8 +108,8 @@ class ManeuverAgent(BaselineAgent):
             self.target_heading_list = [np.pi, np.pi, np.pi, np.pi]
         elif maneuver == 'triangle':
             self.target_heading_list = [np.pi/3, np.pi, -np.pi/3]*2
-        self.target_altitude_list = [8000, 7000, 7500, 5500, 6000, 6000]
-        self.target_velocity_list = [340, 300, 150, 200, 243, 243]
+        self.target_altitude_list = [6000] * 6
+        self.target_velocity_list = [243]  * 6
 
     def reset(self):
         self.step = 0
@@ -119,8 +118,8 @@ class ManeuverAgent(BaselineAgent):
 
     def set_delta_value(self, env, task):
         step_list = np.arange(1, len(self.target_heading_list)+1) * self.turn_interval / env.time_interval
-        uid = list(env.jsbsims.keys())[self.agent_id]
-        cur_heading = env.jsbsims[uid].get_property_value(c.attitude_heading_true_rad)
+        uid = list(env.agents.keys())[self.agent_id]
+        cur_heading = env.agents[uid].get_property_value(c.attitude_heading_true_rad)
         if self.init_heading is None:
             self.init_heading = cur_heading
         if not self.dodge_missile or task._check_missile_warning(env, self.agent_id) is not None:
@@ -128,13 +127,13 @@ class ManeuverAgent(BaselineAgent):
                 if self.step <= interval:
                     break
             delta_heading = self.init_heading + self.target_heading_list[i] - cur_heading
-            delta_altitude = self.target_altitude_list[i] - env.jsbsims[uid].get_property_value(c.position_h_sl_m)
-            delta_velocity = self.target_velocity_list[i] - env.jsbsims[uid].get_property_value(c.velocities_u_mps)
+            delta_altitude = self.target_altitude_list[i] - env.agents[uid].get_property_value(c.position_h_sl_m)
+            delta_velocity = self.target_velocity_list[i] - env.agents[uid].get_property_value(c.velocities_u_mps)
             self.step += 1
         else:
             delta_heading = self.init_heading  - cur_heading
-            delta_altitude = 6000 - env.jsbsims[uid].get_property_value(c.position_h_sl_m)
-            delta_velocity = 243 - env.jsbsims[uid].get_property_value(c.velocities_u_mps)
+            delta_altitude = 6000 - env.agents[uid].get_property_value(c.position_h_sl_m)
+            delta_velocity = 243 - env.agents[uid].get_property_value(c.velocities_u_mps)
 
         return np.array([delta_altitude, delta_heading, delta_velocity])
 
@@ -142,16 +141,16 @@ class ManeuverAgent(BaselineAgent):
 def test_maneuver():
     env = SingleCombatEnv(config_name='1v1/NoWeapon/test/opposite')
     obs = env.reset()
-    env.render()
+    env.render(filepath="control.txt.acmi")
     agent0 = ManeuverAgent(agent_id=0, maneuver='triangle')
     agent1 = PursueAgent(agent_id=1)
     reward_list = []
     while True:
         action0 = agent0.get_action(env, env.task)
         action1 = agent1.get_action(env, env.task)
-        actions = [action0, 0]
+        actions = [action0, action1]
         obs, reward, done, info = env.step(actions)
-        env.render()
+        env.render(filepath="control.txt.acmi")
         reward_list.append(reward[0])
         if np.array(done).all():
             print(info)

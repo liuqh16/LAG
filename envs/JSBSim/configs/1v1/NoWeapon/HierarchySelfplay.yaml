@@ -40,12 +40,11 @@ aircraft_configs: {
 # (lontitude, latitude, altitude)
 battle_field_center: [120.0, 60.0, 0.0]
 
-use_artillery: true
 # reward config
 PostureReward_scale: 100.0
 PostureReward_potential: true
 PostureReward_orientation_version: v2
-PostureReward_range_version: v2
+PostureReward_range_version: v3
 PostureReward_target_dist: 3.0
 
 AltitudeReward_safe_altitude: 4.0

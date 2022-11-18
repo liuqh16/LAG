@@ -62,7 +62,6 @@ aircraft_configs: {
 # (lontitude, latitude, altitude)
 battle_field_center: [120.0, 60.0, 0.0]
 
-use_artillery: true
 # reward config
 PostureReward_scale: 15.0
 PostureReward_potential: true

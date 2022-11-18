@@ -112,9 +112,9 @@ def main(args):
     if all_args.use_wandb:
         run = wandb.init(config=all_args,
                          project=all_args.env_name,
-                         entity="thu_jsbsim",
+                         entity=all_args.wandb_name,
                          notes=socket.gethostname(),
-                         name=f"{all_args.algorithm_name}_{all_args.experiment_name}_seed{all_args.seed}",
+                         name=f"{all_args.experiment_name}_seed{all_args.seed}",
                          group=all_args.scenario_name,
                          dir=str(run_dir),
                          job_type="training",
