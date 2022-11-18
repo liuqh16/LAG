@@ -13,8 +13,6 @@ import setproctitle
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 from config import get_config
 from envs.env_wrappers import SubprocVecEnv, DummyVecEnv
-from envs import gym_hybrid
-from envs import slimevolley
 
 
 class GymEnv:
@@ -80,12 +78,7 @@ def make_train_env(all_args):
     def get_env_fn(rank):
         def init_env():
             env = gym.make(all_args.scenario_name)
-            if 'Moving' in  all_args.scenario_name:
-                env = GymHybridEnv(env)
-            elif 'Volleyball' in all_args.scenario_name:
-                pass
-            else: 
-                env = GymEnv(env)
+            env = GymEnv(env)
             env.seed(all_args.seed + rank * 1000)
             return env
         return init_env
