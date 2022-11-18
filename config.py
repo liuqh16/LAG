@@ -68,8 +68,6 @@ def _get_prepare_config(parser: argparse.ArgumentParser):
                        help="Number of torch threads for training (default 1)")
     group.add_argument("--n-rollout-threads", type=int, default=4,
                        help="Number of parallel envs for training/evaluating rollout (default 4)")
-    group.add_argument("--n-render-rollout-threads", type=int, default=1,
-                       help="Number of parallel envs for rendering, could only be set as 1 for some environments.")
     group.add_argument("--num-env-steps", type=float, default=1e7,
                        help='Number of environment steps to train (default: 1e7)')
     group.add_argument("--model-dir", type=str, default=None,
@@ -77,7 +75,7 @@ def _get_prepare_config(parser: argparse.ArgumentParser):
     group.add_argument("--use-wandb", action='store_true', default=False,
                        help="[for wandb usage], by default False, if set, will log date to wandb server.")
     group.add_argument("--user-name", type=str, default='liuqh',
-                       help="[for wandb usage], to specify user's name for simply collecting training data.")
+                       help="for setprobtitle use")
     group.add_argument("--wandb-name", type=str, default='liuqh',
                        help="[for wandb usage], to specify user's name for simply collecting training data.")
     return parser

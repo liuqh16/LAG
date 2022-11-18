@@ -1,100 +1,85 @@
-# CloseAirCombat
-An environment based on JSBSIM aimed at one-to-one close air combat.
+# Light Aircraft Game: A lightweight, scalable, gym-wrapped aircraft competitive environment with baseline reinforcement learning algorithms
+We provide a competitive environment for red and blue aircrafts games, which includes single control setting, 1v1 setting and 2v2 setting. The flight dynamics based on JSBSIM, and missile dynamics based on our implementation of proportional guidance. We also provide ppo and mappo implementation for self-play or vs-baseline training. 
 
-
+![fromework](assets/framework.jpg)
 ## Install 
 
 ```shell
 # create python env
 conda create -n jsbsim python=3.8
-# install pytorch
-conda install pytorch torchvision torchaudio cudatoolkit=11.1 -c pytorch -c conda-forge
 # install dependency
-pip install pymap3d jsbsim==1.1.6 geographiclib gym wandb icecream setproctitle matplotlib
-```
+pip install torch pymap3d jsbsim==1.1.6 geographiclib gym==0.20.0 wandb icecream setproctitle. 
+
 - Download Shapely‑1.7.1‑cp38‑cp38‑win_amd64.whl from [here](https://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely), and `pip install shaply` from local file.
 
 - Initialize submodules(*JSBSim-Team/jsbsim*): `git submodule init; git submodule update`
+```
+## Envs
+We provide all task configs in  `envs/JSBSim/configs`, each config corresponds to a task.
 
-## 导弹建模
+### SingleControl
+SingleControl env includes single agent heading task, whose goal is to train agent fly according to the given direction, altitude and velocity. The trained agent can be used to design baselines or become the low level policy of the following combat tasks. We can designed two baselines, as shown in the video:
+![singlecontrol](assets/1_control.gif)
+The red is manever_agent, flying in a triangular trajectory. The blue is pursue agent, constantly tracking the red agent. You can reproduce this by `python envs/JSBSim/test/test_baseline_use_env.py`.
 
-### 导弹运动与动力学模型
 
-惯性坐标系下，导弹运动学方程为：
+### SingleCombat
+SingleCombat env is for two agents 1v1 competitive tasks, including NoWeapon tasks and Missile tasks. We provide self-play setting and vs-baseline setting for each task. Due to the fact that learning to fly and combat simultaneously is non-trival, we also provide a hierarchical framework, where the upper level control gives the direction, altitude and velocity, the low level control use the model trained in SingleControl. 
 
-$$
-\begin{cases}
 
-\dot{x}(t)=v(t)\cos{\theta(t)}\cos{\varphi(t)} \\
+- NoWeapon tasks require the agent to be in an posture advantage, which means the agent need to fly towards the tail of its opponent and maintain a proper distance. 
+- Missile tasks require the agent learn to shoot down oppoents and dodge missiles. Missile engines are based on proportional guidance, we provide a document for our impletation [here](docs/missile_engine). We can futher divide missile tasks into into two categories:
+  - Dodge missile task. Missile launches are controled by rules, train agent learn to dodge missile.
+  - Shoot missile task. Missile launches are also learning goals. But training from scratch to learn launching missiles is not trival, we need to introduce some prior knowledge for policy learning. We use property that conjugate prior of binomial distribution is beta distribution to address this issue, refer to [here](docs/parameterized_shooting.md) for more details.
 
-\dot{y}(t)=v(t)\cos{\theta(t)}\sin{\varphi(t)} \\
 
-\dot{z}(t)=v(t)\sin{\theta(t)}
+![1v1_missile](assets/1v1_missile.gif)
 
-\end{cases}
-$$
 
-式中，$(x,y,z)$为导弹在惯性坐标系下的坐标；$(v,\theta,\varphi)$为导弹的速度，航迹俯仰角和航迹偏航角，均为飞行时间 $t$ 的函数。根据导弹的飞行分为主动段和被动段，在惯性系中，导弹主动段所受力主要包括：推力$T(t)$、重力$G=m(t)g$、气动阻力$D(t)$（在非惯性系下还需要考虑表视力$C$），因此在弹道坐标系下，导弹的质点动力学方程为：
+### MultiCombat
+MultiCombat env is for four agents 2v2 competitive tasks. The setting is same as SingleCombat. We show that multicombat
+![2v2_posture](assets/2v2_posture.gif)
 
-$$
-\begin{cases}
-\dot{v}(t)=g (n_{x}(t)-\sin{\theta(t)}) \\
-\dot{\varphi}(t)=\frac{g}{v(t)}n_{y}(t)\cos{\theta(t)} \\
-\dot{\theta}(t)=\frac{g}{v(t)}(n_{z}(t)-\cos{\theta(t)})
-\end{cases}
-\quad 其中: n_{x}(t)=\frac{T(t)-D(t)}{m(t)g}
-$$
+## Quick Start
+### Training
 
-式中，$n_{x}$为速度方向过载，$n_{y},n_{z}$为导弹在偏航方向和俯仰方向的侧向控制过载，通过比例导引法计算得出。$m(t)$为导弹当前质量，$g$为重力加速度常数，取$g=9.81m/s^2$。
+```bash
+cd scripts
+bash train_*.sh
+```
+We have provide scripts for five tasks in `scripts/`.
 
-$T(t)$为导弹推力，其大小满足：
+- `train_heading.sh` is for SingleControl environment heading task.
+- `train_vsbaseline.sh` is for SingleCombat vs-baseline tasks.
+- `train_selfplay.sh` is for SingleCombat self-play tasks. 
+- `train_selfplay_shoot.sh` is for SingleCombat self-play shoot missile tasks.
+- `train_share_selfplay.sh` is for MultipleCombat self-play tasks.
 
-$$
-T(t) = gI_{\text{sp}}\dot{m}(t)
-$$
-式中，$I_{\text{sp}}$为比冲（假设为常量），$\dot{m}(t)$为燃料质量燃烧率。
+It can be adapted to other tasks by modifying a few parameter settings. 
 
-$D(t)$为气动阻力，其大小满足：
+- `--env-name` includes options ['SingleControl', 'SingleCombat', 'MultipleCombat'].
+- `--scenario` corresponds to yaml file in `envs/JBSim/configs` one by one.
+- `--algorithm` includes options [ppo, mappo], ppo for SingleControl and SingleCombat, mappo for MultipleCombat
 
-$$
-D(t) = \frac{1}{2}c_D(v(t))\cdot S\cdot \rho(z(t))\cdot v^2(t)
-$$
+The description of parameter setting refers to `config.py`.
+Note that we set parameters `--use-selfplay --selfplay-algorithm --n-choose-opponents --use-eval --n-eval-rollout-threads --eval-interval --eval-episodes` in selfplay-setting training. `--use-prior` is only set true for shoot missile tasks.
+We use wandb to track the training process. If you set `--use-wandb`, please replace the `--wandb-name` with your name. 
 
-式中，$v(t)$为导弹在$t$时刻的速度大小，$z(t)$是导弹在$t$时刻的水平高度，$S$为计算面积（定义为与速度正交的弹体截面积），$c_D(v)$是阻力系数，它是速度大小$v$的函数，可近似认为是常数，取$c_D(v)\equiv0.1$。$\rho(z)$是空气密度，它是高度$z$的函数，其大小满足近似关系式：$\rho(z)=\rho_0e^{-z/k}$，式中$\rho_0=1.225kg/m^3,k=9300m$。
+### Evaluate and Render
+```bash
+cd renders
+render *.py
+```
+This will generate a `*.acmi` file. We can use [**TacView**](https://www.tacview.net/), a universal flight analysis tool, to open the file and watch the render videos.
 
-对于导弹的计算面积$S$，其大小近似满足：
-
-$$
-S = \pi(\frac{d}{2})^2+(\sin^2(\Delta\theta)+\sin^2(\Delta\varphi))dL
-$$
-
-式中，$d$为导弹直径，$L$为导弹半径，$\Delta\theta,\Delta\varphi$为导弹姿态和航迹在俯仰角、偏航角上的差值，可近似认为是航迹俯仰角、偏航角$\theta,\varphi$在$\Delta t$时间内的变化量，即$\Delta\theta=\dot{\theta}\Delta t, \Delta\varphi=\dot{\varphi}\Delta t$。
-
-### 导弹导引控制模型
-
-导弹导引采用比例导引律。假设在相互垂直的两个控制平面内导引系数均为$K=3$，偏航和俯仰方向的两个侧向控制过载定义为：
-
-$$
-\begin{cases}
-n_{y}=\frac{Kv}{g}\cos{\theta}\dot{\beta} \\
-n_{z}=\frac{Kv}{g}\dot{\varepsilon}+\cos{\theta}
-\end{cases}
-$$
-
-式中，$\beta,\varepsilon$分别为视线偏角与视线倾角，$\dot{\beta},\dot{\varepsilon}$分别为视线偏角和视线倾角随时间变化的导数。
-
-$$
-\begin{cases}
-\beta=arctan(r_y/r_x) \\
-\varepsilon=arctan(r_z/\sqrt{r_x^2+r_y^2})
-\end{cases}
-$$
-
-视线矢量即为距离矢量$\vec{r}$，有$r_x=x_t-x_m,r_y=y_t-y_m,r_z=z_t-z_m$，$x_t,y_t,z_t$为目标机位置，模值定义为$R=\sqrt{r_x^2+r_y^2+r_z^2}$。视线偏角和视线倾角及其随时间的导数公式定义为:
-
-$$
-\begin{cases}
-\dot{\beta}=(\dot{r_y}r_x-r_y\dot{r_x})/(r_x^2+r_y^2) \\
-\dot{\varepsilon}=\frac{(r_x^2+r_y^2)\dot{r_z}-r_z(\dot{r_x}r_x+\dot{r_y}r_y)}{R^2\sqrt{r_x^2+r_y^2}}
-\end{cases}
-$$
+## Citing
+If you find this repo useful, pleased use the following citation:
+````
+@misc{liu2022light,
+  author = {QihanLiu, Yuhua Jiang, Xiaoteng Ma},
+  title = {Light Aircraft Game: A lightweight, scalable, gym-wrapped aircraft competitive environment with baseline reinforcement learning algorithms},
+  year = {2022},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/liuqh16/CloseAirCombat}},
+}
