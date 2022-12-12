@@ -71,7 +71,7 @@ We use wandb to track the training process. If you set `--use-wandb`, please rep
 ### Evaluate and Render
 ```bash
 cd renders
-render *.py
+python render*.py
 ```
 This will generate a `*.acmi` file. We can use [**TacView**](https://www.tacview.net/), a universal flight analysis tool, to open the file and watch the render videos.
 

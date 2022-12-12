@@ -32,7 +32,7 @@ ego_run_dir = "/home/lqh/jyh/CloseAirCombat/scripts/results/SingleCombat/1v1/NoW
 enm_run_dir = "/home/lqh/jyh/CloseAirCombat/scripts/results/SingleCombat/1v1/NoWeapon/HierarchySelfplay/ppo/artillery_check/wandb/latest-run/files"
 experiment_name = ego_run_dir.split('/')[-4]
 
-env = SingleCombatEnv("1v1/NoWeapon/HierarchySelfplay")
+env = SingleCombatEnv("1v1/NoWeapon/Selfplay")
 env.seed(0)
 args = Args()
 
