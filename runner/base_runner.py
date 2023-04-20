@@ -26,7 +26,6 @@ class Runner(object):
         self.num_env_steps = int(self.all_args.num_env_steps)
         self.n_rollout_threads = self.all_args.n_rollout_threads
         self.n_eval_rollout_threads = self.all_args.n_eval_rollout_threads
-        self.n_render_rollout_threads = self.all_args.n_render_rollout_threads
         self.buffer_size = self.all_args.buffer_size
         self.use_wandb = self.all_args.use_wandb
 

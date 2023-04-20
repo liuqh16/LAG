@@ -12,7 +12,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath
 from config import get_config
 from runner.share_jsbsim_runner import ShareJSBSimRunner
 from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv, MultipleCombatEnv
-from envs.env_wrappers import SubprocVecEnv, DummyVecEnv, ShareSubprocVecEnv, ShareDummyVecEnv
+from envs.env_wrappers import DummyVecEnv, ShareDummyVecEnv
 
 
 def make_render_env(all_args):

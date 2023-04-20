@@ -96,7 +96,6 @@ class JSBSimRunner(Runner):
             # save model
             if (episode % self.save_interval == 0) or (episode == episodes - 1):
                 self.save(episode)
-                
 
     def warmup(self):
         # reset env
@@ -174,7 +173,6 @@ class JSBSimRunner(Runner):
     @torch.no_grad()
     def render(self):
         logging.info("\nStart render ...")
-        self.render_opponent_index = self.all_args.render_opponent_index
         render_episode_rewards = 0
         render_obs = self.envs.reset()
         render_masks = np.ones((1, *self.buffer.masks.shape[2:]), dtype=np.float32)
@@ -188,7 +186,7 @@ class JSBSimRunner(Runner):
                                                                 deterministic=True)
             render_actions = np.expand_dims(_t2n(render_actions), axis=0)
             render_rnn_states = np.expand_dims(_t2n(render_rnn_states), axis=0)
-            
+
             # Obser reward and next obs
             render_obs, render_rewards, render_dones, render_infos = self.envs.step(render_actions)
             if self.use_selfplay:
