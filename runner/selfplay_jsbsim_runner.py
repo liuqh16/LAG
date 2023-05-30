@@ -113,7 +113,8 @@ class SelfplayJSBSimRunner(JSBSimRunner):
         # [Selfplay] divide ego/opponent of collecting data
         self.opponent_obs = obs[:, self.num_agents // 2:, ...]
         self.opponent_masks = masks[:, self.num_agents // 2:, ...]
-
+        self.opponent_rnn_states[dones_env == True] = np.zeros(((dones_env == True).sum(), *rnn_states_actor.shape[1:]), dtype=np.float32)
+        
         obs = obs[:, :self.num_agents // 2, ...]
         actions = actions[:, :self.num_agents // 2, ...]
         rewards = rewards[:, :self.num_agents // 2, ...]
