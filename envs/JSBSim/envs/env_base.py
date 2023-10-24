@@ -63,7 +63,7 @@ class BaseEnv(gym.Env):
         for uid, config in self.config.aircraft_configs.items():
             self._jsbsims[uid] = AircraftSimulator(
                 uid=uid,
-                color=config.get("team", "Red"),
+                color=config.get("color", "Red"),
                 model=config.get("model", "f16"),
                 init_state=config.get("init_state"),
                 origin=getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0)),
