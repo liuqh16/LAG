@@ -79,7 +79,7 @@ This will generate a `*.acmi` file. We can use [**TacView**](https://www.tacview
 If you find this repo useful, pleased use the following citation:
 ````
 @misc{liu2022light,
-  author = {QihanLiu, Yuhua Jiang, Xiaoteng Ma},
+  author = {Qihan Liu and Yuhua Jiang and Xiaoteng Ma},
   title = {Light Aircraft Game: A lightweight, scalable, gym-wrapped aircraft competitive environment with baseline reinforcement learning algorithms},
   year = {2022},
   publisher = {GitHub},
