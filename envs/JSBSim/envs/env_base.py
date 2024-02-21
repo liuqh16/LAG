@@ -1,5 +1,5 @@
-import gym
-from gym.utils import seeding
+import gymnasium
+from gymnasium.utils import seeding
 import numpy as np
 from typing import Dict, Any, Tuple
 from ..core.simulatior import AircraftSimulator, BaseSimulator
@@ -7,7 +7,7 @@ from ..tasks.task_base import BaseTask
 from ..utils.utils import parse_config
 
 
-class BaseEnv(gym.Env):
+class BaseEnv(gymnasium.Env):
     """
     A class wrapping the JSBSim flight dynamics module (FDM) for simulating
     aircraft as an RL environment conforming to the OpenAI Gym Env
@@ -35,11 +35,11 @@ class BaseEnv(gym.Env):
         return self.task.num_agents
 
     @property
-    def observation_space(self) -> gym.Space:
+    def observation_space(self) -> gymnasium.Space:
         return self.task.observation_space
 
     @property
-    def action_space(self) -> gym.Space:
+    def action_space(self) -> gymnasium.Space:
         return self.task.action_space
 
     @property

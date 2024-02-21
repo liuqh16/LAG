@@ -150,7 +150,7 @@ def test_maneuver():
             print(info)
             break
         step += 1
-    # plt.plot(reward_list)
+    plt.plot(reward_list)
     # plt.savefig('rewards.png')
 
 

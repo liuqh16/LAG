@@ -1,6 +1,7 @@
 import copy
 import math
-import gym.spaces
+
+import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn as nn

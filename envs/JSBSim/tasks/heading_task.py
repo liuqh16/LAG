@@ -1,5 +1,5 @@
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 from .task_base import BaseTask
 from ..core.catalog import Catalog as c
 from ..reward_functions import AltitudeReward, HeadingReward

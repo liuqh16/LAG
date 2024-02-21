@@ -1,4 +1,5 @@
 #!/bin/sh
+
 env="MultipleCombat"
 scenario="2v2/NoWeapon/HierarchySelfplay"
 algo="mappo"
