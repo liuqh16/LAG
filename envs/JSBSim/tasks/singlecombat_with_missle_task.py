@@ -1,5 +1,5 @@
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 from collections import deque
 
 from .singlecombat_task import SingleCombatTask, HierarchicalSingleCombatTask

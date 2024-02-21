@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 from typing import Literal
 from .task_base import BaseTask
 from ..core.simulatior import AircraftSimulator

@@ -1,8 +1,9 @@
+import gymnasium as gym
 import torch
 import torch.nn as nn
-import gym.spaces
-from .mlp import MLPLayer
+
 from .distributions import BetaShootBernoulli, Categorical, DiagGaussian, Bernoulli
+from .mlp import MLPLayer
 
 
 class ACTLayer(nn.Module):

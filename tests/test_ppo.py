@@ -1,10 +1,11 @@
-import sys
 import os
-import torch
-import pytest
-import numpy as np
+import sys
 from itertools import product
-import gym.spaces
+
+import gymnasium as gym
+import numpy as np
+import pytest
+import torch
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 

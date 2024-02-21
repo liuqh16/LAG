@@ -1,4 +1,5 @@
 #!/bin/sh
+
 env="SingleCombat"
 scenario="1v1/ShootMissile/HierarchySelfplay"
 algo="ppo"
