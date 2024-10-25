@@ -142,7 +142,7 @@ class SelfplayJSBSimRunner(JSBSimRunner):
             # [Selfplay] Load opponent policy
             if total_episodes >= eval_cur_opponent_idx * eval_each_episodes:
                 policy_idx = eval_choose_opponents[eval_cur_opponent_idx]
-                self.eval_opponent_policy.actor.load_state_dict(torch.load(str(self.save_dir) + f'/actor_{policy_idx}.pt'))
+                self.eval_opponent_policy.actor.load_state_dict(torch.load(str(self.save_dir) + f'/actor_{policy_idx}.pt', weights_only=True))
                 self.eval_opponent_policy.prep_rollout()
                 eval_cur_opponent_idx += 1
                 logging.info(f" Load opponent {policy_idx} for evaluation ({total_episodes}/{self.eval_episodes})")
@@ -251,7 +251,7 @@ class SelfplayJSBSimRunner(JSBSimRunner):
         for policy in self.opponent_policy:
             choose_idx = self.selfplay_algo.choose(self.policy_pool)
             choose_opponents.append(choose_idx)
-            policy.actor.load_state_dict(torch.load(str(self.save_dir) + f'/actor_{choose_idx}.pt'))
+            policy.actor.load_state_dict(torch.load(str(self.save_dir) + f'/actor_{choose_idx}.pt', weights_only=True))
             policy.prep_rollout()
         logging.info(f" Choose opponents {choose_opponents} for training")
 
@@ -276,7 +276,7 @@ class SelfplayJSBSimRunner(JSBSimRunner):
         file_path = '/'.join(dir_list[:dir_list.index('results')+1])
         self.policy.actor.load_state_dict(torch.load(str(self.model_dir)+ f'/actor_{idx}.pt'))
         self.policy.prep_rollout()
-        self.eval_opponent_policy.actor.load_state_dict(torch.load(str(self.model_dir) + f'/actor_{opponent_idx}.pt'))
+        self.eval_opponent_policy.actor.load_state_dict(torch.load(str(self.model_dir) + f'/actor_{opponent_idx}.pt',weights_only=True))
         self.eval_opponent_policy.prep_rollout()
         logging.info("\nStart render ...")
         render_episode_rewards = 0

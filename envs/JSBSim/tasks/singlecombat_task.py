@@ -204,7 +204,7 @@ class HierarchicalSingleCombatTask(SingleCombatTask):
     def __init__(self, config: str):
         super().__init__(config)
         self.lowlevel_policy = BaselineActor()
-        self.lowlevel_policy.load_state_dict(torch.load(get_root_dir() + '/model/baseline_model.pt', map_location=torch.device('cpu')))
+        self.lowlevel_policy.load_state_dict(torch.load(get_root_dir() + '/model/baseline_model.pt', map_location=torch.device('cpu'), weights_only=True))
         self.lowlevel_policy.eval()
         self.norm_delta_altitude = np.array([0.1, 0, -0.1])
         self.norm_delta_heading = np.array([-np.pi / 6, -np.pi / 12, 0, np.pi / 12, np.pi / 6])
@@ -271,7 +271,7 @@ class BaselineAgent:
     def __init__(self) -> None:
         self.model_path = get_root_dir() + '/model/baseline_model.pt'
         self.actor = BaselineActor()
-        self.actor.load_state_dict(torch.load(self.model_path, map_location=torch.device('cpu')))
+        self.actor.load_state_dict(torch.load(self.model_path, map_location=torch.device('cpu'), weights_only=True))
         self.actor.eval()
         self.state_var = [
             c.delta_altitude,                   #  0. delta_h   (unit: m)
@@ -398,7 +398,7 @@ class DodgeMissileAgent:
     def __init__(self) -> None:
         self.model_path = get_root_dir() + '/model/dodge_missile_model.pt'
         self.actor = BaselineActor(input_dim=21, use_mlp_actlayer=True)
-        self.actor.load_state_dict(torch.load(self.model_path, map_location=torch.device('cpu')))
+        self.actor.load_state_dict(torch.load(self.model_path, map_location=torch.device('cpu'), weights_only=True))
         self.state_var = [
             c.position_long_gc_deg,             # 0. lontitude  (unit: °)
             c.position_lat_geod_deg,            # 1. latitude   (unit: °)

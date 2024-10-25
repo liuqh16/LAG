@@ -255,6 +255,8 @@ class AircraftSimulator(BaseSimulator):
             Catalog.velocities_v_east_mps,
             Catalog.velocities_v_down_mps,
         ])
+        # v_down -> v_up
+        self._velocity[2] = -self._velocity[2]
 
     def get_sim_time(self):
         """ Gets the simulation time from JSBSim, a float. """

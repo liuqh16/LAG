@@ -16,7 +16,7 @@ class BaselineAgent(ABC):
     def __init__(self, agent_id) -> None:
         self.model_path = get_root_dir() + '/model/baseline_model.pt'
         self.actor = BaselineActor()
-        self.actor.load_state_dict(torch.load(self.model_path))
+        self.actor.load_state_dict(torch.load(self.model_path, weights_only=True))
         self.actor.eval()
         self.agent_id = agent_id
         self.reset()
