@@ -223,7 +223,7 @@ class ShareJSBSimRunner(Runner):
             # [Selfplay] Load opponent policy
             if self.use_selfplay and total_episodes >= eval_cur_opponent_idx * eval_each_episodes:
                 policy_idx = eval_choose_opponents[eval_cur_opponent_idx]
-                self.eval_opponent_policy.actor.load_state_dict(torch.load(str(self.save_dir) + f'/actor_{policy_idx}.pt'))
+                self.eval_opponent_policy.actor.load_state_dict(torch.load(str(self.save_dir) + f'/actor_{policy_idx}.pt', weights_only=True))
                 self.eval_opponent_policy.prep_rollout()
                 eval_cur_opponent_idx += 1
                 logging.info(f" Load opponent {policy_idx} for evaluation ({total_episodes+1}/{self.eval_episodes})")
@@ -300,7 +300,7 @@ class ShareJSBSimRunner(Runner):
         self.envs.render(mode='txt', filepath=f'{self.run_dir}/{self.experiment_name}.txt.acmi')
         if self.use_selfplay:
             policy_idx = self.render_opponent_index
-            self.eval_opponent_policy.actor.load_state_dict(torch.load(str(self.model_dir) + f'/actor_{policy_idx}.pt'))
+            self.eval_opponent_policy.actor.load_state_dict(torch.load(str(self.model_dir) + f'/actor_{policy_idx}.pt', weights_only=True))
             self.eval_opponent_policy.prep_rollout()
             # reset obs/rnn/mask
             render_obs, render_share_obs = self.envs.reset()
