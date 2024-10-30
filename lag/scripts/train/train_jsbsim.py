@@ -150,9 +150,9 @@ def main(args):
         runner = ShareJSBSimRunner(config)
     else:
         if all_args.use_selfplay:
-            from runner.selfplay_jsbsim_runner import SelfplayJSBSimRunner as Runner
+            from lag.runner.selfplay_jsbsim_runner import SelfplayJSBSimRunner as Runner
         else:
-            from runner.jsbsim_runner import JSBSimRunner as Runner
+            from lag.runner.jsbsim_runner import JSBSimRunner as Runner
         runner = Runner(config)
     try:
         runner.run()

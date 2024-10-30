@@ -4,7 +4,7 @@ import logging
 import torch
 import numpy as np
 
-from lag.runnder.base_runner import Runner
+from lag.runner.base_runner import Runner
 from lag.algorithms.utils.buffer import SharedReplayBuffer
 
 
@@ -23,8 +23,8 @@ class ShareJSBSimRunner(Runner):
 
         # policy & algorithm
         if self.algorithm_name == "mappo":
-            from algorithms.mappo.ppo_trainer import PPOTrainer as Trainer
-            from algorithms.mappo.ppo_policy import PPOPolicy as Policy
+            from lag.algorithms.mappo.ppo_trainer import PPOTrainer as Trainer
+            from lag.algorithms.mappo.ppo_policy import PPOPolicy as Policy
         else:
             raise NotImplementedError
         self.policy = Policy(self.all_args, self.obs_space, self.share_obs_space, self.act_space, device=self.device)
@@ -39,7 +39,7 @@ class ShareJSBSimRunner(Runner):
         # [Selfplay] allocate memory for opponent policy/data in training
         if self.use_selfplay:
 
-            from algorithms.utils.selfplay import get_algorithm
+            from lag.algorithms.utils.selfplay import get_algorithm
             self.selfplay_algo = get_algorithm(self.all_args.selfplay_algorithm)
 
             assert self.all_args.n_choose_opponents <= self.n_rollout_threads, \

@@ -57,6 +57,9 @@ setup(
     install_requires=[
         "jsbsim==1.2.1",
         "gymnasium==0.28.1"
+        "pymap3d==3.1.0"
+        "numpy<2.0.0",
+        "wandb"
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
