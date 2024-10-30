@@ -1,3 +1,0 @@
-[submodule "envs/JSBSim/data"]
-	path = envs/JSBSim/data
-	url = https://github.com/JSBSim-Team/jsbsim.git
