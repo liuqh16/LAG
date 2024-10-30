@@ -166,7 +166,7 @@ class TestSingleCombatEnv:
         while True:
             # mannual crash
             if env.current_step == 1:
-                from envs.JSBSim.core.simulatior import MissileSimulator
+                from envs.JSBSim.core.simulator import MissileSimulator
                 env.add_temp_simulator(MissileSimulator.create(env.agents[crash_id], env.agents[crash_id].enemies[0], 'C0000'))
                 env.agents[crash_id].shotdown()
                 crash_obs = obs[0]
@@ -367,7 +367,7 @@ class TestMultipleCombatEnv:
                 env.agents[enemy0_id].crash()
             if env.current_step == 40:
                 env.agents[enemy1_id].crash()
-                from envs.JSBSim.core.simulatior import MissileSimulator
+                from envs.JSBSim.core.simulator import MissileSimulator
                 env.add_temp_simulator(MissileSimulator.create(env.agents[enemy1_id], env.agents[uid], uid="C0000"))
 
             obs, share_obs, rewards, dones, info = env.step(actions)

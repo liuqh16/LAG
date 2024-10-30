@@ -162,10 +162,12 @@ class AircraftSimulator(BaseSimulator):
         self.num_left_missiles = self.num_missiles
 
         # load JSBSim FDM
-        self.jsbsim_exec = jsbsim.FGFDMExec(os.path.join(get_root_dir(), 'data'))
+        self.jsbsim_exec = jsbsim.FGFDMExec(root_dir=None)   # Use JSBSim default aircraft data in `jsbsim.get_default_root_dir()`
         self.jsbsim_exec.set_debug_level(0)
-        self.jsbsim_exec.load_model(self.model)
-        Catalog.add_jsbsim_props(self.jsbsim_exec.query_property_catalog(""))
+        success = self.jsbsim_exec.load_model(self.model)
+        if not success:
+            raise RuntimeError(f"JSBSim failed to load model: {self.model}")
+        Catalog.add_jsbsim_props(self.jsbsim_exec.get_property_catalog())
         self.jsbsim_exec.set_dt(self.dt)
         self.clear_defalut_condition()
 
