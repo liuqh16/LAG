@@ -3,7 +3,7 @@ import math
 from enum import Enum
 from collections import namedtuple
 from numpy.linalg import norm
-from gymnasium.spaces import Box, Discrete
+from gymnasium import spaces
 
 from lag.envs.jsbsim.utils.utils import in_range_deg
 
@@ -12,7 +12,7 @@ Property = namedtuple("Property", "name_jsbsim description min max access spaces
 """
 A class to wrap and extend the Property object implemented in JSBSim
 """
-Property.__new__.__defaults__ = (None, None, float("-inf"), float("+inf"), "RW", Box, True, None)
+Property.__new__.__defaults__ = (None, None, float("-inf"), float("+inf"), "RW", spaces.Box, True, None)
 
 
 class JsbsimCatalog(Property, Enum):
@@ -450,7 +450,7 @@ class ExtraCatalog(Property, Enum):
         "direction to move the throttle",
         0,
         2,
-        spaces=Discrete,
+        spaces=spaces.Discrete,
         access="W",
         update=update_throttle_cmd_dir,
     )
@@ -460,7 +460,7 @@ class ExtraCatalog(Property, Enum):
         "direction to move the aileron",
         0,
         2,
-        spaces=Discrete,
+        spaces=spaces.Discrete,
         access="W",
         update=update_aileron_cmd_dir,
     )
@@ -470,7 +470,7 @@ class ExtraCatalog(Property, Enum):
         "direction to move the elevator",
         0,
         2,
-        spaces=Discrete,
+        spaces=spaces.Discrete,
         access="W",
         update=update_elevator_cmd_dir,
     )
@@ -480,7 +480,7 @@ class ExtraCatalog(Property, Enum):
         "direction to move the rudder",
         0,
         2,
-        spaces=Discrete,
+        spaces=spaces.Discrete,
         access="W",
         update=update_rudder_cmd_dir,
     )
@@ -493,7 +493,7 @@ class ExtraCatalog(Property, Enum):
         "detect extreme rotation, velocity and altitude",
         0,
         1,
-        spaces=Discrete,
+        spaces=spaces.Discrete,
         access="R",
         update=update_detect_extreme_state,
     )

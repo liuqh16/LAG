@@ -1,16 +1,15 @@
-import gymnasium.spaces
 import numpy as np
 import gymnasium as gym
 from collections import OrderedDict
 
 
 def build_flattener(space):
-    if isinstance(space, gymnasium.spaces.Dict):
+    if isinstance(space, gym.spaces.Dict):
         return DictFlattener(space)
-    elif isinstance(space, gymnasium.spaces.Box) \
-            or isinstance(space, gymnasium.spaces.MultiDiscrete):
+    elif isinstance(space, gym.spaces.Box) \
+            or isinstance(space, gym.spaces.MultiDiscrete):
         return BoxFlattener(space)
-    elif isinstance(space, gymnasium.spaces.Discrete):
+    elif isinstance(space, gym.spaces.Discrete):
         return DiscreteFlattener(space)
     else:
         raise NotImplementedError
@@ -22,15 +21,15 @@ class DictFlattener():
 
     def __init__(self, ori_space):
         self.space = ori_space
-        assert isinstance(ori_space, gymnasium.spaces.Dict)
+        assert isinstance(ori_space, gym.spaces.Dict)
         self.size = 0
         self.flatteners = OrderedDict()
         for name, space in self.space.spaces.items():
-            if isinstance(space, gymnasium.spaces.Box):
+            if isinstance(space, gym.spaces.Box):
                 flattener = BoxFlattener(space)
-            elif isinstance(space, gymnasium.spaces.Discrete):
+            elif isinstance(space, gym.spaces.Discrete):
                 flattener = DiscreteFlattener(space)
-            elif isinstance(space, gymnasium.spaces.Dict):
+            elif isinstance(space, gym.spaces.Dict):
                 flattener = DictFlattener(space)
             self.flatteners[name] = flattener
             self.size += flattener.size
