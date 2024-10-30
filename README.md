@@ -9,17 +9,17 @@ We provide a competitive environment for red and blue aircrafts games, which inc
 # create python env
 conda create -n jsbsim python=3.11
 # install dependency
-pip install jsbsim==1.2.1 gymnasium==0.28.1 torch==2.5.0 "ray[rllib]==2.38.0" pymap3d wandb setproctitle
+pip install jsbsim==1.2.1 gymnasium==0.28.1 torch==2.5.0 "ray[rllib]==2.38.0" pymap3d pytest wandb setproctitle
 ```
 ## Envs
-We provide all task configs in  `envs/JSBSim/configs`, each config corresponds to a task.
+We provide all task configs in  `envs/jsbsim/configs`, each config corresponds to a task.
 
 ### SingleControl
 SingleControl env includes single agent heading task, whose goal is to train agent fly according to the given direction, altitude and velocity. The trained agent can be used to design baselines or become the low level policy of the following combat tasks. We can designed two baselines, as shown in the video:
 
 ![singlecontrol](assets/1_control.gif)
 
-The red is manever_agent, flying in a triangular trajectory. The blue is pursue agent, constantly tracking the red agent. You can reproduce this by `python envs/JSBSim/test/test_baseline_use_env.py`.
+The red is manever_agent, flying in a triangular trajectory. The blue is pursue agent, constantly tracking the red agent. You can reproduce this by `python envs/jsbsim/test/test_baseline_use_env.py`.
 
 
 ### SingleCombat

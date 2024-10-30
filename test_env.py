@@ -1,9 +1,12 @@
-import numpy as np
-from envs.JSBSim.envs import SingleCombatEnv, SingleControlEnv, MultipleCombatEnv
-from envs.env_wrappers import SubprocVecEnv, ShareDummyVecEnv, ShareSubprocVecEnv, DummyVecEnv
-from envs.JSBSim.core.catalog import Catalog as c
 import logging
 import time
+import numpy as np
+
+from lag.envs.jsbsim.envs import SingleCombatEnv, SingleControlEnv, MultipleCombatEnv
+from lag.envs.env_wrappers import SubprocVecEnv, ShareDummyVecEnv, ShareSubprocVecEnv, DummyVecEnv
+from lag.envs.jsbsim.core.catalog import Catalog as c
+
+
 logging.basicConfig(level=logging.DEBUG)
 
 def test_env():
