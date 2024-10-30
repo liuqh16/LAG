@@ -7,13 +7,9 @@ We provide a competitive environment for red and blue aircrafts games, which inc
 
 ```shell
 # create python env
-conda create -n jsbsim python=3.8
+conda create -n jsbsim python=3.11
 # install dependency
-pip install torch pymap3d jsbsim==1.1.6 geographiclib gym==0.20.0 wandb icecream setproctitle. 
-
-- Download Shapely‑1.7.1‑cp38‑cp38‑win_amd64.whl from [here](https://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely), and `pip install shaply` from local file.
-
-- Initialize submodules(*JSBSim-Team/jsbsim*): `git submodule init; git submodule update`
+pip install jsbsim==1.2.1 gymnasium==0.28.1 torch==2.5.0 "ray[rllib]==2.38.0" pymap3d wandb setproctitle
 ```
 ## Envs
 We provide all task configs in  `envs/JSBSim/configs`, each config corresponds to a task.
