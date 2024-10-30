@@ -2,10 +2,10 @@ from abc import ABC, abstractmethod
 from typing import Literal
 import torch
 import numpy as np
+import gymnasium as gym
 
 from lag.envs.jsbsim.core.catalog import Catalog as c
 from lag.envs.jsbsim.utils.utils import in_range_rad, get_root_dir
-from lag.envs.jsbsim.envs import SingleCombatEnv, SingleControlEnv
 from lag.envs.jsbsim.model.baseline_actor import BaselineActor
 
 
@@ -134,9 +134,9 @@ class ManeuverAgent(BaselineAgent):
 
 
 def test_maneuver():
-    env = SingleCombatEnv(config_name='1v1/NoWeapon/test/opposite')
+    env = gym.make("LAG-1P_vs_1P-v0")
     obs = env.reset()
-    env.render(filepath="control.txt.acmi")
+    env.render()
     agent0 = ManeuverAgent(agent_id=0, maneuver='triangle')
     agent1 = PursueAgent(agent_id=1)
     reward_list = []
@@ -145,13 +145,11 @@ def test_maneuver():
         action1 = agent1.get_action(env, env.task)
         actions = [action0, action1]
         obs, reward, done, info = env.step(actions)
-        env.render(filepath="control.txt.acmi")
+        env.render()
         reward_list.append(reward[0])
         if np.array(done).all():
             print(info)
             break
-    # plt.plot(reward_list)
-    # plt.savefig('rewards.png')
 
 
 if __name__ == '__main__':

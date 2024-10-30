@@ -282,7 +282,8 @@ class SelfplayJSBSimRunner(JSBSimRunner):
         logging.info("\nStart render ...")
         render_episode_rewards = 0
         render_obs = self.envs.reset()
-        self.envs.render(mode='txt', filepath=f'{file_path}/{self.experiment_name}.txt.acmi')
+        self.envs.filepath = f'{file_path}/{self.experiment_name}.txt.acmi'
+        self.envs.render(mode='txt')
         render_masks = np.ones((1, *self.buffer.masks.shape[2:]), dtype=np.float32)
         render_rnn_states = np.zeros((1, *self.buffer.rnn_states_actor.shape[2:]), dtype=np.float32)
         render_opponent_obs = render_obs[:, self.num_agents // 2:, ...]
@@ -309,7 +310,7 @@ class SelfplayJSBSimRunner(JSBSimRunner):
             render_obs, render_rewards, render_dones, render_infos = self.envs.step(render_actions)
             render_rewards = render_rewards[:, :self.num_agents // 2, ...]
             render_episode_rewards += render_rewards
-            self.envs.render(mode='txt', filepath=f'{file_path}/{self.experiment_name}.txt.acmi')
+            self.envs.render(mode='txt')
             if render_dones.all():
                 break
             render_opponent_obs = render_obs[:, self.num_agents // 2:, ...]

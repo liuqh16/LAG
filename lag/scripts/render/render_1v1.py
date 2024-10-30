@@ -2,7 +2,7 @@ import logging
 import numpy as np
 import torch
 
-from lag.envs.jsbsim.envs import SingleCombatEnv
+from lag.envs.jsbsim import SingleCombatEnv
 from lag.algorithms.ppo.ppo_actor import PPOActor
 
 
@@ -48,7 +48,8 @@ enm_policy.load_state_dict(torch.load(enm_run_dir + f"/actor_{enm_policy_index}.
 print("Start render")
 obs = env.reset()
 if render:
-    env.render(mode='txt', filepath=f'{experiment_name}.txt.acmi')
+    env.filepath = f'{experiment_name}.txt.acmi'
+    env.render(mode='txt')
 ego_rnn_states = np.zeros((1, 1, 128), dtype=np.float32)
 masks = np.ones((num_agents // 2, 1))
 enm_obs =  obs[num_agents // 2:, :]
@@ -67,7 +68,7 @@ while True:
     rewards = rewards[:num_agents // 2, ...]
     episode_rewards += rewards
     if render:
-        env.render(mode='txt', filepath=f'{experiment_name}.txt.acmi')
+        env.render(mode='txt')
     if dones.all():
         print(infos)
         break

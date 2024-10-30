@@ -10,7 +10,7 @@ import setproctitle
 
 from lag.config import get_config
 from lag.runner.share_jsbsim_runner import ShareJSBSimRunner
-from lag.envs.jsbsim.envs import SingleCombatEnv, SingleControlEnv, MultipleCombatEnv
+from lag.envs.jsbsim import SingleCombatEnv, SingleControlEnv, MultipleCombatEnv
 from lag.envs.env_wrappers import DummyVecEnv, ShareDummyVecEnv
 
 

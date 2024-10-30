@@ -296,7 +296,8 @@ class ShareJSBSimRunner(Runner):
         render_obs, render_share_obs = self.envs.reset()
         render_masks = np.ones((1, *self.buffer.masks.shape[2:]), dtype=np.float32)
         render_rnn_states = np.zeros((1, *self.buffer.rnn_states_actor.shape[2:]), dtype=np.float32)
-        self.envs.render(mode='txt', filepath=f'{self.run_dir}/{self.experiment_name}.txt.acmi')
+        self.envs.filepath = f'{self.run_dir}/{self.experiment_name}.txt.acmi'
+        self.envs.render(mode='txt')
         if self.use_selfplay:
             policy_idx = self.render_opponent_index
             self.eval_opponent_policy.actor.load_state_dict(torch.load(str(self.model_dir) + f'/actor_{policy_idx}.pt', weights_only=True))
@@ -333,7 +334,7 @@ class ShareJSBSimRunner(Runner):
             if self.use_selfplay:
                 render_rewards = render_rewards[:, :self.num_agents // 2, ...]
             render_episode_rewards += render_rewards
-            self.envs.render(mode='txt', filepath=f'{self.run_dir}/{self.experiment_name}.txt.acmi')
+            self.envs.render(mode='txt')
             if render_dones.all():
                 break
             if self.use_selfplay:

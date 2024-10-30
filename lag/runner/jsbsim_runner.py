@@ -178,7 +178,8 @@ class JSBSimRunner(Runner):
         render_obs = self.envs.reset()
         render_masks = np.ones((1, *self.buffer.masks.shape[2:]), dtype=np.float32)
         render_rnn_states = np.zeros((1, *self.buffer.rnn_states_actor.shape[2:]), dtype=np.float32)
-        self.envs.render(mode='txt', filepath=f'{self.run_dir}/{self.experiment_name}.txt.acmi')
+        self.envs.filepath = f'{self.run_dir}/{self.experiment_name}.txt.acmi'
+        self.envs.render(mode='txt')
         while True:
             self.policy.prep_rollout()
             render_actions, render_rnn_states = self.policy.act(np.concatenate(render_obs),
@@ -193,7 +194,7 @@ class JSBSimRunner(Runner):
             if self.use_selfplay:
                 render_rewards = render_rewards[:, :self.num_agents // 2, ...]
             render_episode_rewards += render_rewards
-            self.envs.render(mode='txt', filepath=f'{self.run_dir}/{self.experiment_name}.txt.acmi')
+            self.envs.render(mode='txt')
             if render_dones.all():
                 break
         render_infos = {}

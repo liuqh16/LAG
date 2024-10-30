@@ -3,8 +3,7 @@ from typing import Literal
 import torch
 import numpy as np
 
-import matplotlib.pyplot as plt
-from lag.envs.jsbsim.envs import SingleCombatEnv
+from lag.envs.jsbsim import SingleCombatEnv
 from lag.envs.jsbsim.utils.utils import get_root_dir
 from lag.envs.jsbsim.model.baseline_actor import BaselineActor
 
@@ -147,8 +146,6 @@ def test_maneuver():
             print(info)
             break
         step += 1
-    plt.plot(reward_list)
-    # plt.savefig('rewards.png')
 
 
 if __name__ == '__main__':

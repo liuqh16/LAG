@@ -29,6 +29,7 @@ class BaseEnv(gym.Env):
         self.center_lon, self.center_lat, self.center_alt = \
             getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0))
         self._create_records = False
+        self.filepath='./JSBSimRecording.txt.acmi'
         self.load()
 
     @property
@@ -180,7 +181,7 @@ class BaseEnv(gym.Env):
         self._jsbsims.clear()
         self._tempsims.clear()
 
-    def render(self, mode="txt", filepath='./JSBSimRecording.txt.acmi'):
+    def render(self, mode="txt"):
         """Renders the environment.
 
         The set of supported modes varies per environment. (And some
@@ -201,12 +202,12 @@ class BaseEnv(gym.Env):
         """
         if mode == "txt":
             if not self._create_records:
-                with open(filepath, mode='w', encoding='utf-8-sig') as f:
+                with open(self.filepath, mode='w', encoding='utf-8-sig') as f:
                     f.write("FileType=text/acmi/tacview\n")
                     f.write("FileVersion=2.1\n")
                     f.write("0,ReferenceTime=2020-04-01T00:00:00Z\n")
                 self._create_records = True
-            with open(filepath, mode='a', encoding='utf-8-sig') as f:
+            with open(self.filepath, mode='a', encoding='utf-8-sig') as f:
                 timestamp = self.current_step * self.time_interval
                 f.write(f"#{timestamp:.2f}\n")
                 for sim in self._jsbsims.values():

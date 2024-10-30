@@ -130,10 +130,21 @@ class DummyVecEnv(VecEnv):
     def __init__(self, env_fns):
         self.envs = [fn() for fn in env_fns]
         env = self.envs[0]
+        self.__filepath = None
         super().__init__(len(self.envs), env.observation_space, env.action_space)
 
         self.actions = None
         self.num_agents = getattr(self.envs[0], "num_agents", 1)
+
+    @property
+    def filepath(self):
+        return self.__filepath
+    
+    @filepath.setter
+    def filepath(self, filepath):
+        self.__filepath = filepath
+        for env in self.envs:
+            env.filepath = filepath
 
     def step_async(self, actions):
         self.actions = actions
@@ -164,9 +175,9 @@ class DummyVecEnv(VecEnv):
         for env in self.envs:
             env.close()
 
-    def render(self, mode, filepath):
+    def render(self, mode):
         if mode == 'txt':
-            self.envs[0].render(mode, filepath)
+            self.envs[0].render(mode)
 
     @classmethod
     def _flatten(cls, v):
