@@ -210,7 +210,6 @@ class SelfplayJSBSimRunner(JSBSimRunner):
                         render_data.append(log_msg + "\n")
                         
                 render_data_str = "".join(render_data)
-                print(render_data_str)
                 self.tacview.send_data_to_client(render_data_str)
             self.timestamp += 0.2
 
