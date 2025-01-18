@@ -75,6 +75,34 @@ python render*.py
 ```
 This will generate a `*.acmi` file. We can use [**TacView**](https://www.tacview.net/), a universal flight analysis tool, to open the file and watch the render videos.
 
+### Real-time Telemetry Rendering during Training
+
+We have added support for real-time telemetry rendering using **Tacview Advanced**. This feature allows you to visualize the training process dynamically, providing a clearer understanding of the simulation data and agent behaviors.
+
+#### How to Enable Real-time Rendering
+
+**Note:** This feature is exclusively available with **Tacview Advanced**, as only the Advanced version supports real-time telemetry.
+
+1. **Set `real_time`、`--use-eval` and `--eval-interval` Parameters**:
+   To enable real-time rendering, include the parameter `--render-mode real_time` in the training script command. 
+   Real-time rendering occurs during the evaluation process. Enable evaluation mode by setting the parameter `--use-eval`. Use `--eval-interval` to control how often evaluation and visualization are performed. For example:
+   ```bash
+   bash train_selfplay.sh --render-mode real_time --use-eval --eval-interval 32
+   ```
+   **Caution:** Real-time visualization may impact performance. Choose an appropriate `--eval-interval` value (e.g., `1` for every episode, `10` for every 10 episodes) based on your system capabilities.
+
+2. **Configure Tacview**:
+   - Ensure you have **Tacview Advanced** installed.
+   - In Tacview, go to **Record -> Real-time Telemetry**, and input the IP address and port displayed in the training console output (e.g., `192.168.1.120:12345`).
+
+#### Notes
+- **Tacview Requirement**: This feature requires Tacview Advanced to be installed and properly configured.
+- **Optional Use**: If `--render-mode` is not set to `real_time`, the training process will proceed without real-time rendering.
+- **Evaluation-based Rendering**: Real-time rendering is tied to the evaluation process and controlled by `--eval-interval`.
+- **Non-blocking**: Real-time rendering will not interfere with the training process. It is designed to work seamlessly alongside the existing pipeline.
+
+This functionality enhances training visualization, making it easier to debug and analyze the agent's performance during the simulation.
+
 ## Citing
 If you find this repo useful, pleased use the following citation:
 ````
