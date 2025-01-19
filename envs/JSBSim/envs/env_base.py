@@ -1,3 +1,4 @@
+import time
 import gymnasium
 from gymnasium.utils import seeding
 import numpy as np
@@ -179,7 +180,7 @@ class BaseEnv(gymnasium.Env):
         self._jsbsims.clear()
         self._tempsims.clear()
 
-    def render(self, mode="txt", filepath='./JSBSimRecording.txt.acmi'):
+    def render(self, mode="txt", filepath='./JSBSimRecording.txt.acmi', tacview=None):
         """Renders the environment.
 
         The set of supported modes varies per environment. (And some
@@ -190,6 +191,7 @@ class BaseEnv(gymnasium.Env):
 
         - human: print on the terminal
         - txt: output to txt.acmi files
+        - real_time: realtime render with tacview by socket comm
 
         Note:
 
@@ -216,7 +218,24 @@ class BaseEnv(gymnasium.Env):
                     log_msg = sim.log()
                     if log_msg is not None:
                         f.write(log_msg + "\n")
-        # TODO: real time rendering [Use FlightGear, etc.]
+        if mode == "real_time":
+            timestamp = self.current_step * self.time_interval
+            data = [f"#{timestamp:.2f}\n"]
+            for sim in self._jsbsims.values():
+                log_msg = sim.log()
+                if log_msg is not None:
+                    data.append(log_msg + "\n")
+        
+            for sim in self._tempsims.values():
+                log_msg = sim.log()
+                if log_msg is not None:
+                    data.append(log_msg + "\n")
+
+            data_str = "".join(data)
+            # send data to tacview
+            tacview.send_data_to_client(data_str)
+                
+
         else:
             raise NotImplementedError
 

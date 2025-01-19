@@ -137,6 +137,8 @@ class SelfplayJSBSimRunner(JSBSimRunner):
         logging.info(f" Choose opponents {eval_choose_opponents} for evaluation")
 
         eval_cur_opponent_idx = 0
+        # use for tacview's timestamp
+        self.timestamp = 0
         while total_episodes < self.eval_episodes:
 
             # [Selfplay] Load opponent policy
@@ -197,6 +199,19 @@ class SelfplayJSBSimRunner(JSBSimRunner):
             cumulative_rewards += eval_rewards
             episode_rewards.append(cumulative_rewards[dones_env == True])
             cumulative_rewards[dones_env == True] = 0
+            
+            # Tacview real time render
+            if self.render_mode == "real_time":
+                render_data = [f"#{self.timestamp:.2f}\n"]
+                for sim in self.eval_envs.envs[0]._jsbsims.values():
+                    log_msg = sim.log()
+                    
+                    if log_msg is not None:
+                        render_data.append(log_msg + "\n")
+                        
+                render_data_str = "".join(render_data)
+                self.tacview.send_data_to_client(render_data_str)
+            self.timestamp += 0.2
 
         # Compute average episode rewards
         episode_rewards = np.concatenate(episode_rewards) # shape (self.eval_episodes, self.num_agents, 1)

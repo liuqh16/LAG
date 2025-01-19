@@ -5,7 +5,7 @@ import torch
 import numpy as np
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from algorithms.utils.buffer import ReplayBuffer
-
+import logging
 
 def _t2n(x):
     return x.detach().cpu().numpy()
@@ -18,6 +18,13 @@ class Runner(object):
         self.envs = config['envs']
         self.eval_envs = config['eval_envs']
         self.device = config['device']
+        self.render_mode = config['render_mode']
+        
+        # Tacview render obj
+        self.tacview = None
+        if self.render_mode == "real_time":
+            from runner.tacview import Tacview
+            self.tacview = Tacview()
 
         # parameters
         self.env_name = self.all_args.env_name
@@ -114,3 +121,14 @@ class Runner(object):
                 wandb.log({k: v}, step=total_num_steps)
         else:
             pass
+        
+    def render_with_tacview(self, data):
+        """
+        Send data to Tacview for real-time rendering.
+        :param data: The data to be rendered, which can be a string or a specific structure.
+        """
+        if self.tacview:
+            try:
+                self.tacview.send_data_to_client(data)
+            except Exception as e:
+                logging.error(f"Tacview rendering error: {e}")
