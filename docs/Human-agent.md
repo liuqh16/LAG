@@ -26,13 +26,18 @@
         Page Up: 增加油门 (Throttle)
         Page Down: 减少油门 (Throttle)
 
-## 启动
 
-启动脚本：进入 scripts/ 目录并运行以下命令启动人机交互控制：
+
+
+## 任务介绍
+
+### FreeFlyTask
+
+顾名思义，旨在让玩家控制飞机自由的飞行，启动脚本：进入 scripts/ 目录并运行以下命令启动人机交互控制：
 
 ```shell
 cd scripts/
-bash human_heading.sh
+bash human_free_fly.sh
 ```
 
 ## 注意事项
