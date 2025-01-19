@@ -93,6 +93,8 @@ def main(args):
 
     # 你可以在这里传入你的配置或初始化环境
     
+    tacview = Tacview()
+    
     env = SingleControlEnv(all_args.scenario_name)  # 初始化环境
     
     # 初始化 HumanAgent，直接传递 env
@@ -101,33 +103,41 @@ def main(args):
    # 重置环境，获取初始观察状态
     observation = agent.reset()
 
-    tacview = Tacview()
+    
     done = False  # 初始化 done 为 False，表示还没有结束
     timestamp = 0 # use for tacview real time render 
     while not done:
-        
-        # 执行一次 step
-        observation, reward, done, info = agent.step()  # 确保调用 step 方法
-        
-         # real render with tacview
-        render_data = [f"#{timestamp:.2f}\n"]
-        for sim in env._jsbsims.values():
-            log_msg = sim.log()
-            if log_msg is not None:
-                render_data.append(log_msg + "\n")
-
-        render_data_str = "".join(render_data)
         try:
-            tacview.send_data_to_client(render_data_str)
-        except Exception as e:
-            logging.error(f"Tacview rendering error: {e}")
-                
-        timestamp += 0.2   # step 0.2s
-        print(timestamp)
+            # 执行一次 step
+            observation, reward, done, info = agent.step()  # 确保调用 step 方法
+            
+            # real render with tacview
+            render_data = [f"#{timestamp:.2f}\n"]
+            for sim in env._jsbsims.values():
+                log_msg = sim.log()
+                if log_msg is not None:
+                    render_data.append(log_msg + "\n")
 
-        # 可以加入适当的延时控制，避免过快执行
-        time.sleep(0.1)  # 设置每一步之间的间隔时间（单位：秒），根据需求调整
+            render_data_str = "".join(render_data)
+            try:
+                tacview.send_data_to_client(render_data_str)
+            except Exception as e:
+                logging.error(f"Tacview rendering error: {e}")
+                # 打印调用栈信息
+                logging.error("".join(traceback.format_exc()))
+
+            timestamp += 0.2  # step 0.2s
+            # print(timestamp)
+
+            # 可以加入适当的延时控制，避免过快执行
+            time.sleep(0.1)  # 设置每一步之间的间隔时间（单位：秒），根据需求调整
+
+        except Exception as e:
+            logging.error(f"An error occurred: {e}")
+            # 打印完整的调用栈信息
+            logging.error("".join(traceback.format_exc()))
+            break  # 可选择退出循环
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    logging.basicConfig(level=logging.DEBUG, format="%(message)s")
     main(sys.argv[1:])
