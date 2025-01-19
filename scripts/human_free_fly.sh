@@ -1,12 +1,12 @@
 #!/bin/sh
 env="SingleControl"
-scenario="1/heading"
+scenario="1/human_free_fly"
 algo="ppo"
 exp="v1"
 seed=5
 
 echo "env is ${env}, scenario is ${scenario}, algo is ${algo}, exp is ${exp}, seed is ${seed}"
-CUDA_VISIBLE_DEVICES=0 python train/human_vs_agent.py \
+CUDA_VISIBLE_DEVICES=0 python train/human_free_fly.py \
     --env-name ${env} --algorithm-name ${algo} --scenario-name ${scenario} --experiment-name ${exp} \
     --seed ${seed} --n-training-threads 1 --n-rollout-threads 1 --cuda \
     --log-interval 1 --save-interval 1 \
