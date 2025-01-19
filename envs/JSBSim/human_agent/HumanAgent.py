@@ -70,13 +70,10 @@ class HumanAgent(BaseAgent):
             while not self.stop_event.is_set():  # 使用事件控制线程停止
                 control_win.clear()
                 control_win.addstr(f"Aileron: {self.aileron}  Elevator: {self.elevator}  Rudder: {self.rudder}  Throttle: {self.throttle}\n")
-                control_win.addstr("Use Arrow keys to control Aileron/Elevator, Z/X for Rudder, + for Throttle Up, - for Throttle Down.\n")
+                control_win.addstr("Use Arrow keys to control Aileron/Elevator, Z/X for Rudder, PgUp for Throttle Up, PgDn for Throttle Down.\n")
 
                 # Clear info window and add other logs there
                 info_win.clear()
-                info_win.addstr("current_step: 151 target_heading: 162.16831804861158\n")
-                info_win.addstr("target_altitude_ft: 15000 target_velocities_u_mps: 334.23289082450526\n")
-                info_win.addstr("AircraftSimulator:A0100 is deleted!\n")  # Example log info
 
                 key = stdscr.getch()
                 # 左右控制横滚角
@@ -95,9 +92,9 @@ class HumanAgent(BaseAgent):
                 elif key == ord('x') and self.rudder < 40:
                     self.rudder += 1
 
-                elif key == ord('+') and self.throttle < 29:
+                elif key == curses.KEY_PPAGE and self.throttle < 29:
                     self.throttle += 1
-                elif key == ord('-') and self.throttle > 0:
+                elif key == curses.KEY_NPAGE and self.throttle > 0:
                     self.throttle -= 1
 
                 control_win.refresh()  # Refresh control window
