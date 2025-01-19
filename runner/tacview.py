@@ -3,9 +3,11 @@ import time
 
 class Tacview(object):
     def __init__(self):
-        # Prompt user to input IP address and port number
-        host = input("Please enter the server IP address: ")
-        port = int(input("Please enter the port number: "))
+        # Automatically get the local machine's IP address
+        host = socket.gethostbyname(socket.gethostname())
+        # Default starting port
+        default_port = 12345
+        port = self.find_available_port(host, default_port)
 
         # Create a socket and store it as an instance variable
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -18,7 +20,10 @@ class Tacview(object):
         # Start listening
         self.server_socket.listen(5)
         print(f"Server listening on {host}:{port}")
-        print(f"Please open Tacview Advanced, click Record -> Real-time Telemetry, and input the IP address and port")
+        # Output more prominent message
+        print("\n" + "*" * 50)
+        print("! IMPORTANT: Please open Tacview Advanced, click Record -> Real-time Telemetry, and input the IP address and port !")
+        print("*" * 50 + "\n")
 
         # Wait for client connection
         self.client_socket, self.address = self.server_socket.accept()
@@ -40,6 +45,23 @@ class Tacview(object):
                         )
         self.client_socket.send(data_to_send.encode())
 
+    def find_available_port(self, host, start_port):
+        """
+        Try to find an available port starting from start_port.
+        If the port is in use, try the next one.
+        """
+        port = start_port
+        while True:
+            try:
+                # Try to bind the server socket to the given host and port
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as temp_socket:
+                    temp_socket.bind((host, port))
+                    return port  # Return the first available port
+            except OSError:
+                # Port is occupied, try the next one
+                print(f"Port {port} is in use. Trying next port...")
+                port += 1
+                
     def send_data_to_client(self, data):
         self.client_socket.send(data.encode())
 
