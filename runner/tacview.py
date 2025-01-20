@@ -43,7 +43,7 @@ class Tacview(object):
                         "0,ReferenceTime=2020-04-01T00:00:00Z\n#0.00\n"
                         )
         self.client_socket.send(data_to_send.encode())
-                
+
     def send_data_to_client(self, data):
         self.client_socket.send(data.encode())
 
