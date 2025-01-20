@@ -6,7 +6,7 @@ from ..reward_functions import AltitudeReward, HeadingReward
 from ..termination_conditions import ExtremeState, LowAltitude, Overload, Timeout, UnreachHeading
 
 
-class FreeFlyTask(BaseTask):
+class HumanFreeFlyTask(BaseTask):
     '''
     Control target heading with discrete action space
     '''

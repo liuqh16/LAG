@@ -1,6 +1,6 @@
 #!/bin/sh
 env="SingleControl"
-scenario="1/human_free_fly"
+scenario="1/HumanFreeFly"
 algo="ppo"
 exp="v1"
 seed=5

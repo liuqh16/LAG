@@ -139,5 +139,13 @@ def main(args):
             break  # 可选择退出循环
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG, format="%(message)s")
+    #logging.basicConfig(level=logging.DEBUG, format="%(message)s")
+    
+    logging.basicConfig(
+        level=logging.DEBUG,               # 设置日志级别为 DEBUG，意味着记录所有级别的日志
+        format='%(asctime)s - %(levelname)s - %(message)s',  # 设置日志格式
+        filename='debug.log',              # 指定日志文件名
+        filemode='w'                        # 'w'表示写入模式，'a'表示追加模式
+    )
+    
     main(sys.argv[1:])

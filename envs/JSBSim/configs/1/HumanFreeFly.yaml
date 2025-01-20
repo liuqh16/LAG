@@ -1,5 +1,5 @@
 # task config
-task: human_free_fly
+task: HumanFreeFly
 
 # simulation config
 sim_freq: 60
