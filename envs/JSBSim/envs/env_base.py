@@ -1,3 +1,4 @@
+import logging
 import time
 import gymnasium
 from gymnasium.utils import seeding
@@ -128,6 +129,8 @@ class BaseEnv(gymnasium.Env):
         action = self._unpack(action)
         for agent_id in self.agents.keys():
             a_action = self.task.normalize_action(self, agent_id, action[agent_id])
+            # 在 normalize_action 之后打印 a_action 的值
+            logging.debug(f"a_action: {a_action}")
             self.agents[agent_id].set_property_values(self.task.action_var, a_action)
         # run simulation
         for _ in range(self.agent_interaction_steps):

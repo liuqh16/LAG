@@ -3,9 +3,10 @@ import time
 
 class Tacview(object):
     def __init__(self):
-        # Prompt user to input IP address and port number
-        host = input("Please enter the server IP address: ")
-        port = int(input("Please enter the port number: "))
+        # Automatically get the local machine's IP address
+        host = socket.gethostbyname(socket.gethostname())
+        # Default starting port
+        port = 12345
 
         # Create a socket and store it as an instance variable
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -18,7 +19,10 @@ class Tacview(object):
         # Start listening
         self.server_socket.listen(5)
         print(f"Server listening on {host}:{port}")
-        print(f"Please open Tacview Advanced, click Record -> Real-time Telemetry, and input the IP address and port")
+        # Output more prominent message
+        print("\n" + "*" * 50)
+        print("! IMPORTANT: Please open Tacview Advanced, click Record -> Real-time Telemetry, and input the IP address and port !")
+        print("*" * 50 + "\n")
 
         # Wait for client connection
         self.client_socket, self.address = self.server_socket.accept()
