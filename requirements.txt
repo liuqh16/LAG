@@ -50,3 +50,4 @@ triton==3.0.0
 typing_extensions==4.12.2
 urllib3==2.2.3
 wandb==0.19.3
+pytest>=6.0.0
