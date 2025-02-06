@@ -49,5 +49,5 @@ sympy==1.13.1
 torch==2.4.1
 triton==3.1.0
 typing_extensions==4.12.2
-urllib3==2.3.0
+urllib3==2.2.3
 wandb==0.19.3
