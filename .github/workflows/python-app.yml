@@ -32,10 +32,11 @@ jobs:
         if [ -f requirements.txt ]; then 
           echo "Installing dependencies from requirements.txt"
           cat requirements.txt  # Debug: Show contents of requirements.txt
-          pip install -r requirements.txt; 
+          pip install -r requirements.txt
         else 
-          echo "requirements.txt not found!"; 
-          exit 1;  # Stop the workflow if requirements.txt is missing; fi
+          echo "requirements.txt not found!"
+          exit 1  # Stop the workflow if requirements.txt is missing
+        fi  # ✅ Correctly closing the if statement
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
