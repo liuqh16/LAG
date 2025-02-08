@@ -27,4 +27,4 @@ class BaseTerminationCondition(ABC):
         raise NotImplementedError
 
     def log(self, msg):
-        logging.debug(msg)
+        logging.critical(msg)

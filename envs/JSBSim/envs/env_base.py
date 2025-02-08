@@ -129,8 +129,6 @@ class BaseEnv(gymnasium.Env):
         action = self._unpack(action)
         for agent_id in self.agents.keys():
             a_action = self.task.normalize_action(self, agent_id, action[agent_id])
-            # 在 normalize_action 之后打印 a_action 的值
-            logging.debug(f"a_action: {a_action}")
             self.agents[agent_id].set_property_values(self.task.action_var, a_action)
         # run simulation
         for _ in range(self.agent_interaction_steps):
@@ -221,7 +219,7 @@ class BaseEnv(gymnasium.Env):
                     log_msg = sim.log()
                     if log_msg is not None:
                         f.write(log_msg + "\n")
-        if mode == "real_time":
+        elif mode == "real_time":
             timestamp = self.current_step * self.time_interval
             data = [f"#{timestamp:.2f}\n"]
             for sim in self._jsbsims.values():
@@ -237,8 +235,6 @@ class BaseEnv(gymnasium.Env):
             data_str = "".join(data)
             # send data to tacview
             tacview.send_data_to_client(data_str)
-                
-
         else:
             raise NotImplementedError
 
