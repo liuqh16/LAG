@@ -62,17 +62,17 @@ class HumanAgent(BaseAgent):
         info_win.refresh()  # 刷新信息面板窗口
 
     def keyboard_input(self):
-        stdscr = curses.initscr()
-        curses.cbreak()
-        stdscr.keypad(1)
+        stdscr = curses.initscr()  # 初始化 curses 终端窗口 stdscr，用于接收键盘输入并控制终端界面显示。
+        curses.cbreak()            # cbreak 模式，使程序可以立即响应键盘输入，而不需要按下 Enter
+        stdscr.keypad(1)           # 支持解析功能键（如方向键、Page Up/Down 等）。
 
         try:
             height, width = stdscr.getmaxyx()
-            control_win = curses.newwin(5, width, 0, 0)
-            info_win = curses.newwin(height-5, width, 5, 0)
+            control_win = curses.newwin(5, width, 0, 0)         # 控制窗口
+            info_win = curses.newwin(height-5, width, 5, 0)     # 信息窗口
 
-            while not self.stop_event.is_set():
-                control_win.clear()
+            while not self.stop_event.is_set():  # 进入无限循环，直到 self.stop_event 事件被触发（可能是外部中断信号）。
+                control_win.clear()              # 清空 control_win 窗口，准备更新新的控制信息。
 
                 # 更新控制面板显示
                 control_win.addstr(f"Aileron: {self.aileron}  Elevator: {self.elevator}  Rudder: {self.rudder}  Throttle: {self.throttle}\n")
@@ -81,34 +81,15 @@ class HumanAgent(BaseAgent):
                 info_win.clear()
 
                 # 设置一个适当的超时时间，单位是毫秒，例如 500 毫秒
-                stdscr.timeout(500)
+                stdscr.timeout(500)         # 设置 stdscr 的超时时间为 500 毫秒。如果在 500 毫秒内没有键盘输入，则返回key为 -1，从而避免程序阻塞。
 
-                key = stdscr.getch()
 
-                # 左右控制横滚角
-                if key == curses.KEY_LEFT and self.aileron < 40:
-                    self.aileron -= 1
-                elif key == curses.KEY_RIGHT and self.aileron > 0:
-                    self.aileron += 1
-                # 上下控制俯仰角
-                elif key == curses.KEY_UP and self.elevator > 0:
-                    self.elevator += 1
-                elif key == curses.KEY_DOWN and self.elevator < 40:
-                    self.elevator -= 1
-                # 控制其他操作
-                elif key == ord('z') and self.rudder > 0:
-                    self.rudder -= 1
-                elif key == ord('x') and self.rudder < 40:
-                    self.rudder += 1
-                elif key == curses.KEY_PPAGE and self.throttle < 29:
-                    self.throttle += 1
-                elif key == curses.KEY_NPAGE and self.throttle > 0:
-                    self.throttle -= 1
-                elif key == -1:
-                    self.elevator = 20
-                    self.aileron = 20
-                    self.rudder = 20
-                    self.throttle = 15
+                key = stdscr.getch()        # 读取用户按下的键。
+
+                self.update_action(key)     # 更新动作
+                
+                # 限制处理速度，避免过快刷新
+                time.sleep(0.05)
 
                 # 刷新窗口
                 self.refresh_windows(control_win, info_win)
@@ -116,10 +97,35 @@ class HumanAgent(BaseAgent):
         finally:
             curses.endwin()
     
+    def update_action(self, key):
+        # 左右控制横滚角
+        if key == curses.KEY_LEFT and self.aileron < 40:
+            self.aileron -= 1
+        elif key == curses.KEY_RIGHT and self.aileron > 0:
+            self.aileron += 1
+        # 上下控制俯仰角
+        elif key == curses.KEY_UP and self.elevator > 0:
+            self.elevator += 1
+        elif key == curses.KEY_DOWN and self.elevator < 40:
+            self.elevator -= 1
+        # 控制其他操作
+        elif key == ord('z') and self.rudder > 0:
+            self.rudder -= 1
+        elif key == ord('x') and self.rudder < 40:
+            self.rudder += 1
+        elif key == curses.KEY_PPAGE and self.throttle < 29:
+            self.throttle += 1
+        elif key == curses.KEY_NPAGE and self.throttle > 0:
+            self.throttle -= 1
+        elif key == -1:
+            self.elevator = 20
+            self.aileron = 20
+            self.rudder = 20
+            self.throttle = 15
+    
     def get_action(self):
         # 返回动作数组
         # 在创建动作数组之前，打印变量的值
-        logging.debug(f"Aileron: {self.aileron}, Elevator: {self.elevator}, Rudder: {self.rudder}, Throttle: {self.throttle}")
         action = np.array([self.aileron, self.elevator, self.rudder, self.throttle])
         return action.reshape(1, -1)  # 转换为二维数组
     

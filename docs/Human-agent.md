@@ -26,7 +26,9 @@
         Page Up: 增加油门 (Throttle)
         Page Down: 减少油门 (Throttle)
 
+## HumanInLoop类
 
+达到类似控制类的效果，将输入参数、仿真环境、人类智能体、任务等集成到人在回路类中，方便后续集成和开发
 
 
 ## 任务介绍
@@ -39,6 +41,10 @@
 cd scripts/
 bash human_free_fly.sh
 ```
+
+### HumanSingleCombatTask(TODO)
+
+
 
 ## 注意事项
 
