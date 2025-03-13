@@ -4,7 +4,7 @@ import time
 class Tacview(object):
     def __init__(self):
         # Automatically get the local machine's IP address
-        host = socket.gethostbyname(socket.gethostname())
+        host = self.get_ip_address()
         # Default starting port
         port = 12345
 
@@ -43,6 +43,13 @@ class Tacview(object):
                         "0,ReferenceTime=2020-04-01T00:00:00Z\n#0.00\n"
                         )
         self.client_socket.send(data_to_send.encode())
+
+    def get_ip_address(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))  # Google DNS, 只是为了获得正确的IP地址
+        ip_address = s.getsockname()[0]
+        s.close()
+        return ip_address
 
     def send_data_to_client(self, data):
         self.client_socket.send(data.encode())

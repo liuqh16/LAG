@@ -100,6 +100,7 @@ We have added support for real-time telemetry rendering using **Tacview Advanced
 - **Optional Use**: If `--render-mode` is not set to `real_time`, the training process will proceed without real-time rendering.
 - **Evaluation-based Rendering**: Real-time rendering is tied to the evaluation process and controlled by `--eval-interval`.
 - **Non-blocking**: Real-time rendering will not interfere with the training process. It is designed to work seamlessly alongside the existing pipeline.
+- sudo ufw allow 12345/tcp 
 
 This functionality enhances training visualization, making it easier to debug and analyze the agent's performance during the simulation.
 
