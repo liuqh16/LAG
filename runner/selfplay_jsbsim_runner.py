@@ -139,6 +139,10 @@ class SelfplayJSBSimRunner(JSBSimRunner):
         eval_cur_opponent_idx = 0
         # use for tacview's timestamp
         self.timestamp = 0
+        if self.render_mode == "real_time" and self.tacview: #重新连接
+            print("重新连接tacview.....")
+            self.tacview.reconnect()
+
         while total_episodes < self.eval_episodes:
 
             # [Selfplay] Load opponent policy
@@ -200,18 +204,23 @@ class SelfplayJSBSimRunner(JSBSimRunner):
             episode_rewards.append(cumulative_rewards[dones_env == True])
             cumulative_rewards[dones_env == True] = 0
             
-            # Tacview real time render
-            if self.render_mode == "real_time":
+            # real render with tacview
+            if self.render_mode == "real_time" and self.tacview:
                 render_data = [f"#{self.timestamp:.2f}\n"]
                 for sim in self.eval_envs.envs[0]._jsbsims.values():
                     log_msg = sim.log()
-                    
                     if log_msg is not None:
                         render_data.append(log_msg + "\n")
-                        
+                for sim in self.eval_envs.envs[0]._tempsims.values():
+                    log_msg = sim.log()
+                    if log_msg is not None:
+                        render_data.append(log_msg + "\n")
                 render_data_str = "".join(render_data)
-                self.tacview.send_data_to_client(render_data_str)
-            self.timestamp += 0.2
+                try:
+                    self.tacview.send_data_to_client(render_data_str)
+                except Exception as e:
+                    logging.error(f"Tacview rendering error: {e}")
+            self.timestamp += 0.2   # step 0.2s
 
         # Compute average episode rewards
         episode_rewards = np.concatenate(episode_rewards) # shape (self.eval_episodes, self.num_agents, 1)
