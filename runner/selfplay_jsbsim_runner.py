@@ -139,6 +139,9 @@ class SelfplayJSBSimRunner(JSBSimRunner):
         eval_cur_opponent_idx = 0
         # use for tacview's timestamp
         self.timestamp = 0
+        if self.render_mode == "real_time" and self.tacview: #reconnect tacview to clear the telemetry
+            print("reconnect tacview.....")
+            self.tacview.reconnect()
         while total_episodes < self.eval_episodes:
 
             # [Selfplay] Load opponent policy
@@ -205,10 +208,12 @@ class SelfplayJSBSimRunner(JSBSimRunner):
                 render_data = [f"#{self.timestamp:.2f}\n"]
                 for sim in self.eval_envs.envs[0]._jsbsims.values():
                     log_msg = sim.log()
-                    
                     if log_msg is not None:
                         render_data.append(log_msg + "\n")
-                        
+                for sim in self.eval_envs.envs[0]._tempsims.values():
+                    log_msg = sim.log()
+                    if log_msg is not None:
+                        render_data.append(log_msg + "\n")
                 render_data_str = "".join(render_data)
                 self.tacview.send_data_to_client(render_data_str)
             self.timestamp += 0.2
