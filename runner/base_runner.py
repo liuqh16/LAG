@@ -6,6 +6,7 @@ import numpy as np
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from algorithms.utils.buffer import ReplayBuffer
 import logging
+from datetime import datetime
 
 def _t2n(x):
     return x.detach().cpu().numpy()
@@ -19,6 +20,8 @@ class Runner(object):
         self.eval_envs = config['eval_envs']
         self.device = config['device']
         self.render_mode = config['render_mode']
+        self.current_episode = 0
+        self.run_dir = config['run_dir']
         
         # Tacview render obj
         self.tacview = None
@@ -54,6 +57,29 @@ class Runner(object):
                 os.makedirs(self.save_dir)
 
         self.load()
+
+    def _should_save_acmi(self):
+        """ 判断是否应该保存 ACMI 文件 """
+        return (
+            self.current_episode % self.eval_interval == 0
+            and self.current_episode != 0
+            and self.use_eval
+        )
+    
+    def _save_acmi(self, filename, data):
+        """ 保存 ACMI 数据到文件 """
+        with open(filename, 'a') as f:
+            f.write(data)
+    
+    def add_acmi_header(self, render_data_str):
+        """在 render_data_str 前添加 ACMI 头部信息"""
+        current_time = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")  # 获取当前 UTC 时间并格式化
+        acmi_header = (
+            "FileType=text/acmi/tacview\n"
+            "FileVersion=2.2\n"
+            f"0,ReferenceTime={current_time}\n"
+        )
+        return acmi_header + render_data_str
 
     def load(self):
         # algorithm

@@ -1,7 +1,7 @@
 import logging
 import time
 from typing import List
-
+import os
 import numpy as np
 import torch
 
@@ -14,7 +14,9 @@ def _t2n(x):
 
 
 class ShareJSBSimRunner(Runner):
-
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
     def load(self):
         self.obs_space = self.envs.observation_space
         self.share_obs_space = self.envs.share_observation_space
@@ -72,7 +74,8 @@ class ShareJSBSimRunner(Runner):
         episodes = self.num_env_steps // self.buffer_size // self.n_rollout_threads
 
         for episode in range(episodes):
-
+            self.current_episode = episode
+            
             for step in range(self.buffer_size):
                 # Sample actions
                 values, actions, action_log_probs, rnn_states_actor, rnn_states_critic = self.collect(step)
@@ -218,6 +221,18 @@ class ShareJSBSimRunner(Runner):
             logging.info(f" Choose opponents {eval_choose_opponents} for evaluation")
             # TODO: use eval results to update elo
 
+        self.timestamp = 0 # use for tacview's timestamp
+        interval_timestamp = self.envs.envs[0].agent_interaction_steps  / self.envs.envs[0].sim_freq
+        
+        if self.render_mode == "real_time" and self.tacview: #reconnect tacview to clear the telemetry
+            print("reconnect tacview.....")
+            self.tacview.reconnect()
+        # Create a directory to save .acmi files
+        elif self.render_mode == "histroy_acmi":
+            save_dir = os.path.join(self.run_dir, 'acmi_files')
+            os.makedirs(save_dir, exist_ok=True)
+            acmi_filename = f"{save_dir}/eval_episode_{self.current_episode}.acmi"
+        
         while total_episodes < self.eval_episodes:
 
             # [Selfplay] Load opponent policy
@@ -257,6 +272,24 @@ class ShareJSBSimRunner(Runner):
             # Obser reward and next obs
             eval_obs, eval_share_obs, eval_rewards, eval_dones, eval_infos = self.eval_envs.step(eval_actions)
 
+            render_data = [f"#{self.timestamp:.2f}\n"]
+            for sim in self.eval_envs.envs[0]._jsbsims.values():
+                log_msg = sim.log()
+                if log_msg is not None:
+                    render_data.append(log_msg + "\n")
+            for sim in self.eval_envs.envs[0]._tempsims.values():
+                log_msg = sim.log()
+                if log_msg is not None:
+                    render_data.append(log_msg + "\n")
+            render_data_str = "".join(render_data)
+            
+            if self.render_mode == "real_time" and self.tacview:
+                self.tacview.send_data_to_client(render_data_str)
+            if self.render_mode == "histroy_acmi" and self._should_save_acmi():
+                self._save_acmi(acmi_filename, self.add_acmi_header(render_data_str))
+            
+            self.timestamp += interval_timestamp  # step 0.2s
+            
             # [Selfplay] get ego reward
             if self.use_selfplay:
                 eval_rewards = eval_rewards[:, :self.num_agents // 2, ...]

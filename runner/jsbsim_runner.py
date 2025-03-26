@@ -1,3 +1,4 @@
+import os
 import time
 import torch
 import logging
@@ -11,6 +12,8 @@ def _t2n(x):
 
 
 class JSBSimRunner(Runner):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def load(self):
         self.obs_space = self.envs.observation_space
@@ -41,6 +44,8 @@ class JSBSimRunner(Runner):
         episodes = self.num_env_steps // self.buffer_size // self.n_rollout_threads
 
         for episode in range(episodes):
+            
+            self.current_episode = episode
 
             heading_turns_list = []
 
@@ -91,7 +96,7 @@ class JSBSimRunner(Runner):
 
             # eval
             if episode % self.eval_interval == 0 and episode != 0 and self.use_eval:
-                    self.eval(self.total_num_steps)
+                self.eval(self.total_num_steps)
 
             # save model
             if (episode % self.save_interval == 0) or (episode == episodes - 1):
@@ -142,13 +147,19 @@ class JSBSimRunner(Runner):
         eval_masks = np.ones((self.n_eval_rollout_threads, *self.buffer.masks.shape[2:]), dtype=np.float32)
         eval_rnn_states = np.zeros((self.n_eval_rollout_threads, *self.buffer.rnn_states_actor.shape[2:]), dtype=np.float32)
 
-        self.timestamp = 0 # use for tacview real time render 
+        self.timestamp = 0 # use for tacview's timestamp
+        interval_timestamp = self.envs.envs[0].agent_interaction_steps  / self.envs.envs[0].sim_freq
+        
         if self.render_mode == "real_time" and self.tacview: #reconnect tacview to clear the telemetry
             print("reconnect tacview.....")
             self.tacview.reconnect()
-        
-        while total_episodes < self.eval_episodes:
+        # Create a directory to save .acmi files
+        elif self.render_mode == "histroy_acmi":
+            save_dir = os.path.join(self.run_dir, 'acmi_files')
+            os.makedirs(save_dir, exist_ok=True)
+            acmi_filename = f"{save_dir}/eval_episode_{self.current_episode}.acmi"
 
+        while total_episodes < self.eval_episodes:
             self.policy.prep_rollout()
             eval_actions, eval_rnn_states = self.policy.act(np.concatenate(eval_obs),
                                                             np.concatenate(eval_rnn_states),
@@ -156,27 +167,27 @@ class JSBSimRunner(Runner):
             eval_actions = np.array(np.split(_t2n(eval_actions), self.n_eval_rollout_threads))
             eval_rnn_states = np.array(np.split(_t2n(eval_rnn_states), self.n_eval_rollout_threads))
 
-            # Obser reward and next obs
+            # Observe reward and next obs
             eval_obs, eval_rewards, eval_dones, eval_infos = self.eval_envs.step(eval_actions)
 
-            # real render with tacview
-            if self.render_mode == "real_time" and self.tacview:
-                render_data = [f"#{self.timestamp:.2f}\n"]
-                for sim in self.eval_envs.envs[0]._jsbsims.values():
-                    log_msg = sim.log()
-                    if log_msg is not None:
-                        render_data.append(log_msg + "\n")
-                for sim in self.eval_envs.envs[0]._tempsims.values():
-                    log_msg = sim.log()
-                    if log_msg is not None:
-                        render_data.append(log_msg + "\n")
-                render_data_str = "".join(render_data)
-                try:
-                    self.tacview.send_data_to_client(render_data_str)
-                except Exception as e:
-                    logging.error(f"Tacview rendering error: {e}")
-            self.timestamp += 0.2   # step 0.2s
+            render_data = [f"#{self.timestamp:.2f}\n"]
+            for sim in self.eval_envs.envs[0]._jsbsims.values():
+                log_msg = sim.log()
+                if log_msg is not None:
+                    render_data.append(log_msg + "\n")
+            for sim in self.eval_envs.envs[0]._tempsims.values():
+                log_msg = sim.log()
+                if log_msg is not None:
+                    render_data.append(log_msg + "\n")
+            render_data_str = "".join(render_data)
             
+            if self.render_mode == "real_time" and self.tacview:
+                self.tacview.send_data_to_client(render_data_str)
+            if self.render_mode == "histroy_acmi" and self._should_save_acmi():
+                self._save_acmi(acmi_filename, self.add_acmi_header(render_data_str))
+            
+            self.timestamp += interval_timestamp  # step 0.2s
+
             eval_cumulative_rewards += eval_rewards
             eval_dones_env = np.all(eval_dones.squeeze(axis=-1), axis=-1)
             total_episodes += np.sum(eval_dones_env)
@@ -192,7 +203,7 @@ class JSBSimRunner(Runner):
         logging.info(" eval average episode rewards: " + str(np.mean(eval_infos['eval_average_episode_rewards'])))
         self.log_info(eval_infos, total_num_steps)
         logging.info("...End evaluation")
-
+    
     @torch.no_grad()
     def render(self):
         logging.info("\nStart render, render mode is {self.render_mode} ... ...")
