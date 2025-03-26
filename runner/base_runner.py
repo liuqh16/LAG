@@ -18,6 +18,7 @@ class Runner(object):
         self.envs = config['envs']
         self.eval_envs = config['eval_envs']
         self.device = config['device']
+        self.current_episode = 0
         self.render_mode = config['render_mode']
         
         # Tacview render obj
@@ -25,7 +26,7 @@ class Runner(object):
         if self.render_mode == "real_time":
             from runner.tacview import Tacview
             self.tacview = Tacview()
-
+        
         # parameters
         self.env_name = self.all_args.env_name
         self.algorithm_name = self.all_args.algorithm_name
@@ -55,6 +56,13 @@ class Runner(object):
 
         self.load()
 
+    def _should_save_acmi(self):
+        """ 判断是否应该保存 ACMI 文件 """
+        return (
+            self.current_episode % self.eval_interval == 0
+            and self.use_eval
+        )
+        
     def load(self):
         # algorithm
         if self.algorithm_name == "ppo":

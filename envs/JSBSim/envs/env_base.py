@@ -4,6 +4,7 @@ import gymnasium
 from gymnasium.utils import seeding
 import numpy as np
 from typing import Dict, Any, Tuple
+from datetime import datetime
 from ..core.simulatior import AircraftSimulator, BaseSimulator
 from ..tasks.task_base import BaseTask
 from ..utils.utils import parse_config
@@ -30,8 +31,11 @@ class BaseEnv(gymnasium.Env):
         self.center_lon, self.center_lat, self.center_alt = \
             getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0))
         self._create_records = False
+        self.render_data = ""
+        self.render_data_str = ""
+        self.render_mode = getattr(self.config, 'render-mode', "histroy_acmi")  # type: str        
         self.load()
-
+        
     @property
     def num_agents(self) -> int:
         return self.task.num_agents
@@ -181,6 +185,59 @@ class BaseEnv(gymnasium.Env):
         self._jsbsims.clear()
         self._tempsims.clear()
 
+    
+    
+    def _save_acmi(self, filename, data):
+        """ 保存 ACMI 数据到文件 """
+        with open(filename, 'a') as f:
+            f.write(data)
+    
+    def add_acmi_header(self, render_data_str):
+        """在 render_data_str 前添加 ACMI 头部信息"""
+        current_time = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")  # 获取当前 UTC 时间并格式化
+        acmi_header = (
+            "FileType=text/acmi/tacview\n"
+            "FileVersion=2.2\n"
+            f"0,ReferenceTime={current_time}\n"
+        )
+        return acmi_header + render_data_str
+    
+    def render_with_tacview(self, render_mode="histroy_acmi", tacview=None , acmi_filename="./acmi_files", eval_env=None, timestamp=0.2, _should_save_acmi=True):
+        """Renders the environment.
+
+        The set of supported modes varies per environment. (And some
+
+        environments do not support rendering at all.) By convention,
+
+        if mode is:
+
+        - histroy_acmi: saves trajectory data to an ACMI file at every evaluation interval,
+                        allowing for post-analysis of historical evaluations.
+        - real_time: realtime render with tacview by socket comm
+        
+        :param mode: str, the mode to render with
+        """
+        # real render with tacview
+        render_data = [f"#{timestamp:.2f}\n"]
+        for sim in eval_env._jsbsims.values():
+            log_msg = sim.log()
+            if log_msg is not None:
+                render_data.append(log_msg + "\n")
+        for sim in eval_env._tempsims.values():
+            log_msg = sim.log()
+            if log_msg is not None:
+                render_data.append(log_msg + "\n")
+        render_data_str = "".join(render_data)
+        
+        # add tacview acmi file head data
+        if timestamp == 0:
+            render_data_str = self.add_acmi_header(render_data_str)
+            
+        if render_mode == "real_time" and tacview:
+            tacview.send_data_to_client(render_data_str)
+        if render_mode == "histroy_acmi" and _should_save_acmi:
+            self._save_acmi(acmi_filename, render_data_str)
+        
     def render(self, mode="txt", filepath='./JSBSimRecording.txt.acmi', tacview=None):
         """Renders the environment.
 

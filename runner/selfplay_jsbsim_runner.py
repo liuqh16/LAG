@@ -1,3 +1,4 @@
+import os
 import torch
 import logging
 import numpy as np
@@ -139,9 +140,15 @@ class SelfplayJSBSimRunner(JSBSimRunner):
         eval_cur_opponent_idx = 0
         # use for tacview's timestamp
         self.timestamp = 0
+        interval_timestamp = self.envs.envs[0].agent_interaction_steps  / self.envs.envs[0].sim_freq
         if self.render_mode == "real_time" and self.tacview: #reconnect tacview to clear the telemetry
             print("reconnect tacview.....")
-            self.tacview.reconnect()
+            self.tacview.reconnect()         
+        #  Create a directory to save .acmi files only use for render mode is histroy_acmi 
+        save_dir = os.path.join(self.run_dir, 'acmi_files')
+        os.makedirs(save_dir, exist_ok=True)
+        acmi_filename = f"{save_dir}/eval_episode_{self.current_episode}.acmi"
+        
         while total_episodes < self.eval_episodes:
 
             # [Selfplay] Load opponent policy
@@ -181,6 +188,10 @@ class SelfplayJSBSimRunner(JSBSimRunner):
             dones_env = np.all(dones.squeeze(axis=-1), axis=-1)
             total_episodes += np.sum(dones_env)
 
+            # render with tacview
+            self.eval_envs.envs[0].render_with_tacview(self.render_mode, self.tacview, acmi_filename, self.eval_envs.envs[0], self.timestamp, self._should_save_acmi())
+            self.timestamp += interval_timestamp   # step 0.2s
+            
             # [Selfplay] Reset obs, masks, rnn_states
             opponent_obs = obs[:, self.num_agents // 2:, ...]
             obs = obs[:, :self.num_agents // 2, ...]
@@ -203,20 +214,6 @@ class SelfplayJSBSimRunner(JSBSimRunner):
             episode_rewards.append(cumulative_rewards[dones_env == True])
             cumulative_rewards[dones_env == True] = 0
             
-            # Tacview real time render
-            if self.render_mode == "real_time":
-                render_data = [f"#{self.timestamp:.2f}\n"]
-                for sim in self.eval_envs.envs[0]._jsbsims.values():
-                    log_msg = sim.log()
-                    if log_msg is not None:
-                        render_data.append(log_msg + "\n")
-                for sim in self.eval_envs.envs[0]._tempsims.values():
-                    log_msg = sim.log()
-                    if log_msg is not None:
-                        render_data.append(log_msg + "\n")
-                render_data_str = "".join(render_data)
-                self.tacview.send_data_to_client(render_data_str)
-            self.timestamp += 0.2
 
         # Compute average episode rewards
         episode_rewards = np.concatenate(episode_rewards) # shape (self.eval_episodes, self.num_agents, 1)

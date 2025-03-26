@@ -75,8 +75,12 @@ def parse_args(args, parser):
     group = parser.add_argument_group("JSBSim Env parameters")
     group.add_argument('--scenario-name', type=str, default='singlecombat_simple',
                        help="Which scenario to run on")
-    group.add_argument('--render-mode', type=str, default='txt',
-                       help="txt or real_time")
+    group.add_argument('--render-mode', type=str, default='histroy_acmi',
+                   help="Rendering mode for visualization. "
+                        "'histroy_acmi' saves trajectory data to an ACMI file at every evaluation interval, "
+                        "allowing for post-analysis of historical evaluations. "
+                        "'real_time' maintains a live connection with Tacview for real-time visualization, "
+                        "but requires Tacview Advanced support.")
     all_args = parser.parse_known_args(args)[0]
     return all_args
 

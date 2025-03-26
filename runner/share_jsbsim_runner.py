@@ -1,3 +1,4 @@
+import os
 import logging
 import time
 from typing import List
@@ -73,6 +74,8 @@ class ShareJSBSimRunner(Runner):
 
         for episode in range(episodes):
 
+            self.current_episode = episode
+            
             for step in range(self.buffer_size):
                 # Sample actions
                 values, actions, action_log_probs, rnn_states_actor, rnn_states_critic = self.collect(step)
@@ -218,6 +221,17 @@ class ShareJSBSimRunner(Runner):
             logging.info(f" Choose opponents {eval_choose_opponents} for evaluation")
             # TODO: use eval results to update elo
 
+        # use for tacview's timestamp
+        self.timestamp = 0
+        interval_timestamp = self.envs.envs[0].agent_interaction_steps  / self.envs.envs[0].sim_freq
+        if self.render_mode == "real_time" and self.tacview: #reconnect tacview to clear the telemetry
+            print("reconnect tacview.....")
+            self.tacview.reconnect()         
+        #  Create a directory to save .acmi files only use for render mode is histroy_acmi 
+        save_dir = os.path.join(self.run_dir, 'acmi_files')
+        os.makedirs(save_dir, exist_ok=True)
+        acmi_filename = f"{save_dir}/eval_episode_{self.current_episode}.acmi"
+        
         while total_episodes < self.eval_episodes:
 
             # [Selfplay] Load opponent policy
@@ -257,6 +271,10 @@ class ShareJSBSimRunner(Runner):
             # Obser reward and next obs
             eval_obs, eval_share_obs, eval_rewards, eval_dones, eval_infos = self.eval_envs.step(eval_actions)
 
+            # render with tacview
+            self.eval_envs.envs[0].render_with_tacview(self.render_mode, self.tacview, acmi_filename, self.eval_envs.envs[0], self.timestamp, self._should_save_acmi())
+            self.timestamp += interval_timestamp   # step 0.2s
+            
             # [Selfplay] get ego reward
             if self.use_selfplay:
                 eval_rewards = eval_rewards[:, :self.num_agents // 2, ...]
