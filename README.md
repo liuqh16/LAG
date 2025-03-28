@@ -9,7 +9,9 @@ We provide a competitive environment for red and blue aircrafts games, which inc
 # create python env
 conda create -n jsbsim python=3.8
 # install dependency
-pip install torch pymap3d jsbsim==1.1.6 geographiclib gym==0.20.0 wandb icecream setproctitle. 
+pip install torch pymap3d jsbsim==1.1.6 geographiclib gym==0.20.0 wandb icecream setproctitle gymnasium. 
+
+Windows extra: pip install windows-curses
 
 - Download Shapely‑1.7.1‑cp38‑cp38‑win_amd64.whl from [here](https://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely), and `pip install shaply` from local file.
 

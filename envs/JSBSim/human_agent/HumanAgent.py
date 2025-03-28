@@ -4,8 +4,9 @@ import time
 import numpy as np
 from ..envs.singlecontrol_env import SingleControlEnv
 from .agent_base import BaseAgent
-import curses
 import threading
+import curses  # Windows 下import curses时导入的是 windows-curses 
+
 
 class HumanAgent(BaseAgent):
     def __init__(self, env: SingleControlEnv):
