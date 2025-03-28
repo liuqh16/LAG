@@ -33,18 +33,24 @@ class Tacview(object):
         ip_address = s.getsockname()[0]
         s.close()
         return ip_address
-    
+
     def setup_server(self):
+        
         try:
             self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.server_socket.bind((self.host, self.port))
             self.server_socket.listen(5)
-            print(f"Server listening on {self.host}:{self.port}")
+
             # Output more prominent message
-            print("\n" + "*" * 50)
+            print("\n" + "*" * 100)
+            print(f"Server listening on {self.host}:{self.port}")
             print("! IMPORTANT: Please open Tacview Advanced, click Record -> Real-time Telemetry, and input the IP address and port !")
-            print("*" * 50 + "\n")
+            print(f"⚠️ Tacview 提示: 端口 {self.port} 可能被防火墙阻挡，外部客户端可能无法连接！")
+            print(f"💡 请检查防火墙规则，确保已允许 {self.port}/tcp 访问")
+            print(f"   sudo ufw allow {self.port}/tcp")
+            print(f"   sudo ufw reload")
+            print("*" * 100 + "\n")
             self.connect()
         except Exception as e:
             print(f"Setup error: {e}")

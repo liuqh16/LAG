@@ -7,7 +7,7 @@ seed=1
 
 echo "env is ${env}, scenario is ${scenario}, algo is ${algo}, exp is ${exp}, seed is ${seed}"
 CUDA_VISIBLE_DEVICES=1 python train/train_jsbsim.py \
-    --render-mode histroy_acmi --use-eval --n-eval-rollout-threads 1 --eval-interval 1 --eval-episodes 1 \
+    --eval-render-mode real_time --use-eval --n-eval-rollout-threads 1 --eval-interval 1 --eval-episodes 1 \
     --env-name ${env} --algorithm-name ${algo} --scenario-name ${scenario} --experiment-name ${exp} \
     --seed ${seed} --n-training-threads 1 --n-rollout-threads 1 --cuda --log-interval 1 --save-interval 1 \
     --use-selfplay --selfplay-algorithm "fsp" --n-choose-opponents 1 \

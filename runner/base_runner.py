@@ -19,11 +19,11 @@ class Runner(object):
         self.eval_envs = config['eval_envs']
         self.device = config['device']
         self.current_episode = 0
-        self.render_mode = config['render_mode']
+        self.eval_render_mode = config['eval_render_mode']
         
         # Tacview render obj
         self.tacview = None
-        if self.render_mode == "real_time":
+        if self.eval_render_mode == "real_time":
             from runner.tacview import Tacview
             self.tacview = Tacview()
         

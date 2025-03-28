@@ -224,7 +224,7 @@ class ShareJSBSimRunner(Runner):
         # use for tacview's timestamp
         self.timestamp = 0
         interval_timestamp = self.envs.envs[0].agent_interaction_steps  / self.envs.envs[0].sim_freq
-        if self.render_mode == "real_time" and self.tacview: #reconnect tacview to clear the telemetry
+        if self.eval_render_mode == "real_time" and self.tacview: #reconnect tacview to clear the telemetry
             print("reconnect tacview.....")
             self.tacview.reconnect()         
         #  Create a directory to save .acmi files only use for render mode is histroy_acmi 
@@ -272,7 +272,7 @@ class ShareJSBSimRunner(Runner):
             eval_obs, eval_share_obs, eval_rewards, eval_dones, eval_infos = self.eval_envs.step(eval_actions)
 
             # render with tacview
-            self.eval_envs.envs[0].render_with_tacview(self.render_mode, self.tacview, acmi_filename, self.eval_envs.envs[0], self.timestamp, self._should_save_acmi())
+            self.eval_envs.envs[0].render_with_tacview(self.eval_render_mode, self.tacview, acmi_filename, self.eval_envs.envs[0], self.timestamp, self._should_save_acmi())
             self.timestamp += interval_timestamp   # step 0.2s
             
             # [Selfplay] get ego reward

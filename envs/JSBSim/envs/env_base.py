@@ -32,8 +32,7 @@ class BaseEnv(gymnasium.Env):
             getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0))
         self._create_records = False
         self.render_data = ""
-        self.render_data_str = ""
-        self.render_mode = getattr(self.config, 'render-mode', "histroy_acmi")  # type: str        
+        self.render_data_str = ""     
         self.load()
         
     @property
