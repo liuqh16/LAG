@@ -139,9 +139,6 @@ class SelfplayJSBSimRunner(JSBSimRunner):
         eval_cur_opponent_idx = 0
         # use for tacview's timestamp
         self.timestamp = 0
-        if self.render_mode == "real_time" and self.tacview: #reconnect tacview to clear the telemetry
-            print("reconnect tacview.....")
-            self.tacview.reconnect()
         while total_episodes < self.eval_episodes:
 
             # [Selfplay] Load opponent policy
@@ -150,7 +147,7 @@ class SelfplayJSBSimRunner(JSBSimRunner):
                 self.eval_opponent_policy.actor.load_state_dict(torch.load(str(self.save_dir) + f'/actor_{policy_idx}.pt', weights_only=True))
                 self.eval_opponent_policy.prep_rollout()
                 eval_cur_opponent_idx += 1
-                logging.info(f" Load opponent {policy_idx} for evaluation ({total_episodes}/{self.eval_episodes})")
+                logging.info(f" Load opponent {policy_idx} for evaluation ({total_episodes + 1}/{self.eval_episodes})")
 
                 # reset obs/rnn/mask
                 obs = self.eval_envs.reset()
@@ -208,12 +205,10 @@ class SelfplayJSBSimRunner(JSBSimRunner):
                 render_data = [f"#{self.timestamp:.2f}\n"]
                 for sim in self.eval_envs.envs[0]._jsbsims.values():
                     log_msg = sim.log()
+                    
                     if log_msg is not None:
                         render_data.append(log_msg + "\n")
-                for sim in self.eval_envs.envs[0]._tempsims.values():
-                    log_msg = sim.log()
-                    if log_msg is not None:
-                        render_data.append(log_msg + "\n")
+                        
                 render_data_str = "".join(render_data)
                 self.tacview.send_data_to_client(render_data_str)
             self.timestamp += 0.2
@@ -228,35 +223,54 @@ class SelfplayJSBSimRunner(JSBSimRunner):
         opponent_average_episode_rewards = np.array(np.split(opponent_episode_rewards, self.num_opponents)).mean(axis=-1)
 
         # Update elo
+        '''
+        Elo Rating Algorithm:
+            Players with higher ELO ratings have a higher probability of winning a game than players with lower ELO ratings.
+            After each game, the ELO rating of players is updated.
+            If a player with a higher ELO rating wins, only a few points are transferred from the lower-rated player.
+            However if the lower-rated player wins, then the transferred points from a higher-rated player are far greater.
+
+        ego_elo / opponent_elo: Elo scores for each agent
+        expected_score: Probability of winning of `ego` agent, i.e. when ego_elo >> opponent_elo, expected_score -> 1.
+        actual_score: Outcome for current match, 1: ego win, 0: ego lose, 0.5: tie.
+
+        Update Rule:
+            Ra = Ra + K * (outcome - Pa)
+            Rb = Rb + K * ((1 - outcome) - Pb) = Rb + K * ((1 - outcome) - (1 - Pa)) = Rb + K * (Pa - outcome)
+        '''
         ego_elo = np.array([self.latest_elo for _ in range(self.n_eval_rollout_threads)])
         opponent_elo = np.array([self.policy_pool[key] for key in eval_choose_opponents])
-        expected_score = 1 / (1 + 10**((opponent_elo-ego_elo)/400))
+        expected_score = 1 / (1 + 10 ** ((opponent_elo - ego_elo) / 400))
 
         actual_score = np.zeros_like(expected_score)
-        diff = opponent_average_episode_rewards - eval_average_episode_rewards
+        diff = eval_average_episode_rewards - opponent_average_episode_rewards
         actual_score[diff > 100] = 1 # win
         actual_score[abs(diff) < 100] = 0.5 # tie
         actual_score[diff < -100] = 0 # lose
 
-        elo_gain = 32 * (actual_score - expected_score)
-        update_opponent_elo = opponent_elo + elo_gain
+        K = 32
+        update_opponent_elo = opponent_elo + K * (expected_score - actual_score)
         for i, key in enumerate(eval_choose_opponents):
             self.policy_pool[key] = update_opponent_elo[i]
-        ego_elo = ego_elo - elo_gain
-        self.latest_elo = ego_elo.mean()
+        update_ego_elo = ego_elo + K * (actual_score - expected_score)
+        self.latest_elo = update_ego_elo.mean()
 
         # Logging
         eval_infos = {}
         eval_infos['eval_average_episode_rewards'] = eval_average_episode_rewards.mean()
+        eval_infos['eval_opponent_average_episode_rewards'] = opponent_average_episode_rewards.mean()
+        eval_infos['eval_elo_gain'] = (K * (actual_score - expected_score)).mean()
         eval_infos['latest_elo'] = self.latest_elo
-        logging.info(" eval average episode rewards: " + str(eval_infos['eval_average_episode_rewards']))
-        logging.info(" latest elo score: " + str(self.latest_elo))
+        logging.info(f" eval ego elo: {ego_elo.mean()} | opponent average elo: {opponent_elo.mean()}\n"
+                     f" ego average episode rewards: {eval_infos['eval_average_episode_rewards']}\n"
+                     f" opponent average episode rewards: {eval_infos['eval_opponent_average_episode_rewards']}\n"
+                     f" elo gain: {(K * (actual_score - expected_score)).mean()} | latest elo score: {self.latest_elo}")
         self.log_info(eval_infos, total_num_steps)
         logging.info("...End evaluation")
 
         # [Selfplay] Reset opponent for the following training
         self.reset_opponent()
-        
+
     def save(self, episode):
         policy_actor_state_dict = self.policy.actor.state_dict()
         torch.save(policy_actor_state_dict, str(self.save_dir) + '/actor_latest.pt')
