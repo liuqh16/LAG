@@ -75,8 +75,14 @@ def parse_args(args, parser):
     group = parser.add_argument_group("JSBSim Env parameters")
     group.add_argument('--scenario-name', type=str, default='singlecombat_simple',
                        help="Which scenario to run on")
-    group.add_argument('--render-mode', type=str, default='txt',
-                       help="txt or real_time")
+    group.add_argument('--eval-render-mode', type=str, default=None, choices=[None, 'histroy_acmi', 'real_time'],
+                   help="Rendering mode for visualization. "
+                        "None: no rendering. "
+                        "'histroy_acmi' saves trajectory data to an ACMI file at every evaluation interval, "
+                        "allowing for post-analysis of historical evaluations. "
+                        "'real_time' maintains a live connection with Tacview for real-time visualization, "
+                        "but requires Tacview Advanced support.")
+
     all_args = parser.parse_known_args(args)[0]
     return all_args
 
@@ -139,7 +145,7 @@ def main(args):
     envs = make_train_env(all_args)
     eval_envs = make_eval_env(all_args) if all_args.use_eval else None
 
-    render_mode = all_args.render_mode
+    eval_render_mode = all_args.eval_render_mode
     
     config = {
         "all_args": all_args,
@@ -147,7 +153,7 @@ def main(args):
         "eval_envs": eval_envs,
         "device": device,
         "run_dir": run_dir,
-        "render_mode": render_mode
+        "eval_render_mode": eval_render_mode
     }
 
     # run experiments

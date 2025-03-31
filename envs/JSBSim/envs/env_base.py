@@ -4,6 +4,7 @@ import gymnasium
 from gymnasium.utils import seeding
 import numpy as np
 from typing import Dict, Any, Tuple
+from datetime import datetime, timezone
 from ..core.simulatior import AircraftSimulator, BaseSimulator
 from ..tasks.task_base import BaseTask
 from ..utils.utils import parse_config
@@ -30,8 +31,10 @@ class BaseEnv(gymnasium.Env):
         self.center_lon, self.center_lat, self.center_alt = \
             getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0))
         self._create_records = False
+        self.render_data = ""
+        self.render_data_str = ""     
         self.load()
-
+        
     @property
     def num_agents(self) -> int:
         return self.task.num_agents
@@ -180,7 +183,7 @@ class BaseEnv(gymnasium.Env):
             sim.close()
         self._jsbsims.clear()
         self._tempsims.clear()
-
+ 
     def render(self, mode="txt", filepath='./JSBSimRecording.txt.acmi', tacview=None):
         """Renders the environment.
 
@@ -190,7 +193,6 @@ class BaseEnv(gymnasium.Env):
 
         if mode is:
 
-        - human: print on the terminal
         - txt: output to txt.acmi files
         - real_time: realtime render with tacview by socket comm
 
@@ -202,12 +204,20 @@ class BaseEnv(gymnasium.Env):
         :param mode: str, the mode to render with
         """
         if mode == "txt":
-            if not self._create_records:
-                with open(filepath, mode='w', encoding='utf-8-sig') as f:
+            # 每个新ACMI文件都写入一次头部信息，但在 同一个epoch内的多次render调用中只写入一次头部。
+            # 如果是新文件（首次调用），写入头部
+            if not hasattr(self, '_current_file') or self._current_file != filepath:
+                self._current_file = filepath  # 记录当前文件名
+                self._create_records = False   # 初始化标志位
+
+            # 写入数据（首次调用会包含头部）
+            with open(filepath, mode='a' if self._create_records else 'w', encoding='utf-8-sig') as f:
+                if not self._create_records:
                     f.write("FileType=text/acmi/tacview\n")
-                    f.write("FileVersion=2.1\n")
-                    f.write("0,ReferenceTime=2020-04-01T00:00:00Z\n")
-                self._create_records = True
+                    f.write("FileVersion=2.2\n")
+                    current_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                    f.write(f"0,ReferenceTime={current_time}\n")  # 使用f-string
+                    self._create_records = True
             with open(filepath, mode='a', encoding='utf-8-sig') as f:
                 timestamp = self.current_step * self.time_interval
                 f.write(f"#{timestamp:.2f}\n")
