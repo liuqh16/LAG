@@ -19,14 +19,17 @@ class Runner(object):
         self.eval_envs = config['eval_envs']
         self.device = config['device']
         self.current_episode = 0
-        self.eval_render_mode = config['eval_render_mode']
+        self.eval_render_mode = config.get('eval_render_mode', None)
+        self.render_mode = config.get('render_mode', "txt")
+
+
         
         # Tacview render obj
         self.tacview = None
         if self.eval_render_mode == "real_time":
             from runner.tacview import Tacview
             self.tacview = Tacview()
-        
+
         # parameters
         self.env_name = self.all_args.env_name
         self.algorithm_name = self.all_args.algorithm_name
@@ -53,15 +56,7 @@ class Runner(object):
             self.save_dir = str(self.run_dir)
             if not os.path.exists(self.save_dir):
                 os.makedirs(self.save_dir)
-
         self.load()
-
-    def _should_save_acmi(self):
-        """ 判断是否应该保存 ACMI 文件 """
-        return (
-            self.current_episode % self.eval_interval == 0
-            and self.use_eval
-        )
         
     def load(self):
         # algorithm
@@ -130,13 +125,52 @@ class Runner(object):
         else:
             pass
         
-    def render_with_tacview(self, data):
+    def _init_eval_render_config(self):
+
+        """初始化评估渲染配置，返回标准化字典
+        
+        Returns:
+            dict: 渲染配置字典，包含两个可能的结构：
+                - histroy_acmi模式: {'mode': 'txt', 'filepath': '.../file.acmi'}
+                - real_time模式: {'mode': 'real_time', 'tacview': tacview_obj}
+                或 None（当不需要渲染时）
         """
-        Send data to Tacview for real-time rendering.
-        :param data: The data to be rendered, which can be a string or a specific structure.
-        """
-        if self.tacview:
-            try:
-                self.tacview.send_data_to_client(data)
-            except Exception as e:
-                logging.error(f"Tacview rendering error: {e}")
+        if not self.eval_render_mode:
+            return None
+
+        config = {}
+        
+        if self.eval_render_mode == "histroy_acmi":
+            config.update({
+                'mode': 'txt',
+                'filepath': os.path.join(
+                    self.run_dir,
+                    'acmi_files',
+                    f'eval_episode_{self.current_episode}.acmi'
+                )
+            })
+            os.makedirs(os.path.dirname(config['filepath']), exist_ok=True)
+        
+        elif self.eval_render_mode == "real_time":
+            if not self.tacview:
+                return None
+            print("Reconnecting TacView...")
+            self.tacview.reconnect()
+            config.update({
+                'mode': 'real_time',
+                'tacview': self.tacview
+            })
+        
+        else:
+            raise ValueError(f"不支持的渲染模式: {self.eval_render_mode}")
+
+        return config
+    
+    def eval_render(self):
+        # eval render with tacview
+        if self.eval_render_config:
+            _config = self.eval_render_config 
+            if _config['mode'] == 'txt' and self.current_episode % self.eval_interval == 0:
+                self.eval_envs.envs[0].render(_config['mode'], _config['filepath'])
+            elif _config['mode'] == 'real_time':
+                self.eval_envs.envs[0].render(_config['mode'], "None", _config['tacview'])

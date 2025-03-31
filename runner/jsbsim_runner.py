@@ -145,15 +145,8 @@ class JSBSimRunner(Runner):
         eval_masks = np.ones((self.n_eval_rollout_threads, *self.buffer.masks.shape[2:]), dtype=np.float32)
         eval_rnn_states = np.zeros((self.n_eval_rollout_threads, *self.buffer.rnn_states_actor.shape[2:]), dtype=np.float32)
 
-        self.timestamp = 0 # use for tacview real time render 
-        interval_timestamp = self.envs.envs[0].agent_interaction_steps  / self.envs.envs[0].sim_freq      
-        if self.eval_render_mode == "real_time" and self.tacview: #reconnect tacview to clear the telemetry
-            print("reconnect tacview.....")
-            self.tacview.reconnect()         
-        #  Create a directory to save .acmi files only use for render mode is histroy_acmi 
-        save_dir = os.path.join(self.run_dir, 'acmi_files')
-        os.makedirs(save_dir, exist_ok=True)
-        acmi_filename = f"{save_dir}/eval_episode_{self.current_episode}.acmi"
+        # eval render config
+        self.eval_render_config = self._init_eval_render_config()
         
         while total_episodes < self.eval_episodes:
 
@@ -167,11 +160,8 @@ class JSBSimRunner(Runner):
             # Obser reward and next obs
             eval_obs, eval_rewards, eval_dones, eval_infos = self.eval_envs.step(eval_actions)
             
-            # render with tacview
-            if self.eval_render_mode != None:
-                self.eval_envs.envs[0].render_with_tacview(self.eval_render_mode, self.tacview, acmi_filename, self.eval_envs.envs[0], self.timestamp, self._should_save_acmi())
-            
-            self.timestamp += interval_timestamp   # step 0.2s
+            # render
+            self.eval_render()
             
             eval_cumulative_rewards += eval_rewards
             eval_dones_env = np.all(eval_dones.squeeze(axis=-1), axis=-1)
@@ -196,7 +186,7 @@ class JSBSimRunner(Runner):
         render_obs = self.envs.reset()
         render_masks = np.ones((1, *self.buffer.masks.shape[2:]), dtype=np.float32)
         render_rnn_states = np.zeros((1, *self.buffer.rnn_states_actor.shape[2:]), dtype=np.float32)
-        self.envs.render(mode=self.render_mode, filepath=f'{self.run_dir}/{self.experiment_name}.txt.acmi',tacview=self.tacview)
+        self.envs.render(mode=self.render_mode, filepath=f'{self.run_dir}/{self.experiment_name}.txt.acmi')
         while True:
             self.policy.prep_rollout()
             render_actions, render_rnn_states = self.policy.act(np.concatenate(render_obs),

@@ -4,7 +4,7 @@ import gymnasium
 from gymnasium.utils import seeding
 import numpy as np
 from typing import Dict, Any, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 from ..core.simulatior import AircraftSimulator, BaseSimulator
 from ..tasks.task_base import BaseTask
 from ..utils.utils import parse_config
@@ -183,60 +183,7 @@ class BaseEnv(gymnasium.Env):
             sim.close()
         self._jsbsims.clear()
         self._tempsims.clear()
-
-    
-    
-    def _save_acmi(self, filename, data):
-        """ 保存 ACMI 数据到文件 """
-        with open(filename, 'a') as f:
-            f.write(data)
-    
-    def add_acmi_header(self, render_data_str):
-        """在 render_data_str 前添加 ACMI 头部信息"""
-        current_time = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")  # 获取当前 UTC 时间并格式化
-        acmi_header = (
-            "FileType=text/acmi/tacview\n"
-            "FileVersion=2.2\n"
-            f"0,ReferenceTime={current_time}\n"
-        )
-        return acmi_header + render_data_str
-    
-    def render_with_tacview(self, render_mode="histroy_acmi", tacview=None , acmi_filename="./acmi_files", eval_env=None, timestamp=0.2, _should_save_acmi=True):
-        """Renders the environment.
-
-        The set of supported modes varies per environment. (And some
-
-        environments do not support rendering at all.) By convention,
-
-        if mode is:
-
-        - histroy_acmi: saves trajectory data to an ACMI file at every evaluation interval,
-                        allowing for post-analysis of historical evaluations.
-        - real_time: realtime render with tacview by socket comm
-        
-        :param mode: str, the mode to render with
-        """
-        # real render with tacview
-        render_data = [f"#{timestamp:.2f}\n"]
-        for sim in eval_env._jsbsims.values():
-            log_msg = sim.log()
-            if log_msg is not None:
-                render_data.append(log_msg + "\n")
-        for sim in eval_env._tempsims.values():
-            log_msg = sim.log()
-            if log_msg is not None:
-                render_data.append(log_msg + "\n")
-        render_data_str = "".join(render_data)
-        
-        # add tacview acmi file head data
-        if timestamp == 0:
-            render_data_str = self.add_acmi_header(render_data_str)
-            
-        if render_mode == "real_time" and tacview:
-            tacview.send_data_to_client(render_data_str)
-        if render_mode == "histroy_acmi" and _should_save_acmi:
-            self._save_acmi(acmi_filename, render_data_str)
-        
+ 
     def render(self, mode="txt", filepath='./JSBSimRecording.txt.acmi', tacview=None):
         """Renders the environment.
 
@@ -246,7 +193,6 @@ class BaseEnv(gymnasium.Env):
 
         if mode is:
 
-        - human: print on the terminal
         - txt: output to txt.acmi files
         - real_time: realtime render with tacview by socket comm
 
@@ -258,12 +204,20 @@ class BaseEnv(gymnasium.Env):
         :param mode: str, the mode to render with
         """
         if mode == "txt":
-            if not self._create_records:
-                with open(filepath, mode='w', encoding='utf-8-sig') as f:
+            # 每个新ACMI文件都写入一次头部信息，但在 同一个epoch内的多次render调用中只写入一次头部。
+            # 如果是新文件（首次调用），写入头部
+            if not hasattr(self, '_current_file') or self._current_file != filepath:
+                self._current_file = filepath  # 记录当前文件名
+                self._create_records = False   # 初始化标志位
+
+            # 写入数据（首次调用会包含头部）
+            with open(filepath, mode='a' if self._create_records else 'w', encoding='utf-8-sig') as f:
+                if not self._create_records:
                     f.write("FileType=text/acmi/tacview\n")
-                    f.write("FileVersion=2.1\n")
-                    f.write("0,ReferenceTime=2020-04-01T00:00:00Z\n")
-                self._create_records = True
+                    f.write("FileVersion=2.2\n")
+                    current_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                    f.write(f"0,ReferenceTime={current_time}\n")  # 使用f-string
+                    self._create_records = True
             with open(filepath, mode='a', encoding='utf-8-sig') as f:
                 timestamp = self.current_step * self.time_interval
                 f.write(f"#{timestamp:.2f}\n")
