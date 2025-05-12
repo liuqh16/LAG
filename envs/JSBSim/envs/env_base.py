@@ -221,7 +221,7 @@ class BaseEnv(gymnasium.Env):
                     log_msg = sim.log()
                     if log_msg is not None:
                         f.write(log_msg + "\n")
-        if mode == "real_time":
+        elif mode == "real_time":
             timestamp = self.current_step * self.time_interval
             data = [f"#{timestamp:.2f}\n"]
             for sim in self._jsbsims.values():
