@@ -40,7 +40,7 @@ class PPOActor(nn.Module):
         if self.use_prior:
             # prior knowledage for controling shoot missile
             attack_angle = torch.rad2deg(obs[:, 11]) # unit degree
-            distance = obs[:, 13] * 10000 # unit m
+            distance = obs[:, 11] * 10000 # unit m
             alpha0 = torch.full(size=(obs.shape[0],1), fill_value=3).to(**self.tpdv)
             beta0 = torch.full(size=(obs.shape[0],1), fill_value=10).to(**self.tpdv)
             alpha0[distance<=12000] = 6
