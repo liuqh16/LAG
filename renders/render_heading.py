@@ -27,7 +27,7 @@ def _t2n(x):
 # === CONFIG ===
 render = True
 policy_index = "latest"
-run_dir = "../scripts/results/SingleControl/1/heading/ppo/v1/wandb/run-20250512_142014-7slbowi5/files"
+run_dir = "../scripts/results/SingleControl/1/heading/ppo/v1/wandb/run-20250516_043525-itylszu0/files"
 experiment_name = run_dir.split('/')[-4]  
 env = SingleControlEnv("1/heading") 
 env.seed(0)
@@ -42,6 +42,15 @@ policy.load_state_dict(torch.load(f"{run_dir}/actor_{policy_index}.pt"))
 obs = env.reset()
 if render:
     env.render(mode='txt', filepath=f"{experiment_name}.txt.acmi")
+
+    # Render static base(s) just once after the ACMI file is created
+    static_bases = env.static_bases
+    for uid, base in static_bases.items():
+        print("->>>>>>>>>>>>>>Rendering static base:", uid, base.origin)
+        position = base.origin
+        print("filepath:", f"{experiment_name}.txt.acmi")
+        env.render_static_base(uid, position, base.color, base.model, base.type, filepath=f"{experiment_name}.txt.acmi")
+
 rnn_states = np.zeros((1, 1, args.recurrent_hidden_size), dtype=np.float32)
 masks = np.ones((1, 1), dtype=np.float32)
 episode_reward = 0
