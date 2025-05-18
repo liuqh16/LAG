@@ -4,7 +4,7 @@ import gymnasium
 from gymnasium.utils import seeding
 import numpy as np
 from typing import Dict, Any, Tuple
-from ..core.simulatior import AircraftSimulator, BaseSimulator
+from ..core.simulatior import AircraftSimulator, BaseSimulator, StaticSimulator
 from ..tasks.task_base import BaseTask
 from ..utils.utils import parse_config
 
@@ -46,7 +46,11 @@ class BaseEnv(gymnasium.Env):
 
     @property
     def agents(self) -> Dict[str, AircraftSimulator]:
-        return self._jsbsims
+        return self._aircraft_sims
+    
+    @property
+    def static_bases(self) -> Dict[str, StaticSimulator]:
+        return self._static_sims
 
     @property
     def time_interval(self) -> int:
@@ -61,32 +65,52 @@ class BaseEnv(gymnasium.Env):
         self.task = BaseTask(self.config)
 
     def load_simulator(self):
-        self._jsbsims = {}     # type: Dict[str, AircraftSimulator]
+        # Separate dictionaries for aircraft and static sims
+        self._aircraft_sims = {}  # type: Dict[str, AircraftSimulator]
+        self._static_sims = {}    # type: Dict[str, StaticSimulator]
+
+        # Load aircraft agents
         for uid, config in self.config.aircraft_configs.items():
-            self._jsbsims[uid] = AircraftSimulator(
+            self._aircraft_sims[uid] = AircraftSimulator(
                 uid=uid,
                 color=config.get("color", "Red"),
                 model=config.get("model", "f16"),
                 init_state=config.get("init_state"),
                 origin=getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0)),
                 sim_freq=self.sim_freq,
-                num_missiles=config.get("missile", 0))
-        # Different teams have different uid[0]
-        _default_team_uid = list(self._jsbsims.keys())[0][0]
-        self.ego_ids = [uid for uid in self._jsbsims.keys() if uid[0] == _default_team_uid]
-        self.enm_ids = [uid for uid in self._jsbsims.keys() if uid[0] != _default_team_uid]
+                num_missiles=config.get("missile", 0)
+            )
 
-        # Link jsbsims
-        for key, sim in self._jsbsims.items():
-            for k, s in self._jsbsims.items():
-                if k == key:
-                    pass
-                elif k[0] == key[0]:
+        # Load static base objects
+        for uid, config in self.config.static_base_configs.items():
+            self._static_sims[uid] = StaticSimulator(
+                uid=uid,
+                color=config.get("color", "Blue"),
+                model=config.get("model", "Gas Platform"),
+                type=config.get("type", "Ground+Static+Building"),
+                init_state=config.get("init_state"),
+                origin=getattr(self.config, 'battle_field_center', (120.0, 60.0, 0.0)),
+            )
+
+        # Merge both for rendering/logging
+        self._jsbsims = {**self._aircraft_sims, **self._static_sims}
+
+        # Determine ego/enemy IDs (only among aircraft)
+        _default_team_uid = list(self._aircraft_sims.keys())[0][0]
+        self.ego_ids = [uid for uid in self._aircraft_sims if uid[0] == _default_team_uid]
+        self.enm_ids = [uid for uid in self._aircraft_sims if uid[0] != _default_team_uid]
+
+        # Link aircraft enemies/partners
+        for key, sim in self._aircraft_sims.items():
+            for k, s in self._aircraft_sims.items():
+                if key == k:
+                    continue
+                if sim.color == s.color:
                     sim.partners.append(s)
                 else:
                     sim.enemies.append(s)
 
-        self._tempsims = {}    # type: Dict[str, BaseSimulator]
+        self._tempsims = {}  # type: Dict[str, BaseSimulator]
 
     def add_temp_simulator(self, sim: BaseSimulator):
         self._tempsims[sim.uid] = sim
