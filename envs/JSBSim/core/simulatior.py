@@ -532,3 +532,28 @@ class MissileSimulator(BaseSimulator):
         # update mass
         if self._t < self._t_thrust:
             self._m = self._m - self.dt * self._dm
+
+
+class StaticSimulator(BaseSimulator):
+    def __init__(self, uid, color, model, type, init_state=None, origin=(120.0, 60.0, 0.0)):
+        super().__init__(uid, color, dt=0)
+        self.model = model
+        self.type = type
+        self.origin = origin
+        # Set position from init_state if provided
+        if init_state is not None:
+            lon = init_state.get('ic_long_gc_deg', origin[0])
+            lat = init_state.get('ic_lat_geod_deg', origin[1])
+            alt = init_state.get('ic_h_sl_ft', origin[2]) * 0.3048  # ft to m
+            from ..utils.utils import LLA2NEU
+            self._position = LLA2NEU(lon, lat, alt, *origin)
+        else:
+            self._position = np.zeros(3)
+    def run(self, **kwargs):
+        pass
+    def close(self):
+        pass
+    def log(self):
+        # Example log for ACMI
+        pos = self._position
+        return f"{self.uid},T={pos[0]}|{pos[1]}|{pos[2]}|0|0|0,Type={self.type},Color={self.color},Name={self.model}"
