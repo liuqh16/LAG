@@ -215,14 +215,14 @@ class TestSingleCombatEnv:
 class TestJSBSimRunner:
 
     @pytest.mark.parametrize("args", [
-        "--env-name SingleControl --algorithm-name ppo --scenario-name 1/heading",
-        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/DodgeMissile/Selfplay --use-selfplay --selfplay-algorithm fsp",
-        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/DodgeMissile/vsBaseline",
-        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/DodgeMissile/HierarchySelfplay",  # whether to use selfplay is optional
-        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/DodgeMissile/HierarchyVsBaseline"])
+        "--env-name SingleControl --algorithm-name ppo --scenario-name 1/heading --render-mode txt",
+        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/DodgeMissile/Selfplay --use-selfplay --selfplay-algorithm fsp --render-mode txt",
+        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/DodgeMissile/vsBaseline --render-mode txt",
+        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/DodgeMissile/HierarchySelfplay --render-mode txt",  # whether to use selfplay is optional
+        "--env-name SingleCombat --algorithm-name ppo --scenario-name 1v1/DodgeMissile/HierarchyVsBaseline --render-mode txt"])
     def test_training(self, args):
-        from scripts.train.train_jsbsim import make_train_env, make_eval_env, parse_args, get_config, Runner
-        args += ' --experiment-name pytest --seed 1 --n-training-threads 1 --n-rollout-threads 5 --cuda' \
+        from scripts.train.train_jsbsim import make_train_env, make_eval_env, parse_args, get_config
+        args += ' --experiment-name pytest --seed 1 --n-training-threads 1 --n-rollout-threads 5 --cuda --render-mode txt' \
                 ' --log-interval 1 --save-interval 1 --use-eval --eval-interval 1 --eval-episodes 10' \
                 ' --num-mini-batch 5 --buffer-size 1000 --num-env-steps 1e4' \
                 ' --lr 3e-4 --gamma 0.99 --ppo-epoch 4 --clip-params 0.2 --max-grad-norm 2 --entropy-coef 1e-3' \
@@ -258,16 +258,26 @@ class TestJSBSimRunner:
         envs = make_train_env(all_args)
         eval_envs = make_eval_env(all_args)
 
+        render_mode = all_args.render_mode
+    
         config = {
             "all_args": all_args,
             "envs": envs,
             "eval_envs": eval_envs,
             "device": device,
-            "run_dir": run_dir
+            "run_dir": run_dir,
+            "render_mode": render_mode
         }
 
         # run experiments
-        runner = Runner(config)
+        if all_args.env_name == "MultipleCombat":
+            runner = ShareJSBSimRunner(config)
+        else:
+            if all_args.use_selfplay:
+                from runner.selfplay_jsbsim_runner import SelfplayJSBSimRunner as Runner
+            else:
+                from runner.jsbsim_runner import JSBSimRunner as Runner
+            runner = Runner(config)
         runner.run()
 
         # post process
